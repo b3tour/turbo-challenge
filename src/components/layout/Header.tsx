@@ -18,7 +18,7 @@ export function Header({ user }: HeaderProps) {
     <header className="fixed top-0 left-0 right-0 z-40 bg-dark-900/95 backdrop-blur-lg border-b border-dark-800 pt-safe">
       <div className="flex items-center justify-between h-16 px-4 max-w-lg mx-auto">
         {/* Logo */}
-        <Link href="/dashboard" className="flex items-center gap-2.5">
+        <Link href="/dashboard" className="flex items-center gap-2">
           <Image
             src="/heart-icon.png"
             alt="Turbo Challenge"
@@ -27,9 +27,9 @@ export function Header({ user }: HeaderProps) {
             className="object-contain"
             priority
           />
-          <div className="flex items-baseline gap-1.5">
-            <span className="text-[26px] font-bold text-white leading-none">TURBO</span>
-            <span className="text-[26px] font-bold gradient-text leading-none">CHALLENGE</span>
+          <div className="flex items-center gap-1.5">
+            <span className="text-2xl font-bold text-white">TURBO</span>
+            <span className="text-2xl font-bold gradient-text">CHALLENGE</span>
           </div>
         </Link>
 
