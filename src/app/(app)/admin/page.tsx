@@ -172,6 +172,7 @@ export default function AdminPage() {
     setPendingSubmissions(prev => prev.filter(s => s.id !== submission.id));
     setShowSubmissionModal(false);
     setSelectedSubmission(null);
+    fetchData();
   };
 
   // === MISSION HANDLERS ===
