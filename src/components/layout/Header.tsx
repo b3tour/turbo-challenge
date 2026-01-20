@@ -22,14 +22,14 @@ export function Header({ user }: HeaderProps) {
           <Image
             src="/heart-icon.png"
             alt="Turbo Challenge"
-            width={40}
-            height={40}
+            width={32}
+            height={32}
             className="object-contain"
             priority
           />
           <div className="flex items-baseline gap-1.5">
-            <span className="text-2xl font-bold text-white">TURBO</span>
-            <span className="text-2xl font-bold gradient-text">CHALLENGE</span>
+            <span className="text-[28px] font-bold text-white leading-none">TURBO</span>
+            <span className="text-[28px] font-bold gradient-text leading-none">CHALLENGE</span>
           </div>
         </Link>
 
