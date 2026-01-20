@@ -424,6 +424,19 @@ export default function ProfilePage() {
         </div>
       </Card>
 
+      {/* Admin Panel Link */}
+      {profile.is_admin && (
+        <Button
+          variant="secondary"
+          fullWidth
+          onClick={() => router.push('/admin')}
+          className="border-turbo-500/50"
+        >
+          <Shield className="w-5 h-5 mr-2 text-turbo-500" />
+          Panel Admina
+        </Button>
+      )}
+
       {/* Logout */}
       <Button
         variant="danger"
