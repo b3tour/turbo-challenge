@@ -95,6 +95,13 @@ export default function AdminPage() {
           .order('created_at', { ascending: false }),
       ]);
 
+      // Debug logging
+      console.log('=== ADMIN FETCH DEBUG ===');
+      console.log('Users:', usersRes.data?.length, usersRes.error);
+      console.log('Missions:', missionsRes.data?.length, missionsRes.error);
+      console.log('Pending submissions:', submissionsRes.data?.length, submissionsRes.error);
+      console.log('Submissions data:', submissionsRes.data);
+
       if (usersRes.data) setUsers(usersRes.data as User[]);
       if (missionsRes.data) setMissions(missionsRes.data as Mission[]);
       if (submissionsRes.data) setPendingSubmissions(submissionsRes.data as Submission[]);
