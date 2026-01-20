@@ -26,10 +26,7 @@ import {
   Trash2,
   ToggleLeft,
   ToggleRight,
-  Copy,
   BarChart3,
-  ChevronDown,
-  ChevronUp,
 } from 'lucide-react';
 
 type AdminTab = 'overview' | 'submissions' | 'missions' | 'users';
@@ -60,7 +57,6 @@ export default function AdminPage() {
   const [selectedMission, setSelectedMission] = useState<Mission | null>(null);
   const [missionToDelete, setMissionToDelete] = useState<Mission | null>(null);
   const [isEditing, setIsEditing] = useState(false);
-  const [expandedMission, setExpandedMission] = useState<string | null>(null);
 
   const [missionForm, setMissionForm] = useState({
     title: '',
@@ -508,14 +504,9 @@ export default function AdminPage() {
                   </Card>
                 ) : (
                   missions.map(mission => (
-                    <Card key={mission.id} className="overflow-hidden">
+                    <Card key={mission.id}>
                       {/* Nagłówek misji */}
-                      <div
-                        className="flex items-center gap-3 cursor-pointer"
-                        onClick={() => setExpandedMission(
-                          expandedMission === mission.id ? null : mission.id
-                        )}
-                      >
+                      <div className="flex items-center gap-3 mb-3">
                         <div className="text-2xl">{missionTypeIcons[mission.type]}</div>
                         <div className="flex-1 min-w-0">
                           <p className="font-medium text-white truncate">{mission.title}</p>
@@ -526,92 +517,58 @@ export default function AdminPage() {
                         <Badge variant={mission.status === 'active' ? 'success' : 'default'}>
                           {mission.status === 'active' ? 'Aktywna' : 'Nieaktywna'}
                         </Badge>
-                        {expandedMission === mission.id ? (
-                          <ChevronUp className="w-5 h-5 text-dark-400" />
-                        ) : (
-                          <ChevronDown className="w-5 h-5 text-dark-400" />
-                        )}
                       </div>
 
-                      {/* Rozwinięte szczegóły */}
-                      {expandedMission === mission.id && (
-                        <div className="mt-4 pt-4 border-t border-dark-700">
-                          <p className="text-sm text-dark-300 mb-3">{mission.description}</p>
+                      {/* Opis */}
+                      <p className="text-sm text-dark-300 mb-3 line-clamp-2">{mission.description}</p>
 
-                          {mission.location_name && (
-                            <p className="text-xs text-dark-400 mb-2">
-                              📍 {mission.location_name}
-                            </p>
-                          )}
-
-                          {mission.qr_code_value && (
-                            <p className="text-xs text-turbo-400 font-mono mb-3">
-                              QR: {mission.qr_code_value}
-                            </p>
-                          )}
-
-                          {/* Przyciski akcji */}
-                          <div className="flex flex-wrap gap-2">
-                            <Button
-                              size="sm"
-                              variant="secondary"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                openEditMission(mission);
-                              }}
-                            >
-                              <Edit2 className="w-4 h-4 mr-1" />
-                              Edytuj
-                            </Button>
-
-                            <Button
-                              size="sm"
-                              variant="secondary"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleToggleMissionStatus(mission);
-                              }}
-                            >
-                              {mission.status === 'active' ? (
-                                <>
-                                  <ToggleRight className="w-4 h-4 mr-1" />
-                                  Dezaktywuj
-                                </>
-                              ) : (
-                                <>
-                                  <ToggleLeft className="w-4 h-4 mr-1" />
-                                  Aktywuj
-                                </>
-                              )}
-                            </Button>
-
-                            <Button
-                              size="sm"
-                              variant="secondary"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDuplicateMission(mission);
-                              }}
-                            >
-                              <Copy className="w-4 h-4 mr-1" />
-                              Duplikuj
-                            </Button>
-
-                            <Button
-                              size="sm"
-                              variant="danger"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setMissionToDelete(mission);
-                                setShowDeleteDialog(true);
-                              }}
-                            >
-                              <Trash2 className="w-4 h-4 mr-1" />
-                              Usuń
-                            </Button>
-                          </div>
-                        </div>
+                      {mission.location_name && (
+                        <p className="text-xs text-dark-400 mb-2">
+                          📍 {mission.location_name}
+                        </p>
                       )}
+
+                      {/* Przyciski akcji - zawsze widoczne */}
+                      <div className="flex flex-wrap gap-2 pt-3 border-t border-dark-700">
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => openEditMission(mission)}
+                        >
+                          <Edit2 className="w-4 h-4 mr-1" />
+                          Edytuj
+                        </Button>
+
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => handleToggleMissionStatus(mission)}
+                        >
+                          {mission.status === 'active' ? (
+                            <>
+                              <ToggleRight className="w-4 h-4 mr-1" />
+                              Wyłącz
+                            </>
+                          ) : (
+                            <>
+                              <ToggleLeft className="w-4 h-4 mr-1" />
+                              Włącz
+                            </>
+                          )}
+                        </Button>
+
+                        <Button
+                          size="sm"
+                          variant="danger"
+                          onClick={() => {
+                            setMissionToDelete(mission);
+                            setShowDeleteDialog(true);
+                          }}
+                        >
+                          <Trash2 className="w-4 h-4 mr-1" />
+                          Usuń
+                        </Button>
+                      </div>
                     </Card>
                   ))
                 )}
