@@ -80,6 +80,24 @@ export function useMissions(options: UseMissionsOptions = {}) {
       return { canComplete: false, reason: 'Misja się zakończyła' };
     }
 
+    // Quiz - jednorazowy, nie można powtarzać (nawet po oblaniu)
+    if (mission.type === 'quiz') {
+      const anyQuizAttempt = userSubmissions.find(
+        s => s.mission_id === mission.id
+      );
+      if (anyQuizAttempt) {
+        if (anyQuizAttempt.status === 'approved') {
+          return { canComplete: false, reason: 'Quiz już zaliczony' };
+        }
+        if (anyQuizAttempt.status === 'rejected') {
+          return { canComplete: false, reason: 'Quiz już rozwiązany (niezaliczony)' };
+        }
+        if (anyQuizAttempt.status === 'pending') {
+          return { canComplete: false, reason: 'Quiz oczekuje na weryfikację' };
+        }
+      }
+    }
+
     // Sprawdź czy użytkownik już wykonał
     const userCompletions = userSubmissions.filter(
       s => s.mission_id === mission.id && s.status === 'approved'
