@@ -77,39 +77,48 @@ export default function AdminPage() {
 
   // Pobierz dane
   const fetchData = async () => {
-    if (!profile?.is_admin) return;
+    if (!profile?.is_admin) {
+      setLoading(false);
+      return;
+    }
 
     setLoading(true);
 
-    const [usersRes, missionsRes, submissionsRes] = await Promise.all([
-      supabase.from('users').select('*').order('total_xp', { ascending: false }),
-      supabase.from('missions').select('*').order('created_at', { ascending: false }),
-      supabase
-        .from('submissions')
-        .select('*, user:users(*), mission:missions(*)')
-        .eq('status', 'pending')
-        .order('created_at', { ascending: false }),
-    ]);
+    try {
+      const [usersRes, missionsRes, submissionsRes] = await Promise.all([
+        supabase.from('users').select('*').order('total_xp', { ascending: false }),
+        supabase.from('missions').select('*').order('created_at', { ascending: false }),
+        supabase
+          .from('submissions')
+          .select('*, user:users(*), mission:missions(*)')
+          .eq('status', 'pending')
+          .order('created_at', { ascending: false }),
+      ]);
 
-    if (usersRes.data) setUsers(usersRes.data as User[]);
-    if (missionsRes.data) setMissions(missionsRes.data as Mission[]);
-    if (submissionsRes.data) setPendingSubmissions(submissionsRes.data as Submission[]);
+      if (usersRes.data) setUsers(usersRes.data as User[]);
+      if (missionsRes.data) setMissions(missionsRes.data as Mission[]);
+      if (submissionsRes.data) setPendingSubmissions(submissionsRes.data as Submission[]);
 
-    const missionsList = missionsRes.data || [];
-    setStats({
-      totalUsers: usersRes.data?.length || 0,
-      totalMissions: missionsList.length,
-      activeMissions: missionsList.filter(m => m.status === 'active').length,
-      pendingSubmissions: submissionsRes.data?.length || 0,
-      totalXP: usersRes.data?.reduce((sum, u) => sum + (u.total_xp || 0), 0) || 0,
-    });
-
-    setLoading(false);
+      const missionsList = missionsRes.data || [];
+      setStats({
+        totalUsers: usersRes.data?.length || 0,
+        totalMissions: missionsList.length,
+        activeMissions: missionsList.filter(m => m.status === 'active').length,
+        pendingSubmissions: submissionsRes.data?.length || 0,
+        totalXP: usersRes.data?.reduce((sum, u) => sum + (u.total_xp || 0), 0) || 0,
+      });
+    } catch (error) {
+      console.error('Error fetching admin data:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
-    fetchData();
-  }, [profile?.is_admin]);
+    if (profile) {
+      fetchData();
+    }
+  }, [profile]);
 
   // === SUBMISSION HANDLERS ===
   const handleApproveSubmission = async (submission: Submission) => {
