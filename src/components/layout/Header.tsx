@@ -30,7 +30,7 @@ export function Header({ user, showNotifications = true }: HeaderProps) {
             priority
           />
           <span className="text-lg font-bold text-white tracking-tight">
-            TURBO <span className="text-turbo-500">CHALLENGE</span>
+            TURBO <span className="gradient-text">CHALLENGE</span>
           </span>
         </Link>
 
