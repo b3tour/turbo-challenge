@@ -181,6 +181,63 @@ export function useLeaderboard(options: UseLeaderboardOptions = {}) {
     };
   }, [leaderboard]);
 
+  // Ranking speedrun dla konkretnego quizu
+  interface SpeedrunEntry {
+    rank: number;
+    user_id: string;
+    nick: string;
+    avatar_url?: string;
+    time_ms: number;
+    created_at: string;
+  }
+
+  const getSpeedrunLeaderboard = useCallback(async (missionId: string, topN: number = 10): Promise<SpeedrunEntry[]> => {
+    // Pobierz submissions dla tego quizu gdzie quiz_time_ms nie jest null (tylko speedrun z 100%)
+    const { data, error: fetchError } = await supabase
+      .from('submissions')
+      .select('user_id, quiz_time_ms, created_at, user:users!submissions_user_id_fkey(nick, avatar_url)')
+      .eq('mission_id', missionId)
+      .eq('status', 'approved')
+      .not('quiz_time_ms', 'is', null)
+      .order('quiz_time_ms', { ascending: true })
+      .limit(topN);
+
+    if (fetchError || !data) return [];
+
+    return data.map((entry, index) => {
+      // Supabase zwraca relację jako obiekt lub null
+      const userInfo = entry.user as unknown as { nick: string; avatar_url?: string } | null;
+      return {
+        rank: index + 1,
+        user_id: entry.user_id,
+        nick: userInfo?.nick || 'Nieznany',
+        avatar_url: userInfo?.avatar_url,
+        time_ms: entry.quiz_time_ms!,
+        created_at: entry.created_at,
+      };
+    });
+  }, []);
+
+  // Pobierz pozycję użytkownika w rankingu speedrun
+  const getUserSpeedrunRank = useCallback(async (missionId: string, userId: string): Promise<{ rank: number; time_ms: number } | null> => {
+    // Pobierz wszystkie wyniki dla tego quizu
+    const { data, error: fetchError } = await supabase
+      .from('submissions')
+      .select('user_id, quiz_time_ms')
+      .eq('mission_id', missionId)
+      .eq('status', 'approved')
+      .not('quiz_time_ms', 'is', null)
+      .order('quiz_time_ms', { ascending: true });
+
+    if (fetchError || !data) return null;
+
+    const userEntry = data.find(e => e.user_id === userId);
+    if (!userEntry) return null;
+
+    const rank = data.findIndex(e => e.user_id === userId) + 1;
+    return { rank, time_ms: userEntry.quiz_time_ms! };
+  }, []);
+
   return {
     leaderboard,
     loading,
@@ -190,5 +247,7 @@ export function useLeaderboard(options: UseLeaderboardOptions = {}) {
     getUserRank,
     getUserNeighbors,
     getStats,
+    getSpeedrunLeaderboard,
+    getUserSpeedrunRank,
   };
 }

@@ -33,6 +33,9 @@ const AuthContext = createContext<AuthContextType | null>(null);
 let profileCache: { [userId: string]: { data: User; timestamp: number } } = {};
 const CACHE_TTL = 60000; // 1 minuta
 
+// Cache dla sprawdzania nicków (poza komponentem)
+let nickCheckCache: { [nick: string]: { available: boolean; timestamp: number } } = {};
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AuthState>({
     session: null,
@@ -260,7 +263,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Utwórz profil (po pierwszym logowaniu)
   const createProfile = async (nick: string, phone?: string) => {
-    if (!state.user) return { success: false, error: 'Nie jesteś zalogowany' };
+    if (!state.user) {
+      console.error('createProfile: No user logged in');
+      return { success: false, error: 'Nie jesteś zalogowany' };
+    }
+
+    console.log('createProfile: Starting for user', state.user.id, 'nick:', nick);
 
     try {
       const newProfile = {
@@ -274,28 +282,44 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         is_admin: false,
       };
 
-      const { data, error } = await supabase
+      console.log('createProfile: Inserting profile...', newProfile);
+
+      // Timeout 10 sekund
+      const timeoutPromise = new Promise<{ data: null; error: { message: string } }>((resolve) => {
+        setTimeout(() => resolve({ data: null, error: { message: 'Przekroczono limit czasu. Sprawdź połączenie z internetem.' } }), 10000);
+      });
+
+      const insertPromise = supabase
         .from('users')
         .insert(newProfile)
         .select('id, email, nick, phone, avatar_url, total_xp, level, class, is_admin, created_at, updated_at')
         .single();
 
+      const { data, error } = await Promise.race([insertPromise, timeoutPromise]);
+
       if (error) {
+        console.error('createProfile: Supabase error', error);
         return { success: false, error: `Błąd tworzenia profilu: ${error.message}` };
       }
+
+      if (!data) {
+        console.error('createProfile: No data returned');
+        return { success: false, error: 'Nie udało się utworzyć profilu - brak danych' };
+      }
+
+      console.log('createProfile: Success!', data);
 
       // Zapisz w cache i stanie
       profileCache[state.user.id] = { data: data as User, timestamp: Date.now() };
       setState(prev => ({ ...prev, profile: data as User }));
       return { success: true, error: null };
     } catch (e) {
+      console.error('createProfile: Exception', e);
       return { success: false, error: 'Wystąpił nieoczekiwany błąd' };
     }
   };
 
-  // Sprawdź czy nick jest dostępny (z prostym cache)
-  const nickCheckCache: { [nick: string]: { available: boolean; timestamp: number } } = {};
-
+  // Sprawdź czy nick jest dostępny
   const checkNickAvailable = useCallback(async (nick: string): Promise<boolean> => {
     // Sprawdź cache (5 sekund)
     const cached = nickCheckCache[nick];
@@ -304,16 +328,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     try {
-      const { data } = await supabase
+      // Dodaj timeout 5 sekund
+      const timeoutPromise = new Promise<{ data: null; error: { message: string } }>((resolve) => {
+        setTimeout(() => resolve({ data: null, error: { message: 'Timeout' } }), 5000);
+      });
+
+      const queryPromise = supabase
         .from('users')
         .select('id')
         .eq('nick', nick)
         .maybeSingle();
 
+      const { data, error } = await Promise.race([queryPromise, timeoutPromise]);
+
+      if (error) {
+        console.error('Nick check error:', error);
+        // Przy błędzie/timeout zakładamy że nick jest dostępny, żeby nie blokować użytkownika
+        return true;
+      }
+
       const available = data === null;
       nickCheckCache[nick] = { available, timestamp: Date.now() };
       return available;
     } catch (e) {
+      console.error('Nick check exception:', e);
       return true;
     }
   }, []);

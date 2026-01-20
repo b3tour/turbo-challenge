@@ -57,22 +57,26 @@ export default function OnboardingPage() {
 
     setNickError(null);
     setNickStatus('checking');
+    console.log('Onboarding: Checking nick availability for:', nick);
 
     const timeoutId = setTimeout(async () => {
       try {
         const isAvailable = await checkNickAvailable(nick);
+        console.log('Onboarding: Nick', nick, 'available:', isAvailable);
         setNickStatus(isAvailable ? 'available' : 'taken');
       } catch (error) {
-        console.error('Nick check error:', error);
+        console.error('Onboarding: Nick check error:', error);
+        // Przy błędzie pozwól użytkownikowi kontynuować
         setNickStatus('available');
       }
     }, 500);
 
     return () => clearTimeout(timeoutId);
-  }, [nick]); // Usunięto checkNickAvailable z zależności - jest stabilna przez useCallback
+  }, [nick, checkNickAvailable]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('Onboarding: Submit clicked, nick:', nick, 'nickStatus:', nickStatus);
 
     if (!nick || !isValidNick(nick)) {
       showError('Błąd', 'Podaj prawidłowy nick');
@@ -90,8 +94,10 @@ export default function OnboardingPage() {
     }
 
     setIsSubmitting(true);
+    console.log('Onboarding: Creating profile...');
 
     const { success, error } = await createProfile(nick, phone || undefined);
+    console.log('Onboarding: createProfile result:', success, error);
 
     if (!success) {
       showError('Błąd', error || 'Nie udało się utworzyć profilu');

@@ -204,7 +204,8 @@ export function useMissions(options: UseMissionsOptions = {}) {
   const completeMissionQuiz = async (
     missionId: string,
     answers: Record<string, string>,
-    userId: string
+    userId: string,
+    timeMs?: number // czas ukończenia dla trybu speedrun
   ): Promise<{ success: boolean; score?: number; passed?: boolean; xp?: number; error?: string }> => {
     const mission = missions.find(m => m.id === missionId);
 
@@ -234,6 +235,11 @@ export function useMissions(options: UseMissionsOptions = {}) {
     const passed = score >= mission.quiz_data.passing_score;
     const xpAwarded = passed ? mission.xp_reward : 0;
 
+    // Dla speedrun zapisujemy czas tylko gdy wszystkie odpowiedzi są poprawne
+    const isSpeedrun = mission.quiz_data.mode === 'speedrun';
+    const allCorrect = correctAnswers === totalQuestions;
+    const saveTime = isSpeedrun && allCorrect && timeMs ? timeMs : null;
+
     const { error: submitError } = await supabase
       .from('submissions')
       .insert({
@@ -241,6 +247,7 @@ export function useMissions(options: UseMissionsOptions = {}) {
         mission_id: missionId,
         status: passed ? 'approved' : 'rejected',
         quiz_score: score,
+        quiz_time_ms: saveTime,
         xp_awarded: xpAwarded,
       });
 

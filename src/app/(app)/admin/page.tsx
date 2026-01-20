@@ -6,7 +6,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 import { Card, Button, Badge, Input, Modal, AlertDialog } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
-import { Mission, MissionStatus, Submission, User, QuizData, QuizQuestion, QuizAnswer } from '@/types';
+import { Mission, MissionStatus, Submission, User, QuizData, QuizQuestion, QuizAnswer, QuizMode } from '@/types';
 import {
   formatNumber,
   formatDateTime,
@@ -82,6 +82,7 @@ export default function AdminPage() {
     // Quiz data
     quiz_passing_score: 70,
     quiz_time_limit: 0,
+    quiz_mode: 'classic' as QuizMode,
     quiz_questions: [] as QuizQuestion[],
   });
 
@@ -204,6 +205,7 @@ export default function AdminPage() {
       status: 'active',
       quiz_passing_score: 70,
       quiz_time_limit: 0,
+      quiz_mode: 'classic',
       quiz_questions: [],
     });
     setSelectedMission(null);
@@ -226,6 +228,7 @@ export default function AdminPage() {
       status: mission.status,
       quiz_passing_score: mission.quiz_data?.passing_score || 70,
       quiz_time_limit: mission.quiz_data?.time_limit || 0,
+      quiz_mode: mission.quiz_data?.mode || 'classic',
       quiz_questions: mission.quiz_data?.questions || [],
     });
     setSelectedMission(mission);
@@ -366,7 +369,10 @@ export default function AdminPage() {
       ? {
           questions: missionForm.quiz_questions,
           passing_score: missionForm.quiz_passing_score,
-          time_limit: missionForm.quiz_time_limit > 0 ? missionForm.quiz_time_limit : undefined,
+          time_limit: missionForm.quiz_mode === 'classic' && missionForm.quiz_time_limit > 0
+            ? missionForm.quiz_time_limit
+            : undefined,
+          mode: missionForm.quiz_mode,
         }
       : null;
 
@@ -911,6 +917,49 @@ export default function AdminPage() {
                 </Button>
               </div>
 
+              {/* Tryb quizu */}
+              <div>
+                <label className="block text-sm font-medium text-dark-200 mb-1.5">
+                  Tryb quizu
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setMissionForm(prev => ({ ...prev, quiz_mode: 'classic' }))}
+                    className={`p-3 rounded-xl border-2 text-left transition-all ${
+                      missionForm.quiz_mode === 'classic'
+                        ? 'border-turbo-500 bg-turbo-500/10'
+                        : 'border-dark-600 hover:border-dark-500'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 mb-1">
+                      <Clock className="w-4 h-4 text-turbo-400" />
+                      <span className="font-medium text-white">Classic</span>
+                    </div>
+                    <p className="text-xs text-dark-400">
+                      Quiz z limitem czasu, odlicza w dół
+                    </p>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMissionForm(prev => ({ ...prev, quiz_mode: 'speedrun' }))}
+                    className={`p-3 rounded-xl border-2 text-left transition-all ${
+                      missionForm.quiz_mode === 'speedrun'
+                        ? 'border-turbo-500 bg-turbo-500/10'
+                        : 'border-dark-600 hover:border-dark-500'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 mb-1">
+                      <Award className="w-4 h-4 text-yellow-400" />
+                      <span className="font-medium text-white">Speedrun</span>
+                    </div>
+                    <p className="text-xs text-dark-400">
+                      Mierzy czas ukończenia, ranking czasowy
+                    </p>
+                  </button>
+                </div>
+              </div>
+
               {/* Ustawienia quizu */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -929,23 +978,35 @@ export default function AdminPage() {
                     className="w-full bg-dark-800 border border-dark-600 rounded-xl px-4 py-2.5 text-white"
                   />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-dark-200 mb-1.5">
-                    Limit czasu (sekundy)
-                  </label>
-                  <input
-                    type="number"
-                    value={missionForm.quiz_time_limit}
-                    onChange={e => setMissionForm(prev => ({
-                      ...prev,
-                      quiz_time_limit: Math.max(0, parseInt(e.target.value) || 0)
-                    }))}
-                    min={0}
-                    placeholder="0 = bez limitu"
-                    className="w-full bg-dark-800 border border-dark-600 rounded-xl px-4 py-2.5 text-white"
-                  />
-                  <p className="text-xs text-dark-400 mt-1">0 = bez limitu czasowego</p>
-                </div>
+                {missionForm.quiz_mode === 'classic' && (
+                  <div>
+                    <label className="block text-sm font-medium text-dark-200 mb-1.5">
+                      Limit czasu (sekundy)
+                    </label>
+                    <input
+                      type="number"
+                      value={missionForm.quiz_time_limit}
+                      onChange={e => setMissionForm(prev => ({
+                        ...prev,
+                        quiz_time_limit: Math.max(0, parseInt(e.target.value) || 0)
+                      }))}
+                      min={0}
+                      placeholder="0 = bez limitu"
+                      className="w-full bg-dark-800 border border-dark-600 rounded-xl px-4 py-2.5 text-white"
+                    />
+                    <p className="text-xs text-dark-400 mt-1">0 = bez limitu czasowego</p>
+                  </div>
+                )}
+                {missionForm.quiz_mode === 'speedrun' && (
+                  <div className="flex items-center">
+                    <div className="p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-xl text-sm">
+                      <p className="text-yellow-400 font-medium">Tryb Speedrun</p>
+                      <p className="text-xs text-dark-400 mt-1">
+                        Czas będzie mierzony automatycznie. Tylko wyniki z 100% poprawnych odpowiedzi trafią do rankingu.
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Lista pytań */}
@@ -1034,8 +1095,9 @@ export default function AdminPage() {
               {missionForm.quiz_questions.length > 0 && (
                 <div className="text-sm text-dark-400 bg-dark-800 rounded-lg p-3">
                   <strong>Podsumowanie:</strong> {missionForm.quiz_questions.length} pytań,
+                  tryb: {missionForm.quiz_mode === 'speedrun' ? 'Speedrun' : 'Classic'},
                   próg zaliczenia: {missionForm.quiz_passing_score}%
-                  {missionForm.quiz_time_limit > 0 && `, limit: ${missionForm.quiz_time_limit}s`}
+                  {missionForm.quiz_mode === 'classic' && missionForm.quiz_time_limit > 0 && `, limit: ${missionForm.quiz_time_limit}s`}
                 </div>
               )}
             </div>
@@ -1105,8 +1167,20 @@ export default function AdminPage() {
 
             {selectedSubmission.quiz_score !== null && (
               <Card variant="outlined">
-                <p className="text-sm text-dark-400">Wynik quizu</p>
-                <p className="text-2xl font-bold text-white">{selectedSubmission.quiz_score}%</p>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-dark-400">Wynik quizu</p>
+                    <p className="text-2xl font-bold text-white">{selectedSubmission.quiz_score}%</p>
+                  </div>
+                  {selectedSubmission.quiz_time_ms && (
+                    <div className="text-right">
+                      <p className="text-sm text-dark-400">Czas (Speedrun)</p>
+                      <p className="text-2xl font-bold text-turbo-400">
+                        {(selectedSubmission.quiz_time_ms / 1000).toFixed(2)}s
+                      </p>
+                    </div>
+                  )}
+                </div>
               </Card>
             )}
 

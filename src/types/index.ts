@@ -56,10 +56,13 @@ export interface Mission {
 }
 
 // Dane quizu
+export type QuizMode = 'classic' | 'speedrun';
+
 export interface QuizData {
   questions: QuizQuestion[];
   passing_score: number; // procent prawidłowych odpowiedzi
-  time_limit?: number; // sekundy
+  time_limit?: number; // sekundy (dla trybu classic)
+  mode?: QuizMode; // classic = z limitem czasu, speedrun = mierzy czas ukończenia
 }
 
 export interface QuizQuestion {
@@ -85,6 +88,7 @@ export interface Submission {
   status: SubmissionStatus;
   photo_url?: string;
   quiz_score?: number;
+  quiz_time_ms?: number; // czas ukończenia quizu w milisekundach (dla trybu speedrun)
   gps_lat?: number;
   gps_lng?: number;
   admin_notes?: string;

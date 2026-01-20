@@ -1,14 +1,14 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui';
 import { cn } from '@/lib/utils';
 import { QuizData, QuizQuestion } from '@/types';
-import { CheckCircle, XCircle, Clock, ArrowRight } from 'lucide-react';
+import { CheckCircle, XCircle, Clock, ArrowRight, Zap, Timer } from 'lucide-react';
 
 interface QuizProps {
   quizData: QuizData;
-  onComplete: (answers: Record<string, string>) => void;
+  onComplete: (answers: Record<string, string>, timeMs?: number) => void;
   onCancel: () => void;
 }
 
@@ -17,21 +17,26 @@ export function Quiz({ quizData, onComplete, onCancel }: QuizProps) {
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [showResult, setShowResult] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(quizData.time_limit || 0);
+
+  // Timer states
+  const [timeLeft, setTimeLeft] = useState(quizData.time_limit || 0); // dla classic mode
+  const [elapsedTime, setElapsedTime] = useState(0); // dla speedrun mode (w ms)
+  const startTimeRef = useRef<number>(Date.now());
 
   const currentQuestion = quizData.questions[currentQuestionIndex];
   const isLastQuestion = currentQuestionIndex === quizData.questions.length - 1;
-  const hasTimeLimit = quizData.time_limit && quizData.time_limit > 0;
 
-  // Timer
+  const isSpeedrun = quizData.mode === 'speedrun';
+  const hasTimeLimit = !isSpeedrun && quizData.time_limit && quizData.time_limit > 0;
+
+  // Timer dla classic mode (odlicza w dół)
   useEffect(() => {
-    if (!hasTimeLimit || showResult) return;
+    if (!hasTimeLimit || showResult || isSpeedrun) return;
 
     const timer = setInterval(() => {
       setTimeLeft(prev => {
         if (prev <= 1) {
           clearInterval(timer);
-          // Czas się skończył - wyślij odpowiedzi
           onComplete(answers);
           return 0;
         }
@@ -40,7 +45,18 @@ export function Quiz({ quizData, onComplete, onCancel }: QuizProps) {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [hasTimeLimit, showResult, answers, onComplete]);
+  }, [hasTimeLimit, showResult, answers, onComplete, isSpeedrun]);
+
+  // Timer dla speedrun mode (liczy w górę)
+  useEffect(() => {
+    if (!isSpeedrun || showResult) return;
+
+    const timer = setInterval(() => {
+      setElapsedTime(Date.now() - startTimeRef.current);
+    }, 100);
+
+    return () => clearInterval(timer);
+  }, [isSpeedrun, showResult]);
 
   const handleAnswerSelect = (answerId: string) => {
     if (showResult) return;
@@ -50,7 +66,6 @@ export function Quiz({ quizData, onComplete, onCancel }: QuizProps) {
   const handleNext = () => {
     if (!selectedAnswer) return;
 
-    // Zapisz odpowiedź
     const newAnswers = {
       ...answers,
       [currentQuestion.id]: selectedAnswer,
@@ -58,13 +73,14 @@ export function Quiz({ quizData, onComplete, onCancel }: QuizProps) {
     setAnswers(newAnswers);
 
     if (isLastQuestion) {
-      // Quiz zakończony
+      const finalTime = Date.now() - startTimeRef.current;
+      setElapsedTime(finalTime);
       setShowResult(true);
+
       setTimeout(() => {
-        onComplete(newAnswers);
-      }, 2000);
+        onComplete(newAnswers, isSpeedrun ? finalTime : undefined);
+      }, 2500);
     } else {
-      // Następne pytanie
       setCurrentQuestionIndex(prev => prev + 1);
       setSelectedAnswer(null);
     }
@@ -74,6 +90,14 @@ export function Quiz({ quizData, onComplete, onCancel }: QuizProps) {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const formatTimeMs = (ms: number) => {
+    const totalSeconds = Math.floor(ms / 1000);
+    const mins = Math.floor(totalSeconds / 60);
+    const secs = totalSeconds % 60;
+    const centisecs = Math.floor((ms % 1000) / 10);
+    return `${mins}:${secs.toString().padStart(2, '0')}.${centisecs.toString().padStart(2, '0')}`;
   };
 
   const getAnswerClass = (answerId: string, isCorrect: boolean) => {
@@ -103,6 +127,7 @@ export function Quiz({ quizData, onComplete, onCancel }: QuizProps) {
 
     const score = Math.round((correctCount / quizData.questions.length) * 100);
     const passed = score >= quizData.passing_score;
+    const allCorrect = correctCount === quizData.questions.length;
 
     return (
       <div className="p-6 text-center">
@@ -120,18 +145,41 @@ export function Quiz({ quizData, onComplete, onCancel }: QuizProps) {
         </div>
 
         <h3 className="text-2xl font-bold text-white mb-2">
-          {passed ? 'Gratulacje!' : 'Spróbuj ponownie'}
+          {passed ? 'Gratulacje!' : 'Nie udało się'}
         </h3>
 
         <p className="text-dark-300 mb-4">
           Twój wynik: <span className="font-bold text-white">{score}%</span>
         </p>
 
-        <p className="text-sm text-dark-400 mb-6">
+        <p className="text-sm text-dark-400 mb-4">
           Poprawne odpowiedzi: {correctCount} z {quizData.questions.length}
           <br />
           Wymagane: {quizData.passing_score}%
         </p>
+
+        {/* Speedrun - pokaż czas */}
+        {isSpeedrun && (
+          <div className={cn(
+            'rounded-xl p-4 mb-4',
+            allCorrect ? 'bg-turbo-500/20' : 'bg-dark-700'
+          )}>
+            <div className="flex items-center justify-center gap-2 mb-1">
+              <Timer className={cn('w-5 h-5', allCorrect ? 'text-turbo-400' : 'text-dark-400')} />
+              <span className={cn(
+                'text-2xl font-mono font-bold',
+                allCorrect ? 'text-turbo-400' : 'text-dark-300'
+              )}>
+                {formatTimeMs(elapsedTime)}
+              </span>
+            </div>
+            {allCorrect ? (
+              <p className="text-sm text-turbo-400">Twój czas został zapisany w rankingu!</p>
+            ) : (
+              <p className="text-sm text-dark-400">Czas nie liczy się - nie wszystkie odpowiedzi poprawne</p>
+            )}
+          </div>
+        )}
 
         <div className="animate-pulse text-dark-400">
           Przetwarzanie wyników...
@@ -151,6 +199,7 @@ export function Quiz({ quizData, onComplete, onCancel }: QuizProps) {
           </span>
         </div>
 
+        {/* Classic mode - countdown */}
         {hasTimeLimit && (
           <div
             className={cn(
@@ -162,7 +211,23 @@ export function Quiz({ quizData, onComplete, onCancel }: QuizProps) {
             <span className="font-mono">{formatTime(timeLeft)}</span>
           </div>
         )}
+
+        {/* Speedrun mode - count up */}
+        {isSpeedrun && (
+          <div className="flex items-center gap-1 px-3 py-1 rounded-full bg-turbo-500/20 text-turbo-400">
+            <Zap className="w-4 h-4" />
+            <span className="font-mono">{formatTimeMs(elapsedTime)}</span>
+          </div>
+        )}
       </div>
+
+      {/* Tryb info */}
+      {isSpeedrun && currentQuestionIndex === 0 && (
+        <div className="bg-turbo-500/10 border border-turbo-500/30 rounded-xl p-3 mb-4 text-sm text-turbo-300">
+          <Zap className="w-4 h-4 inline mr-1" />
+          <strong>Tryb na czas!</strong> Odpowiedz poprawnie na wszystkie pytania jak najszybciej.
+        </div>
+      )}
 
       {/* Pasek postępu */}
       <div className="h-1.5 bg-dark-700 rounded-full mb-6 overflow-hidden">

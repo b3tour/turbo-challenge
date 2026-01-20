@@ -119,17 +119,23 @@ export default function MissionsPage() {
     }
   };
 
-  const handleQuizComplete = async (answers: Record<string, string>) => {
+  const handleQuizComplete = async (answers: Record<string, string>, timeMs?: number) => {
     if (!selectedMission) return;
 
-    const result = await completeMissionQuiz(selectedMission.id, answers, profile.id);
+    const isSpeedrun = selectedMission.quiz_data?.mode === 'speedrun';
+    const result = await completeMissionQuiz(selectedMission.id, answers, profile.id, timeMs);
 
     setShowMissionModal(false);
     setSelectedMission(null);
 
     if (result.success) {
       if (result.passed) {
-        success('Quiz zaliczony!', `Wynik: ${result.score}% - Zdobyłeś +${result.xp} XP`);
+        if (isSpeedrun && timeMs) {
+          const seconds = (timeMs / 1000).toFixed(2);
+          success('Quiz zaliczony!', `Czas: ${seconds}s - Zdobyłeś +${result.xp} XP`);
+        } else {
+          success('Quiz zaliczony!', `Wynik: ${result.score}% - Zdobyłeś +${result.xp} XP`);
+        }
       } else {
         showError('Quiz niezaliczony', `Wynik: ${result.score}% - Wymagane: ${selectedMission.quiz_data?.passing_score}%`);
       }
