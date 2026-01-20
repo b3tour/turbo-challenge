@@ -90,17 +90,10 @@ export default function AdminPage() {
         supabase.from('missions').select('*').order('created_at', { ascending: false }),
         supabase
           .from('submissions')
-          .select('*, user:users(*), mission:missions(*)')
+          .select('*, user:users!submissions_user_id_fkey(*), mission:missions(*)')
           .eq('status', 'pending')
           .order('created_at', { ascending: false }),
       ]);
-
-      // Debug logging
-      console.log('=== ADMIN FETCH DEBUG ===');
-      console.log('Users:', usersRes.data?.length, usersRes.error);
-      console.log('Missions:', missionsRes.data?.length, missionsRes.error);
-      console.log('Pending submissions:', submissionsRes.data?.length, submissionsRes.error);
-      console.log('Submissions data:', submissionsRes.data);
 
       if (usersRes.data) setUsers(usersRes.data as User[]);
       if (missionsRes.data) setMissions(missionsRes.data as Mission[]);
