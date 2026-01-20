@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
@@ -11,8 +11,15 @@ import { LogoCircle } from '@/components/ui';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { signInWithGoogle, signInWithPassword, loading } = useAuth();
+  const { signInWithGoogle, signInWithPassword, loading, isAuthenticated, hasProfile } = useAuth();
   const { error: showError } = useToast();
+
+  // Jeśli już zalogowany, przekieruj
+  useEffect(() => {
+    if (!loading && isAuthenticated) {
+      router.replace(hasProfile ? '/dashboard' : '/onboarding');
+    }
+  }, [loading, isAuthenticated, hasProfile, router]);
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
