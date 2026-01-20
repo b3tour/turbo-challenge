@@ -27,6 +27,11 @@ import {
   ToggleLeft,
   ToggleRight,
   BarChart3,
+  Eye,
+  Mail,
+  Phone,
+  Calendar,
+  Award,
 } from 'lucide-react';
 
 type AdminTab = 'overview' | 'submissions' | 'missions' | 'users';
@@ -57,6 +62,12 @@ export default function AdminPage() {
   const [selectedMission, setSelectedMission] = useState<Mission | null>(null);
   const [missionToDelete, setMissionToDelete] = useState<Mission | null>(null);
   const [isEditing, setIsEditing] = useState(false);
+
+  // User details modal
+  const [showUserModal, setShowUserModal] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [userSubmissions, setUserSubmissions] = useState<Submission[]>([]);
+  const [loadingUserDetails, setLoadingUserDetails] = useState(false);
 
   const [missionForm, setMissionForm] = useState({
     title: '',
@@ -319,6 +330,35 @@ export default function AdminPage() {
 
     success('Zduplikowano!', 'Kopia misji została utworzona (nieaktywna)');
     fetchData();
+  };
+
+  // === USER DETAILS ===
+  const openUserDetails = async (user: User) => {
+    setSelectedUser(user);
+    setShowUserModal(true);
+    setLoadingUserDetails(true);
+
+    // Pobierz wszystkie zgłoszenia użytkownika
+    const { data, error } = await supabase
+      .from('submissions')
+      .select('*, mission:missions(*)')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false });
+
+    if (!error && data) {
+      setUserSubmissions(data as Submission[]);
+    }
+    setLoadingUserDetails(false);
+  };
+
+  const getUserStats = () => {
+    const approved = userSubmissions.filter(s => s.status === 'approved').length;
+    const pending = userSubmissions.filter(s => s.status === 'pending').length;
+    const rejected = userSubmissions.filter(s => s.status === 'rejected').length;
+    const totalXpEarned = userSubmissions
+      .filter(s => s.status === 'approved')
+      .reduce((sum, s) => sum + (s.xp_awarded || 0), 0);
+    return { approved, pending, rejected, totalXpEarned };
   };
 
   if (!profile?.is_admin) {
@@ -590,7 +630,7 @@ export default function AdminPage() {
           {activeTab === 'users' && (
             <div className="space-y-3">
               {users.map((user, index) => (
-                <Card key={user.id}>
+                <Card key={user.id} hover onClick={() => openUserDetails(user)}>
                   <div className="flex items-center gap-3">
                     <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
                       index === 0 ? 'bg-yellow-500 text-black' :
@@ -616,10 +656,11 @@ export default function AdminPage() {
                       </div>
                       <p className="text-sm text-dark-400 truncate">{user.email}</p>
                     </div>
-                    <div className="text-right">
+                    <div className="text-right mr-2">
                       <div className="font-bold text-turbo-400">{formatNumber(user.total_xp)}</div>
                       <div className="text-xs text-dark-500">XP</div>
                     </div>
+                    <Eye className="w-5 h-5 text-dark-400" />
                   </div>
                 </Card>
               ))}
@@ -817,6 +858,155 @@ export default function AdminPage() {
         cancelText="Anuluj"
         variant="danger"
       />
+
+      {/* User Details Modal */}
+      <Modal
+        isOpen={showUserModal}
+        onClose={() => {
+          setShowUserModal(false);
+          setSelectedUser(null);
+          setUserSubmissions([]);
+        }}
+        title={`Profil: ${selectedUser?.nick || ''}`}
+        size="lg"
+      >
+        {selectedUser && (
+          <div className="space-y-4">
+            {/* Dane użytkownika */}
+            <Card variant="outlined">
+              <div className="flex items-center gap-4 mb-4">
+                <div className="w-16 h-16 rounded-full bg-dark-700 flex items-center justify-center text-2xl font-bold text-white overflow-hidden">
+                  {selectedUser.avatar_url ? (
+                    <img src={selectedUser.avatar_url} alt={selectedUser.nick} className="w-full h-full object-cover" />
+                  ) : (
+                    selectedUser.nick.charAt(0).toUpperCase()
+                  )}
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-lg font-bold text-white">{selectedUser.nick}</h3>
+                    {selectedUser.is_admin && <Badge variant="turbo">Admin</Badge>}
+                  </div>
+                  <p className="text-turbo-400 font-semibold">
+                    {formatNumber(selectedUser.total_xp)} XP • Poziom {selectedUser.level}
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-2 text-sm">
+                <div className="flex items-center gap-2 text-dark-300">
+                  <Mail className="w-4 h-4" />
+                  <span>{selectedUser.email}</span>
+                </div>
+                {selectedUser.phone && (
+                  <div className="flex items-center gap-2 text-dark-300">
+                    <Phone className="w-4 h-4" />
+                    <span>{selectedUser.phone}</span>
+                  </div>
+                )}
+                <div className="flex items-center gap-2 text-dark-300">
+                  <Calendar className="w-4 h-4" />
+                  <span>Dołączył: {formatDateTime(selectedUser.created_at)}</span>
+                </div>
+              </div>
+            </Card>
+
+            {/* Statystyki misji */}
+            {loadingUserDetails ? (
+              <div className="text-center py-4 text-dark-400">Ładowanie...</div>
+            ) : (
+              <>
+                <div className="grid grid-cols-4 gap-2">
+                  <Card className="text-center py-3">
+                    <div className="text-lg font-bold text-green-400">{getUserStats().approved}</div>
+                    <div className="text-xs text-dark-400">Zaliczone</div>
+                  </Card>
+                  <Card className="text-center py-3">
+                    <div className="text-lg font-bold text-yellow-400">{getUserStats().pending}</div>
+                    <div className="text-xs text-dark-400">Oczekuje</div>
+                  </Card>
+                  <Card className="text-center py-3">
+                    <div className="text-lg font-bold text-red-400">{getUserStats().rejected}</div>
+                    <div className="text-xs text-dark-400">Odrzucone</div>
+                  </Card>
+                  <Card className="text-center py-3">
+                    <div className="text-lg font-bold text-turbo-400">{getUserStats().totalXpEarned}</div>
+                    <div className="text-xs text-dark-400">Zdobyte XP</div>
+                  </Card>
+                </div>
+
+                {/* Lista zgłoszeń */}
+                <div>
+                  <h4 className="text-sm font-medium text-dark-300 mb-2">
+                    Historia zgłoszeń ({userSubmissions.length})
+                  </h4>
+
+                  {userSubmissions.length === 0 ? (
+                    <Card variant="outlined" className="text-center py-4">
+                      <p className="text-dark-400">Brak zgłoszeń</p>
+                    </Card>
+                  ) : (
+                    <div className="space-y-2 max-h-60 overflow-y-auto">
+                      {userSubmissions.map(submission => (
+                        <Card key={submission.id} variant="outlined" padding="sm">
+                          <div className="flex items-center gap-3">
+                            <div className="text-xl">
+                              {submission.mission ? missionTypeIcons[submission.mission.type] : '❓'}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-white truncate">
+                                {submission.mission?.title || 'Nieznana misja'}
+                              </p>
+                              <p className="text-xs text-dark-400">
+                                {formatDateTime(submission.created_at)}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {submission.status === 'approved' && (
+                                <>
+                                  <Badge variant="success" size="sm">Zaliczone</Badge>
+                                  <span className="text-xs text-turbo-400">+{submission.xp_awarded} XP</span>
+                                </>
+                              )}
+                              {submission.status === 'pending' && (
+                                <Badge variant="warning" size="sm">Oczekuje</Badge>
+                              )}
+                              {submission.status === 'rejected' && (
+                                <Badge variant="danger" size="sm">Odrzucone</Badge>
+                              )}
+                            </div>
+                          </div>
+                          {submission.photo_url && (
+                            <div className="mt-2">
+                              <img
+                                src={submission.photo_url}
+                                alt="Zdjęcie"
+                                className="w-full h-32 object-cover rounded-lg"
+                              />
+                            </div>
+                          )}
+                        </Card>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+
+            <Button
+              variant="secondary"
+              fullWidth
+              onClick={() => {
+                setShowUserModal(false);
+                setSelectedUser(null);
+                setUserSubmissions([]);
+              }}
+            >
+              Zamknij
+            </Button>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }
