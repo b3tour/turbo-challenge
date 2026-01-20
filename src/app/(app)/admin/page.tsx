@@ -6,7 +6,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 import { Card, Button, Badge, Input, Modal, AlertDialog } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
-import { Mission, MissionStatus, Submission, User } from '@/types';
+import { Mission, MissionStatus, Submission, User, QuizData, QuizQuestion, QuizAnswer } from '@/types';
 import {
   formatNumber,
   formatDateTime,
@@ -32,6 +32,8 @@ import {
   Phone,
   Calendar,
   Award,
+  HelpCircle,
+  GripVertical,
 } from 'lucide-react';
 
 type AdminTab = 'overview' | 'submissions' | 'missions' | 'users';
@@ -77,6 +79,10 @@ export default function AdminPage() {
     location_name: '',
     qr_code_value: '',
     status: 'active' as MissionStatus,
+    // Quiz data
+    quiz_passing_score: 70,
+    quiz_time_limit: 0,
+    quiz_questions: [] as QuizQuestion[],
   });
 
   // Sprawdź czy użytkownik jest adminem
@@ -196,6 +202,9 @@ export default function AdminPage() {
       location_name: '',
       qr_code_value: '',
       status: 'active',
+      quiz_passing_score: 70,
+      quiz_time_limit: 0,
+      quiz_questions: [],
     });
     setSelectedMission(null);
     setIsEditing(false);
@@ -215,10 +224,107 @@ export default function AdminPage() {
       location_name: mission.location_name || '',
       qr_code_value: mission.qr_code_value || '',
       status: mission.status,
+      quiz_passing_score: mission.quiz_data?.passing_score || 70,
+      quiz_time_limit: mission.quiz_data?.time_limit || 0,
+      quiz_questions: mission.quiz_data?.questions || [],
     });
     setSelectedMission(mission);
     setIsEditing(true);
     setShowMissionModal(true);
+  };
+
+  // === QUIZ HANDLERS ===
+  const addQuestion = () => {
+    const newQuestion: QuizQuestion = {
+      id: `q_${Date.now()}`,
+      question: '',
+      points: 10,
+      answers: [
+        { id: `a_${Date.now()}_1`, text: '', is_correct: true },
+        { id: `a_${Date.now()}_2`, text: '', is_correct: false },
+      ],
+    };
+    setMissionForm(prev => ({
+      ...prev,
+      quiz_questions: [...prev.quiz_questions, newQuestion],
+    }));
+  };
+
+  const removeQuestion = (questionId: string) => {
+    setMissionForm(prev => ({
+      ...prev,
+      quiz_questions: prev.quiz_questions.filter(q => q.id !== questionId),
+    }));
+  };
+
+  const updateQuestion = (questionId: string, field: string, value: string | number) => {
+    setMissionForm(prev => ({
+      ...prev,
+      quiz_questions: prev.quiz_questions.map(q =>
+        q.id === questionId ? { ...q, [field]: value } : q
+      ),
+    }));
+  };
+
+  const addAnswer = (questionId: string) => {
+    setMissionForm(prev => ({
+      ...prev,
+      quiz_questions: prev.quiz_questions.map(q =>
+        q.id === questionId
+          ? {
+              ...q,
+              answers: [
+                ...q.answers,
+                { id: `a_${Date.now()}`, text: '', is_correct: false },
+              ],
+            }
+          : q
+      ),
+    }));
+  };
+
+  const removeAnswer = (questionId: string, answerId: string) => {
+    setMissionForm(prev => ({
+      ...prev,
+      quiz_questions: prev.quiz_questions.map(q =>
+        q.id === questionId
+          ? { ...q, answers: q.answers.filter(a => a.id !== answerId) }
+          : q
+      ),
+    }));
+  };
+
+  const updateAnswer = (questionId: string, answerId: string, field: string, value: string | boolean) => {
+    setMissionForm(prev => ({
+      ...prev,
+      quiz_questions: prev.quiz_questions.map(q =>
+        q.id === questionId
+          ? {
+              ...q,
+              answers: q.answers.map(a =>
+                a.id === answerId ? { ...a, [field]: value } : a
+              ),
+            }
+          : q
+      ),
+    }));
+  };
+
+  const setCorrectAnswer = (questionId: string, answerId: string) => {
+    setMissionForm(prev => ({
+      ...prev,
+      quiz_questions: prev.quiz_questions.map(q =>
+        q.id === questionId
+          ? {
+              ...q,
+              answers: q.answers.map(a => ({
+                ...a,
+                is_correct: a.id === answerId,
+              })),
+            }
+          : q
+      ),
+    }));
   };
 
   const handleSaveMission = async () => {
@@ -226,6 +332,43 @@ export default function AdminPage() {
       showError('Błąd', 'Wypełnij wymagane pola (tytuł i opis)');
       return;
     }
+
+    // Walidacja quizu
+    if (missionForm.type === 'quiz') {
+      if (missionForm.quiz_questions.length === 0) {
+        showError('Błąd', 'Quiz musi mieć co najmniej jedno pytanie');
+        return;
+      }
+      for (const q of missionForm.quiz_questions) {
+        if (!q.question.trim()) {
+          showError('Błąd', 'Wszystkie pytania muszą mieć treść');
+          return;
+        }
+        if (q.answers.length < 2) {
+          showError('Błąd', 'Każde pytanie musi mieć co najmniej 2 odpowiedzi');
+          return;
+        }
+        if (!q.answers.some(a => a.is_correct)) {
+          showError('Błąd', 'Każde pytanie musi mieć zaznaczoną poprawną odpowiedź');
+          return;
+        }
+        for (const a of q.answers) {
+          if (!a.text.trim()) {
+            showError('Błąd', 'Wszystkie odpowiedzi muszą mieć treść');
+            return;
+          }
+        }
+      }
+    }
+
+    // Przygotuj quiz_data jeśli to quiz
+    const quizData: QuizData | null = missionForm.type === 'quiz'
+      ? {
+          questions: missionForm.quiz_questions,
+          passing_score: missionForm.quiz_passing_score,
+          time_limit: missionForm.quiz_time_limit > 0 ? missionForm.quiz_time_limit : undefined,
+        }
+      : null;
 
     const missionData = {
       title: missionForm.title,
@@ -237,6 +380,7 @@ export default function AdminPage() {
         ? (missionForm.qr_code_value || generateQRCode())
         : null,
       status: missionForm.status,
+      quiz_data: quizData,
     };
 
     if (isEditing && selectedMission) {
@@ -751,6 +895,150 @@ export default function AdminPage() {
               placeholder="Zostaw puste dla autogeneracji"
               helperText="Unikalny kod który będzie zakodowany w QR"
             />
+          )}
+
+          {/* Quiz Editor */}
+          {missionForm.type === 'quiz' && (
+            <div className="space-y-4 border-t border-dark-700 pt-4">
+              <div className="flex items-center justify-between">
+                <h4 className="font-medium text-white flex items-center gap-2">
+                  <HelpCircle className="w-5 h-5 text-turbo-500" />
+                  Edytor Quizu
+                </h4>
+                <Button size="sm" onClick={addQuestion}>
+                  <Plus className="w-4 h-4 mr-1" />
+                  Dodaj pytanie
+                </Button>
+              </div>
+
+              {/* Ustawienia quizu */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-dark-200 mb-1.5">
+                    Próg zaliczenia (%)
+                  </label>
+                  <input
+                    type="number"
+                    value={missionForm.quiz_passing_score}
+                    onChange={e => setMissionForm(prev => ({
+                      ...prev,
+                      quiz_passing_score: Math.min(100, Math.max(0, parseInt(e.target.value) || 0))
+                    }))}
+                    min={0}
+                    max={100}
+                    className="w-full bg-dark-800 border border-dark-600 rounded-xl px-4 py-2.5 text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-dark-200 mb-1.5">
+                    Limit czasu (sekundy)
+                  </label>
+                  <input
+                    type="number"
+                    value={missionForm.quiz_time_limit}
+                    onChange={e => setMissionForm(prev => ({
+                      ...prev,
+                      quiz_time_limit: Math.max(0, parseInt(e.target.value) || 0)
+                    }))}
+                    min={0}
+                    placeholder="0 = bez limitu"
+                    className="w-full bg-dark-800 border border-dark-600 rounded-xl px-4 py-2.5 text-white"
+                  />
+                  <p className="text-xs text-dark-400 mt-1">0 = bez limitu czasowego</p>
+                </div>
+              </div>
+
+              {/* Lista pytań */}
+              {missionForm.quiz_questions.length === 0 ? (
+                <Card variant="outlined" className="text-center py-6">
+                  <HelpCircle className="w-10 h-10 text-dark-500 mx-auto mb-2" />
+                  <p className="text-dark-400">Brak pytań</p>
+                  <p className="text-sm text-dark-500">Kliknij "Dodaj pytanie" aby rozpocząć</p>
+                </Card>
+              ) : (
+                <div className="space-y-4 max-h-96 overflow-y-auto">
+                  {missionForm.quiz_questions.map((question, qIndex) => (
+                    <Card key={question.id} variant="outlined" className="relative">
+                      <div className="flex items-start gap-2 mb-3">
+                        <span className="bg-turbo-500 text-white text-xs font-bold px-2 py-1 rounded">
+                          {qIndex + 1}
+                        </span>
+                        <div className="flex-1">
+                          <input
+                            type="text"
+                            value={question.question}
+                            onChange={e => updateQuestion(question.id, 'question', e.target.value)}
+                            placeholder="Treść pytania..."
+                            className="w-full bg-dark-700 border border-dark-600 rounded-lg px-3 py-2 text-white text-sm"
+                          />
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="danger"
+                          onClick={() => removeQuestion(question.id)}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+
+                      {/* Odpowiedzi */}
+                      <div className="space-y-2 ml-8">
+                        <p className="text-xs text-dark-400 mb-1">Odpowiedzi (kliknij radio aby zaznaczyć poprawną):</p>
+                        {question.answers.map((answer, aIndex) => (
+                          <div key={answer.id} className="flex items-center gap-2">
+                            <input
+                              type="radio"
+                              name={`correct_${question.id}`}
+                              checked={answer.is_correct}
+                              onChange={() => setCorrectAnswer(question.id, answer.id)}
+                              className="w-4 h-4 text-turbo-500 bg-dark-700 border-dark-500 focus:ring-turbo-500"
+                            />
+                            <input
+                              type="text"
+                              value={answer.text}
+                              onChange={e => updateAnswer(question.id, answer.id, 'text', e.target.value)}
+                              placeholder={`Odpowiedź ${aIndex + 1}...`}
+                              className={`flex-1 bg-dark-700 border rounded-lg px-3 py-1.5 text-sm ${
+                                answer.is_correct
+                                  ? 'border-green-500 text-green-400'
+                                  : 'border-dark-600 text-white'
+                              }`}
+                            />
+                            {question.answers.length > 2 && (
+                              <button
+                                type="button"
+                                onClick={() => removeAnswer(question.id, answer.id)}
+                                className="text-dark-400 hover:text-red-400"
+                              >
+                                <XCircle className="w-4 h-4" />
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                        {question.answers.length < 6 && (
+                          <button
+                            type="button"
+                            onClick={() => addAnswer(question.id)}
+                            className="text-sm text-turbo-400 hover:text-turbo-300 flex items-center gap-1 mt-1"
+                          >
+                            <Plus className="w-3 h-3" />
+                            Dodaj odpowiedź
+                          </button>
+                        )}
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              )}
+
+              {missionForm.quiz_questions.length > 0 && (
+                <div className="text-sm text-dark-400 bg-dark-800 rounded-lg p-3">
+                  <strong>Podsumowanie:</strong> {missionForm.quiz_questions.length} pytań,
+                  próg zaliczenia: {missionForm.quiz_passing_score}%
+                  {missionForm.quiz_time_limit > 0 && `, limit: ${missionForm.quiz_time_limit}s`}
+                </div>
+              )}
+            </div>
           )}
 
           <div className="flex gap-3 pt-4">
