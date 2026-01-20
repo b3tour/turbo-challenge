@@ -72,24 +72,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Inicjalizacja - jednorazowo
   useEffect(() => {
     let mounted = true;
+    let timeoutId: NodeJS.Timeout;
 
     const initAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
+      try {
+        // Timeout na 8 sekund - jeśli Supabase nie odpowiada
+        const sessionPromise = supabase.auth.getSession();
+        const timeoutPromise = new Promise((_, reject) => {
+          timeoutId = setTimeout(() => reject(new Error('Auth timeout')), 8000);
+        });
 
-      if (!mounted) return;
+        const { data: { session } } = await Promise.race([sessionPromise, timeoutPromise]) as { data: { session: Session | null } };
+        clearTimeout(timeoutId);
 
-      let profile = null;
-      if (session?.user) {
-        profile = await fetchProfile(session.user.id);
+        if (!mounted) return;
+
+        let profile = null;
+        if (session?.user) {
+          profile = await fetchProfile(session.user.id);
+        }
+
+        setState({
+          session,
+          user: session?.user ?? null,
+          profile,
+          loading: false,
+          error: null,
+        });
+      } catch (error) {
+        if (!mounted) return;
+        console.error('Auth initialization error:', error);
+        // Przy błędzie - ustaw loading na false, żeby strona się nie zawiesiła
+        setState({
+          session: null,
+          user: null,
+          profile: null,
+          loading: false,
+          error: 'Błąd połączenia z serwerem',
+        });
       }
-
-      setState({
-        session,
-        user: session?.user ?? null,
-        profile,
-        loading: false,
-        error: null,
-      });
     };
 
     initAuth();
@@ -122,6 +143,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return () => {
       mounted = false;
+      clearTimeout(timeoutId);
       subscription.unsubscribe();
     };
   }, [fetchProfile]);
