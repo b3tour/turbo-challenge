@@ -3,16 +3,14 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { User } from '@/types';
-import { Avatar, Badge } from '@/components/ui';
-import { calculateLevel, formatNumber, calculateLevelProgress } from '@/lib/utils';
-import { Bell } from 'lucide-react';
+import { Avatar } from '@/components/ui';
+import { calculateLevel, calculateLevelProgress } from '@/lib/utils';
 
 interface HeaderProps {
   user?: User | null;
-  showNotifications?: boolean;
 }
 
-export function Header({ user, showNotifications = true }: HeaderProps) {
+export function Header({ user }: HeaderProps) {
   const level = user ? calculateLevel(user.total_xp) : null;
   const progress = user ? calculateLevelProgress(user.total_xp) : 0;
 
@@ -54,17 +52,6 @@ export function Header({ user, showNotifications = true }: HeaderProps) {
               </div>
             </div>
 
-            {/* Notifications */}
-            {showNotifications && (
-              <Link
-                href="/notifications"
-                className="relative p-2 text-dark-400 hover:text-white transition-colors"
-              >
-                <Bell className="w-5 h-5" />
-                {/* Badge dla nieprzeczytanych */}
-                {/* <span className="absolute top-1 right-1 w-2 h-2 bg-turbo-500 rounded-full" /> */}
-              </Link>
-            )}
 
             {/* Avatar */}
             <Link href="/profile">
