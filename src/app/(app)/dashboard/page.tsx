@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { useMissions } from '@/hooks/useMissions';
 import { useLeaderboard } from '@/hooks/useLeaderboard';
@@ -25,6 +26,7 @@ import {
 } from 'lucide-react';
 
 export default function DashboardPage() {
+  const router = useRouter();
   const { profile, refreshProfile } = useAuth();
   const { missions, userSubmissions, loading: missionsLoading } = useMissions({
     userId: profile?.id,
@@ -159,7 +161,7 @@ export default function DashboardPage() {
                 key={mission.id}
                 mission={mission}
                 compact
-                onClick={() => {}}
+                onClick={() => router.push('/missions')}
               />
             ))}
           </div>
