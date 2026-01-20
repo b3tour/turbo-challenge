@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
 import { supabase } from '@/lib/supabase';
 import { User as SupabaseUser, Session } from '@supabase/supabase-js';
 import { User } from '@/types';
@@ -13,7 +13,27 @@ interface AuthState {
   error: string | null;
 }
 
-export function useAuth() {
+interface AuthContextType extends AuthState {
+  isAuthenticated: boolean;
+  hasProfile: boolean;
+  signInWithGoogle: () => Promise<void>;
+  signInWithEmail: (email: string) => Promise<{ success: boolean; error: string | null }>;
+  signUpWithEmail: (email: string, password: string) => Promise<{ success: boolean; error: string | null }>;
+  signInWithPassword: (email: string, password: string) => Promise<{ success: boolean; error: string | null }>;
+  signOut: () => Promise<void>;
+  updateProfile: (updates: Partial<User>) => Promise<{ success: boolean; error: string | null }>;
+  createProfile: (nick: string, phone?: string) => Promise<{ success: boolean; error: string | null }>;
+  checkNickAvailable: (nick: string) => Promise<boolean>;
+  refreshProfile: () => Promise<void>;
+}
+
+const AuthContext = createContext<AuthContextType | null>(null);
+
+// Cache dla profilu
+let profileCache: { [userId: string]: { data: User; timestamp: number } } = {};
+const CACHE_TTL = 60000; // 1 minuta
+
+export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AuthState>({
     session: null,
     user: null,
@@ -22,58 +42,47 @@ export function useAuth() {
     error: null,
   });
 
-  // Pobierz profil użytkownika z bazy (używa RPC dla pewności)
-  const fetchProfile = useCallback(async (userId: string) => {
-    console.log('=== fetchProfile START ===', userId);
+  // Pobierz profil z cache lub z bazy
+  const fetchProfile = useCallback(async (userId: string, forceRefresh = false): Promise<User | null> => {
+    // Sprawdź cache
+    const cached = profileCache[userId];
+    if (!forceRefresh && cached && Date.now() - cached.timestamp < CACHE_TTL) {
+      return cached.data;
+    }
+
     try {
-      // Najpierw spróbuj przez RPC
-      console.log('Trying RPC get_user_profile...');
-      const { data: rpcData, error: rpcError } = await supabase
-        .rpc('get_user_profile', { p_user_id: userId });
-
-      console.log('RPC result:', { rpcData, rpcError });
-
-      if (!rpcError && rpcData && rpcData.length > 0) {
-        console.log('Profile found via RPC:', rpcData[0]);
-        return rpcData[0] as User;
-      }
-
-      // Fallback do bezpośredniego zapytania
-      console.log('Trying direct query...');
       const { data, error } = await supabase
         .from('users')
         .select('id, email, nick, phone, avatar_url, total_xp, level, class, is_admin, created_at, updated_at')
         .eq('id', userId)
         .maybeSingle();
 
-      console.log('Direct query result:', { data, error });
-
-      if (error) {
-        console.error('Error fetching profile:', error.message, error.code);
+      if (error || !data) {
         return null;
       }
 
-      console.log('=== fetchProfile END ===', data);
-      return data as User | null;
+      // Zapisz w cache
+      profileCache[userId] = { data: data as User, timestamp: Date.now() };
+      return data as User;
     } catch (e) {
-      console.error('Exception fetching profile:', e);
       return null;
     }
   }, []);
 
-  // Inicjalizacja i nasłuchiwanie zmian sesji
+  // Inicjalizacja - jednorazowo
   useEffect(() => {
-    console.log('=== useAuth INIT ===');
-    // Pobierz aktualną sesję
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      console.log('getSession result:', session ? 'logged in' : 'not logged in', session?.user?.id);
+    let mounted = true;
+
+    const initAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!mounted) return;
+
       let profile = null;
       if (session?.user) {
         profile = await fetchProfile(session.user.id);
-        console.log('Profile after fetch:', profile);
       }
 
-      console.log('Setting state - hasProfile:', !!profile);
       setState({
         session,
         user: session?.user ?? null,
@@ -81,15 +90,25 @@ export function useAuth() {
         loading: false,
         error: null,
       });
-    });
+    };
+
+    initAuth();
 
     // Nasłuchuj zmian autoryzacji
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (!mounted) return;
+
+      // Ignoruj INITIAL_SESSION - już obsłużone powyżej
+      if (event === 'INITIAL_SESSION') return;
+
       let profile = null;
       if (session?.user) {
-        profile = await fetchProfile(session.user.id);
+        // Przy SIGNED_IN wymuś odświeżenie
+        const forceRefresh = event === 'SIGNED_IN';
+        profile = await fetchProfile(session.user.id, forceRefresh);
+      } else {
+        // Wyczyść cache przy wylogowaniu
+        profileCache = {};
       }
 
       setState({
@@ -101,7 +120,10 @@ export function useAuth() {
       });
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, [fetchProfile]);
 
   // Logowanie przez Google
@@ -182,6 +204,7 @@ export function useAuth() {
   // Wylogowanie
   const signOut = async () => {
     setState(prev => ({ ...prev, loading: true }));
+    profileCache = {}; // Wyczyść cache
     await supabase.auth.signOut();
     setState({
       session: null,
@@ -207,37 +230,17 @@ export function useAuth() {
       return { success: false, error: error.message };
     }
 
+    // Aktualizuj cache i stan
+    profileCache[state.user.id] = { data: data as User, timestamp: Date.now() };
     setState(prev => ({ ...prev, profile: data as User }));
     return { success: true, error: null };
   };
 
-  // Utwórz profil (po pierwszym logowaniu) - używa RPC dla pewności
+  // Utwórz profil (po pierwszym logowaniu)
   const createProfile = async (nick: string, phone?: string) => {
     if (!state.user) return { success: false, error: 'Nie jesteś zalogowany' };
 
-    console.log('Creating profile for user:', state.user.id, 'with nick:', nick);
-
     try {
-      // Spróbuj przez RPC
-      const { data: rpcData, error: rpcError } = await supabase
-        .rpc('create_user_profile', {
-          p_id: state.user.id,
-          p_email: state.user.email!,
-          p_nick: nick,
-          p_phone: phone || null
-        });
-
-      if (!rpcError && rpcData && rpcData.length > 0) {
-        console.log('Profile created via RPC:', rpcData[0]);
-        setState(prev => ({ ...prev, profile: rpcData[0] as User }));
-        return { success: true, error: null };
-      }
-
-      if (rpcError) {
-        console.log('RPC error, trying direct insert:', rpcError.message);
-      }
-
-      // Fallback do bezpośredniego INSERT
       const newProfile = {
         id: state.user.id,
         email: state.user.email!,
@@ -256,41 +259,39 @@ export function useAuth() {
         .single();
 
       if (error) {
-        console.error('Error creating profile:', error.message, error.code, error.details);
         return { success: false, error: `Błąd tworzenia profilu: ${error.message}` };
       }
 
-      console.log('Profile created via direct insert:', data);
+      // Zapisz w cache i stanie
+      profileCache[state.user.id] = { data: data as User, timestamp: Date.now() };
       setState(prev => ({ ...prev, profile: data as User }));
       return { success: true, error: null };
     } catch (e) {
-      console.error('Exception creating profile:', e);
       return { success: false, error: 'Wystąpił nieoczekiwany błąd' };
     }
   };
 
-  // Sprawdź czy nick jest dostępny (używa RPC dla pewności)
+  // Sprawdź czy nick jest dostępny (z prostym cache)
+  const nickCheckCache: { [nick: string]: { available: boolean; timestamp: number } } = {};
+
   const checkNickAvailable = useCallback(async (nick: string): Promise<boolean> => {
-    console.log('=== checkNickAvailable ===', nick);
+    // Sprawdź cache (5 sekund)
+    const cached = nickCheckCache[nick];
+    if (cached && Date.now() - cached.timestamp < 5000) {
+      return cached.available;
+    }
+
     try {
-      const { data: rpcData, error: rpcError } = await supabase
-        .rpc('check_nick_available', { p_nick: nick });
-
-      if (!rpcError && typeof rpcData === 'boolean') {
-        console.log('Nick available:', rpcData);
-        return rpcData;
-      }
-
-      // Fallback
       const { data } = await supabase
         .from('users')
         .select('id')
         .eq('nick', nick)
         .maybeSingle();
 
-      return data === null;
+      const available = data === null;
+      nickCheckCache[nick] = { available, timestamp: Date.now() };
+      return available;
     } catch (e) {
-      console.error('Exception checking nick:', e);
       return true;
     }
   }, []);
@@ -298,11 +299,11 @@ export function useAuth() {
   // Odśwież profil
   const refreshProfile = async () => {
     if (!state.user) return;
-    const profile = await fetchProfile(state.user.id);
+    const profile = await fetchProfile(state.user.id, true);
     setState(prev => ({ ...prev, profile }));
   };
 
-  return {
+  const value: AuthContextType = {
     ...state,
     isAuthenticated: !!state.session,
     hasProfile: !!state.profile,
@@ -316,4 +317,18 @@ export function useAuth() {
     checkNickAvailable,
     refreshProfile,
   };
+
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+    </AuthContext.Provider>
+  );
+}
+
+export function useAuth() {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
 }
