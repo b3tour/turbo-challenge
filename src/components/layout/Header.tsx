@@ -20,18 +20,19 @@ export function Header({ user, showNotifications = true }: HeaderProps) {
     <header className="fixed top-0 left-0 right-0 z-40 bg-dark-900/95 backdrop-blur-lg border-b border-dark-800 pt-safe">
       <div className="flex items-center justify-between h-16 px-4 max-w-lg mx-auto">
         {/* Logo */}
-        <Link href="/dashboard" className="flex items-center gap-2">
+        <Link href="/dashboard" className="flex items-center gap-2.5">
           <Image
             src="/heart-icon.png"
             alt="Turbo Challenge"
-            width={36}
-            height={36}
+            width={32}
+            height={32}
             className="object-contain"
             priority
           />
-          <span className="text-lg font-bold text-white tracking-tight">
-            TURBO <span className="gradient-text">CHALLENGE</span>
-          </span>
+          <div className="flex items-baseline gap-1.5">
+            <span className="text-base font-bold text-white">TURBO</span>
+            <span className="text-base font-bold gradient-text">CHALLENGE</span>
+          </div>
         </Link>
 
         {/* User info */}
