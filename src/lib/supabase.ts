@@ -4,10 +4,12 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
 // Walidacja zmiennych środowiskowych
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.error('Missing Supabase environment variables:', {
-    url: supabaseUrl ? 'SET' : 'MISSING',
-    key: supabaseAnonKey ? 'SET' : 'MISSING',
+export const supabaseConfigError = !supabaseUrl || !supabaseAnonKey;
+
+if (supabaseConfigError) {
+  console.error('❌ BRAK ZMIENNYCH ŚRODOWISKOWYCH SUPABASE:', {
+    NEXT_PUBLIC_SUPABASE_URL: supabaseUrl ? '✅ SET' : '❌ MISSING',
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: supabaseAnonKey ? '✅ SET' : '❌ MISSING',
   });
 }
 

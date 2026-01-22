@@ -6,12 +6,13 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { Button, Input, Card } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
-import { Mail, Lock, ArrowLeft } from 'lucide-react';
+import { Mail, Lock, ArrowLeft, AlertCircle, RefreshCw } from 'lucide-react';
 import { LogoCircle } from '@/components/ui';
+import { supabaseConfigError } from '@/lib/supabase';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { signInWithGoogle, signInWithPassword, loading, isAuthenticated, hasProfile } = useAuth();
+  const { signInWithGoogle, signInWithPassword, loading, isAuthenticated, hasProfile, error: authError } = useAuth();
   const { error: showError } = useToast();
 
   // Jeśli już zalogowany, przekieruj
@@ -69,6 +70,47 @@ export default function LoginPage() {
       {/* Title */}
       <h1 className="text-2xl font-bold text-white mb-2">Witaj ponownie!</h1>
       <p className="text-dark-400 mb-8">Zaloguj się, aby kontynuować</p>
+
+      {/* Config Error - brak zmiennych środowiskowych */}
+      {supabaseConfigError && (
+        <div className="w-full max-w-sm mb-4 p-4 bg-orange-500/10 border border-orange-500/30 rounded-xl">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-orange-500 mt-0.5 flex-shrink-0" />
+            <div className="flex-1">
+              <p className="text-orange-400 font-medium">Błąd konfiguracji</p>
+              <p className="text-sm text-orange-400/80 mt-1">
+                Brak zmiennych środowiskowych Supabase. Sprawdź konfigurację Vercel.
+              </p>
+              <p className="text-xs text-orange-400/60 mt-2 font-mono">
+                NEXT_PUBLIC_SUPABASE_URL<br/>
+                NEXT_PUBLIC_SUPABASE_ANON_KEY
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Connection Error */}
+      {authError && !supabaseConfigError && (
+        <div className="w-full max-w-sm mb-4 p-4 bg-red-500/10 border border-red-500/30 rounded-xl">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0" />
+            <div className="flex-1">
+              <p className="text-red-400 font-medium">Problem z połączeniem</p>
+              <p className="text-sm text-red-400/80 mt-1">{authError}</p>
+            </div>
+          </div>
+          <Button
+            variant="secondary"
+            size="sm"
+            className="mt-3 w-full"
+            onClick={() => window.location.reload()}
+          >
+            <RefreshCw className="w-4 h-4 mr-2" />
+            Odśwież stronę
+          </Button>
+        </div>
+      )}
 
       {/* Login Form */}
       <Card className="w-full max-w-sm">
