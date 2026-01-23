@@ -37,6 +37,11 @@ import {
   Menu,
   X,
   ChevronRight,
+  Minus,
+  RotateCcw,
+  ImageIcon,
+  AlertTriangle,
+  Undo2,
 } from 'lucide-react';
 
 type AdminTab = 'overview' | 'submissions' | 'missions' | 'users';
@@ -81,6 +86,22 @@ export default function AdminPage() {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [userSubmissions, setUserSubmissions] = useState<Submission[]>([]);
   const [loadingUserDetails, setLoadingUserDetails] = useState(false);
+
+  // XP management
+  const [showXpModal, setShowXpModal] = useState(false);
+  const [customXpAmount, setCustomXpAmount] = useState(50);
+  const [xpNote, setXpNote] = useState('');
+  const [xpOperation, setXpOperation] = useState<'add' | 'subtract'>('add');
+
+  // Photo preview
+  const [showPhotoModal, setShowPhotoModal] = useState(false);
+  const [selectedPhotoUrl, setSelectedPhotoUrl] = useState<string | null>(null);
+  const [selectedPhotoSubmission, setSelectedPhotoSubmission] = useState<Submission | null>(null);
+
+  // Delete user
+  const [showDeleteUserDialog, setShowDeleteUserDialog] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<User | null>(null);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
 
   const [missionForm, setMissionForm] = useState({
     title: '',
@@ -487,10 +508,170 @@ export default function AdminPage() {
     const approved = userSubmissions.filter(s => s.status === 'approved').length;
     const pending = userSubmissions.filter(s => s.status === 'pending').length;
     const rejected = userSubmissions.filter(s => s.status === 'rejected').length;
+    const revoked = userSubmissions.filter(s => s.status === 'revoked').length;
     const totalXpEarned = userSubmissions
       .filter(s => s.status === 'approved')
       .reduce((sum, s) => sum + (s.xp_awarded || 0), 0);
-    return { approved, pending, rejected, totalXpEarned };
+    return { approved, pending, rejected, revoked, totalXpEarned };
+  };
+
+  // === XP MANAGEMENT ===
+  const handleManualXp = async (amount: number, note: string) => {
+    if (!selectedUser) return;
+
+    const actualAmount = xpOperation === 'subtract' ? -Math.abs(amount) : Math.abs(amount);
+
+    // Update user XP directly
+    const newXp = Math.max(0, (selectedUser.total_xp || 0) + actualAmount);
+
+    const { error } = await supabase
+      .from('users')
+      .update({ total_xp: newXp })
+      .eq('id', selectedUser.id);
+
+    if (error) {
+      showError('Błąd', 'Nie udało się zaktualizować XP');
+      return;
+    }
+
+    // Log the manual XP change (optional - could add to a separate table)
+    console.log(`Manual XP ${xpOperation}: ${actualAmount} for user ${selectedUser.nick}. Note: ${note}`);
+
+    success(
+      xpOperation === 'add' ? 'Dodano XP!' : 'Odjęto XP!',
+      `${xpOperation === 'add' ? '+' : ''}${actualAmount} XP dla ${selectedUser.nick}`
+    );
+
+    // Update local state
+    setSelectedUser(prev => prev ? { ...prev, total_xp: newXp } : null);
+    setUsers(prev => prev.map(u => u.id === selectedUser.id ? { ...u, total_xp: newXp } : u));
+
+    setShowXpModal(false);
+    setCustomXpAmount(50);
+    setXpNote('');
+  };
+
+  // === REVOKE/RESTORE SUBMISSION ===
+  const handleRevokeSubmission = async (submission: Submission) => {
+    if (!submission.mission || !selectedUser) return;
+
+    const xpToRemove = submission.xp_awarded || submission.mission.xp_reward;
+
+    // Update submission status to revoked
+    const { error: submissionError } = await supabase
+      .from('submissions')
+      .update({
+        status: 'revoked',
+        admin_notes: `Wycofane przez admina ${profile?.nick} w dniu ${new Date().toLocaleString('pl-PL')}`,
+      })
+      .eq('id', submission.id);
+
+    if (submissionError) {
+      showError('Błąd', 'Nie udało się wycofać misji');
+      return;
+    }
+
+    // Subtract XP from user
+    const newXp = Math.max(0, (selectedUser.total_xp || 0) - xpToRemove);
+    await supabase
+      .from('users')
+      .update({ total_xp: newXp })
+      .eq('id', selectedUser.id);
+
+    success('Wycofano!', `Misja "${submission.mission.title}" została wycofana (-${xpToRemove} XP)`);
+
+    // Update local state
+    setSelectedUser(prev => prev ? { ...prev, total_xp: newXp } : null);
+    setUsers(prev => prev.map(u => u.id === selectedUser.id ? { ...u, total_xp: newXp } : u));
+    setUserSubmissions(prev => prev.map(s =>
+      s.id === submission.id ? { ...s, status: 'revoked' as const } : s
+    ));
+  };
+
+  const handleRestoreSubmission = async (submission: Submission) => {
+    if (!submission.mission || !selectedUser) return;
+
+    const xpToRestore = submission.xp_awarded || submission.mission.xp_reward;
+
+    // Update submission status back to approved
+    const { error: submissionError } = await supabase
+      .from('submissions')
+      .update({
+        status: 'approved',
+        admin_notes: `Przywrócone przez admina ${profile?.nick} w dniu ${new Date().toLocaleString('pl-PL')}`,
+      })
+      .eq('id', submission.id);
+
+    if (submissionError) {
+      showError('Błąd', 'Nie udało się przywrócić misji');
+      return;
+    }
+
+    // Add XP back to user
+    const newXp = (selectedUser.total_xp || 0) + xpToRestore;
+    await supabase
+      .from('users')
+      .update({ total_xp: newXp })
+      .eq('id', selectedUser.id);
+
+    success('Przywrócono!', `Misja "${submission.mission.title}" została przywrócona (+${xpToRestore} XP)`);
+
+    // Update local state
+    setSelectedUser(prev => prev ? { ...prev, total_xp: newXp } : null);
+    setUsers(prev => prev.map(u => u.id === selectedUser.id ? { ...u, total_xp: newXp } : u));
+    setUserSubmissions(prev => prev.map(s =>
+      s.id === submission.id ? { ...s, status: 'approved' as const } : s
+    ));
+  };
+
+  // === DELETE USER ===
+  const handleDeleteUser = async () => {
+    if (!userToDelete || deleteConfirmText !== userToDelete.nick) {
+      showError('Błąd', 'Wpisz poprawnie nick gracza aby potwierdzić');
+      return;
+    }
+
+    // First delete all user submissions
+    const { error: submissionsError } = await supabase
+      .from('submissions')
+      .delete()
+      .eq('user_id', userToDelete.id);
+
+    if (submissionsError) {
+      showError('Błąd', 'Nie udało się usunąć zgłoszeń gracza');
+      return;
+    }
+
+    // Then delete the user
+    const { error: userError } = await supabase
+      .from('users')
+      .delete()
+      .eq('id', userToDelete.id);
+
+    if (userError) {
+      showError('Błąd', 'Nie udało się usunąć gracza');
+      return;
+    }
+
+    success('Usunięto!', `Gracz "${userToDelete.nick}" został usunięty z systemu`);
+
+    // Update local state
+    setUsers(prev => prev.filter(u => u.id !== userToDelete.id));
+    setShowDeleteUserDialog(false);
+    setShowUserModal(false);
+    setUserToDelete(null);
+    setDeleteConfirmText('');
+    setSelectedUser(null);
+    fetchData();
+  };
+
+  // === PHOTO PREVIEW ===
+  const openPhotoPreview = (submission: Submission) => {
+    if (submission.photo_url) {
+      setSelectedPhotoUrl(submission.photo_url);
+      setSelectedPhotoSubmission(submission);
+      setShowPhotoModal(true);
+    }
   };
 
   if (!profile?.is_admin) {
@@ -1262,12 +1443,12 @@ export default function AdminPage() {
                     selectedUser.nick.charAt(0).toUpperCase()
                   )}
                 </div>
-                <div>
+                <div className="flex-1">
                   <div className="flex items-center gap-2">
                     <h3 className="text-lg font-bold text-white">{selectedUser.nick}</h3>
                     {selectedUser.is_admin && <Badge variant="turbo">Admin</Badge>}
                   </div>
-                  <p className="text-turbo-400 font-semibold">
+                  <p className="text-turbo-400 font-semibold text-xl">
                     {formatNumber(selectedUser.total_xp)} XP • Poziom {selectedUser.level}
                   </p>
                 </div>
@@ -1286,16 +1467,53 @@ export default function AdminPage() {
                 )}
                 <div className="flex items-center gap-2 text-dark-300">
                   <Calendar className="w-4 h-4" />
-                  <span>Dolaczyl: {formatDateTime(selectedUser.created_at)}</span>
+                  <span>Dołączył: {formatDateTime(selectedUser.created_at)}</span>
                 </div>
               </div>
             </Card>
 
+            {/* XP Management Section */}
+            <Card variant="outlined" className="border-turbo-500/30 bg-turbo-500/5">
+              <h4 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
+                <Award className="w-4 h-4 text-turbo-500" />
+                Zarządzanie punktami XP
+              </h4>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  size="sm"
+                  variant="success"
+                  onClick={() => {
+                    setXpOperation('add');
+                    setCustomXpAmount(50);
+                    setShowXpModal(true);
+                  }}
+                >
+                  <Plus className="w-4 h-4 mr-1" />
+                  Dodaj XP
+                </Button>
+                <Button
+                  size="sm"
+                  variant="danger"
+                  onClick={() => {
+                    setXpOperation('subtract');
+                    setCustomXpAmount(50);
+                    setShowXpModal(true);
+                  }}
+                >
+                  <Minus className="w-4 h-4 mr-1" />
+                  Odejmij XP
+                </Button>
+              </div>
+              <p className="text-xs text-dark-400 mt-2">
+                Ręczne dodawanie/odejmowanie punktów (np. bonus, korekta błędu)
+              </p>
+            </Card>
+
             {loadingUserDetails ? (
-              <div className="text-center py-4 text-dark-400">Ladowanie...</div>
+              <div className="text-center py-4 text-dark-400">Ładowanie...</div>
             ) : (
               <>
-                <div className="grid grid-cols-4 gap-2">
+                <div className="grid grid-cols-5 gap-2">
                   <Card className="text-center py-3">
                     <div className="text-lg font-bold text-green-400">{getUserStats().approved}</div>
                     <div className="text-xs text-dark-400">Zaliczone</div>
@@ -1309,28 +1527,47 @@ export default function AdminPage() {
                     <div className="text-xs text-dark-400">Odrzucone</div>
                   </Card>
                   <Card className="text-center py-3">
+                    <div className="text-lg font-bold text-orange-400">{getUserStats().revoked}</div>
+                    <div className="text-xs text-dark-400">Wycofane</div>
+                  </Card>
+                  <Card className="text-center py-3">
                     <div className="text-lg font-bold text-turbo-400">{getUserStats().totalXpEarned}</div>
-                    <div className="text-xs text-dark-400">Zdobyte XP</div>
+                    <div className="text-xs text-dark-400">XP</div>
                   </Card>
                 </div>
 
                 <div>
                   <h4 className="text-sm font-medium text-dark-300 mb-2">
-                    Historia zgloszen ({userSubmissions.length})
+                    Historia zgłoszeń ({userSubmissions.length})
                   </h4>
 
                   {userSubmissions.length === 0 ? (
                     <Card variant="outlined" className="text-center py-4">
-                      <p className="text-dark-400">Brak zgloszen</p>
+                      <p className="text-dark-400">Brak zgłoszeń</p>
                     </Card>
                   ) : (
-                    <div className="space-y-2 max-h-60 overflow-y-auto">
+                    <div className="space-y-2 max-h-72 overflow-y-auto">
                       {userSubmissions.map(submission => (
                         <Card key={submission.id} variant="outlined" padding="sm">
                           <div className="flex items-center gap-3">
-                            <div className="text-xl">
-                              {submission.mission ? missionTypeIcons[submission.mission.type] : '?'}
-                            </div>
+                            {/* Photo thumbnail or icon */}
+                            {submission.photo_url ? (
+                              <button
+                                onClick={() => openPhotoPreview(submission)}
+                                className="w-12 h-12 rounded-lg bg-dark-700 overflow-hidden flex-shrink-0 hover:ring-2 hover:ring-turbo-500 transition-all"
+                              >
+                                <img
+                                  src={submission.photo_url}
+                                  alt="Zdjęcie"
+                                  className="w-full h-full object-cover"
+                                />
+                              </button>
+                            ) : (
+                              <div className="w-12 h-12 rounded-lg bg-dark-700 flex items-center justify-center text-xl flex-shrink-0">
+                                {submission.mission ? missionTypeIcons[submission.mission.type] : '?'}
+                              </div>
+                            )}
+
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-medium text-white truncate">
                                 {submission.mission?.title || 'Nieznana misja'}
@@ -1339,11 +1576,19 @@ export default function AdminPage() {
                                 {formatDateTime(submission.created_at)}
                               </p>
                             </div>
-                            <div className="flex items-center gap-2">
+
+                            <div className="flex items-center gap-2 flex-shrink-0">
                               {submission.status === 'approved' && (
                                 <>
                                   <Badge variant="success" size="sm">Zaliczone</Badge>
-                                  <span className="text-xs text-turbo-400">+{submission.xp_awarded} XP</span>
+                                  <span className="text-xs text-turbo-400">+{submission.xp_awarded || submission.mission?.xp_reward} XP</span>
+                                  <button
+                                    onClick={() => handleRevokeSubmission(submission)}
+                                    className="p-1.5 rounded-lg bg-orange-500/20 text-orange-400 hover:bg-orange-500/30 transition-colors"
+                                    title="Wycofaj misję"
+                                  >
+                                    <Undo2 className="w-4 h-4" />
+                                  </button>
                                 </>
                               )}
                               {submission.status === 'pending' && (
@@ -1351,6 +1596,27 @@ export default function AdminPage() {
                               )}
                               {submission.status === 'rejected' && (
                                 <Badge variant="danger" size="sm">Odrzucone</Badge>
+                              )}
+                              {submission.status === 'revoked' && (
+                                <>
+                                  <Badge variant="default" size="sm">Wycofane</Badge>
+                                  <button
+                                    onClick={() => handleRestoreSubmission(submission)}
+                                    className="p-1.5 rounded-lg bg-green-500/20 text-green-400 hover:bg-green-500/30 transition-colors"
+                                    title="Przywróć misję"
+                                  >
+                                    <RotateCcw className="w-4 h-4" />
+                                  </button>
+                                </>
+                              )}
+                              {submission.photo_url && (
+                                <button
+                                  onClick={() => openPhotoPreview(submission)}
+                                  className="p-1.5 rounded-lg bg-dark-600 text-dark-300 hover:bg-dark-500 hover:text-white transition-colors"
+                                  title="Zobacz zdjęcie"
+                                >
+                                  <ImageIcon className="w-4 h-4" />
+                                </button>
                               )}
                             </div>
                           </div>
@@ -1361,6 +1627,32 @@ export default function AdminPage() {
                 </div>
               </>
             )}
+
+            {/* Delete User Section */}
+            <Card variant="outlined" className="border-red-500/30 bg-red-500/5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="text-sm font-semibold text-red-400 flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4" />
+                    Strefa niebezpieczna
+                  </h4>
+                  <p className="text-xs text-dark-400 mt-1">
+                    Usunięcie gracza jest nieodwracalne
+                  </p>
+                </div>
+                <Button
+                  size="sm"
+                  variant="danger"
+                  onClick={() => {
+                    setUserToDelete(selectedUser);
+                    setShowDeleteUserDialog(true);
+                  }}
+                >
+                  <Trash2 className="w-4 h-4 mr-1" />
+                  Usuń gracza
+                </Button>
+              </div>
+            </Card>
 
             <Button
               variant="secondary"
@@ -1375,6 +1667,266 @@ export default function AdminPage() {
             </Button>
           </div>
         )}
+      </Modal>
+
+      {/* XP Management Modal */}
+      <Modal
+        isOpen={showXpModal}
+        onClose={() => {
+          setShowXpModal(false);
+          setCustomXpAmount(50);
+          setXpNote('');
+        }}
+        title={xpOperation === 'add' ? 'Dodaj XP' : 'Odejmij XP'}
+        size="sm"
+      >
+        <div className="space-y-4">
+          <div className="text-center py-4">
+            <p className="text-dark-400 mb-2">
+              {xpOperation === 'add' ? 'Dodajesz punkty dla:' : 'Odejmujesz punkty od:'}
+            </p>
+            <p className="text-xl font-bold text-white">{selectedUser?.nick}</p>
+            <p className="text-turbo-400">Aktualne XP: {formatNumber(selectedUser?.total_xp || 0)}</p>
+          </div>
+
+          {/* Quick amounts */}
+          <div>
+            <label className="block text-sm font-medium text-dark-200 mb-2">Szybki wybór</label>
+            <div className="grid grid-cols-4 gap-2">
+              {[25, 50, 100, 200].map(amount => (
+                <button
+                  key={amount}
+                  onClick={() => setCustomXpAmount(amount)}
+                  className={`py-2 px-3 rounded-lg text-sm font-medium transition-colors ${
+                    customXpAmount === amount
+                      ? xpOperation === 'add'
+                        ? 'bg-green-500 text-white'
+                        : 'bg-red-500 text-white'
+                      : 'bg-dark-700 text-dark-300 hover:bg-dark-600'
+                  }`}
+                >
+                  {xpOperation === 'add' ? '+' : '-'}{amount}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Custom amount */}
+          <div>
+            <label className="block text-sm font-medium text-dark-200 mb-1.5">
+              Własna kwota XP
+            </label>
+            <input
+              type="number"
+              value={customXpAmount}
+              onChange={e => setCustomXpAmount(Math.max(1, parseInt(e.target.value) || 0))}
+              min={1}
+              className="w-full bg-dark-800 border border-dark-600 rounded-xl px-4 py-2.5 text-white text-center text-xl font-bold"
+            />
+          </div>
+
+          {/* Note */}
+          <div>
+            <label className="block text-sm font-medium text-dark-200 mb-1.5">
+              Powód (opcjonalnie)
+            </label>
+            <input
+              type="text"
+              value={xpNote}
+              onChange={e => setXpNote(e.target.value)}
+              placeholder="np. Bonus za aktywność, korekta błędu..."
+              className="w-full bg-dark-800 border border-dark-600 rounded-xl px-4 py-2.5 text-white"
+            />
+          </div>
+
+          {/* Preview */}
+          <Card variant="outlined" className={xpOperation === 'add' ? 'border-green-500/30 bg-green-500/10' : 'border-red-500/30 bg-red-500/10'}>
+            <div className="text-center">
+              <p className="text-sm text-dark-400">Nowe XP po operacji:</p>
+              <p className="text-2xl font-bold text-white">
+                {formatNumber(Math.max(0, (selectedUser?.total_xp || 0) + (xpOperation === 'add' ? customXpAmount : -customXpAmount)))}
+              </p>
+              <p className={`text-sm font-medium ${xpOperation === 'add' ? 'text-green-400' : 'text-red-400'}`}>
+                ({xpOperation === 'add' ? '+' : '-'}{customXpAmount} XP)
+              </p>
+            </div>
+          </Card>
+
+          <div className="flex gap-3 pt-2">
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setShowXpModal(false);
+                setCustomXpAmount(50);
+                setXpNote('');
+              }}
+              className="flex-1"
+            >
+              Anuluj
+            </Button>
+            <Button
+              variant={xpOperation === 'add' ? 'success' : 'danger'}
+              onClick={() => handleManualXp(customXpAmount, xpNote)}
+              className="flex-1"
+            >
+              {xpOperation === 'add' ? (
+                <>
+                  <Plus className="w-4 h-4 mr-1" />
+                  Dodaj {customXpAmount} XP
+                </>
+              ) : (
+                <>
+                  <Minus className="w-4 h-4 mr-1" />
+                  Odejmij {customXpAmount} XP
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Photo Preview Modal */}
+      <Modal
+        isOpen={showPhotoModal}
+        onClose={() => {
+          setShowPhotoModal(false);
+          setSelectedPhotoUrl(null);
+          setSelectedPhotoSubmission(null);
+        }}
+        title={selectedPhotoSubmission?.mission?.title || 'Zdjęcie'}
+        size="lg"
+      >
+        {selectedPhotoUrl && (
+          <div className="space-y-4">
+            <img
+              src={selectedPhotoUrl}
+              alt="Zdjęcie zgłoszenia"
+              className="w-full rounded-xl max-h-[60vh] object-contain bg-dark-800"
+            />
+            {selectedPhotoSubmission && (
+              <Card variant="outlined">
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <p className="text-dark-400">Misja</p>
+                    <p className="font-medium text-white">{selectedPhotoSubmission.mission?.title}</p>
+                  </div>
+                  <div>
+                    <p className="text-dark-400">Status</p>
+                    <div className="mt-1">
+                      {selectedPhotoSubmission.status === 'approved' && <Badge variant="success">Zaliczone</Badge>}
+                      {selectedPhotoSubmission.status === 'pending' && <Badge variant="warning">Oczekuje</Badge>}
+                      {selectedPhotoSubmission.status === 'rejected' && <Badge variant="danger">Odrzucone</Badge>}
+                      {selectedPhotoSubmission.status === 'revoked' && <Badge variant="default">Wycofane</Badge>}
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-dark-400">Data zgłoszenia</p>
+                    <p className="text-white">{formatDateTime(selectedPhotoSubmission.created_at)}</p>
+                  </div>
+                  <div>
+                    <p className="text-dark-400">XP</p>
+                    <p className="text-turbo-400 font-medium">
+                      {selectedPhotoSubmission.xp_awarded || selectedPhotoSubmission.mission?.xp_reward} XP
+                    </p>
+                  </div>
+                </div>
+              </Card>
+            )}
+            <Button
+              variant="secondary"
+              fullWidth
+              onClick={() => {
+                setShowPhotoModal(false);
+                setSelectedPhotoUrl(null);
+                setSelectedPhotoSubmission(null);
+              }}
+            >
+              Zamknij
+            </Button>
+          </div>
+        )}
+      </Modal>
+
+      {/* Delete User Confirmation Dialog */}
+      <Modal
+        isOpen={showDeleteUserDialog}
+        onClose={() => {
+          setShowDeleteUserDialog(false);
+          setUserToDelete(null);
+          setDeleteConfirmText('');
+        }}
+        title="Usuń gracza"
+        size="sm"
+      >
+        <div className="space-y-4">
+          <div className="text-center py-4">
+            <div className="w-16 h-16 rounded-full bg-red-500/20 flex items-center justify-center mx-auto mb-4">
+              <AlertTriangle className="w-8 h-8 text-red-500" />
+            </div>
+            <p className="text-white font-medium text-lg">
+              Czy na pewno chcesz usunąć gracza?
+            </p>
+            <p className="text-dark-400 mt-2">
+              Ta operacja jest <span className="text-red-400 font-bold">nieodwracalna</span>.
+              Wszystkie dane gracza zostaną trwale usunięte.
+            </p>
+          </div>
+
+          {userToDelete && (
+            <Card variant="outlined" className="border-red-500/30">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-full bg-dark-700 flex items-center justify-center text-white font-bold overflow-hidden">
+                  {userToDelete.avatar_url ? (
+                    <img src={userToDelete.avatar_url} alt={userToDelete.nick} className="w-full h-full object-cover" />
+                  ) : (
+                    userToDelete.nick.charAt(0).toUpperCase()
+                  )}
+                </div>
+                <div>
+                  <p className="font-medium text-white">{userToDelete.nick}</p>
+                  <p className="text-sm text-dark-400">{userToDelete.email}</p>
+                  <p className="text-sm text-turbo-400">{formatNumber(userToDelete.total_xp)} XP</p>
+                </div>
+              </div>
+            </Card>
+          )}
+
+          <div>
+            <label className="block text-sm font-medium text-dark-200 mb-1.5">
+              Wpisz <span className="text-red-400 font-bold">{userToDelete?.nick}</span> aby potwierdzić:
+            </label>
+            <input
+              type="text"
+              value={deleteConfirmText}
+              onChange={e => setDeleteConfirmText(e.target.value)}
+              placeholder={userToDelete?.nick}
+              className="w-full bg-dark-800 border border-red-500/50 rounded-xl px-4 py-2.5 text-white focus:ring-2 focus:ring-red-500"
+            />
+          </div>
+
+          <div className="flex gap-3 pt-2">
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setShowDeleteUserDialog(false);
+                setUserToDelete(null);
+                setDeleteConfirmText('');
+              }}
+              className="flex-1"
+            >
+              Anuluj
+            </Button>
+            <Button
+              variant="danger"
+              onClick={handleDeleteUser}
+              disabled={deleteConfirmText !== userToDelete?.nick}
+              className="flex-1"
+            >
+              <Trash2 className="w-4 h-4 mr-1" />
+              Usuń na zawsze
+            </Button>
+          </div>
+        </div>
       </Modal>
     </div>
   );

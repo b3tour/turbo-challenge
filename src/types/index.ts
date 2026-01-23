@@ -79,7 +79,7 @@ export interface QuizAnswer {
 }
 
 // Zgłoszenie wykonania misji
-export type SubmissionStatus = 'pending' | 'approved' | 'rejected';
+export type SubmissionStatus = 'pending' | 'approved' | 'rejected' | 'revoked';
 
 export interface Submission {
   id: string;
