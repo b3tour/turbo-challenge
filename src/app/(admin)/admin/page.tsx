@@ -650,14 +650,18 @@ export default function AdminPage() {
       return;
     }
 
+    const userId = userToDelete.id;
+    const userNick = userToDelete.nick;
+
     // First delete all user submissions
     const { error: submissionsError } = await supabase
       .from('submissions')
       .delete()
-      .eq('user_id', userToDelete.id);
+      .eq('user_id', userId);
 
     if (submissionsError) {
-      showError('Błąd', 'Nie udało się usunąć zgłoszeń gracza');
+      console.error('Delete submissions error:', submissionsError);
+      showError('Błąd', 'Nie udało się usunąć zgłoszeń gracza: ' + submissionsError.message);
       return;
     }
 
@@ -665,23 +669,41 @@ export default function AdminPage() {
     const { error: userError } = await supabase
       .from('users')
       .delete()
-      .eq('id', userToDelete.id);
+      .eq('id', userId);
 
     if (userError) {
-      showError('Błąd', 'Nie udało się usunąć gracza');
+      console.error('Delete user error:', userError);
+      showError('Błąd', 'Nie udało się usunąć gracza: ' + userError.message);
       return;
     }
 
-    success('Usunięto!', `Gracz "${userToDelete.nick}" został usunięty z systemu`);
+    // Verify the user was actually deleted
+    const { data: checkUser } = await supabase
+      .from('users')
+      .select('id')
+      .eq('id', userId)
+      .maybeSingle();
 
-    // Update local state
-    setUsers(prev => prev.filter(u => u.id !== userToDelete.id));
+    if (checkUser) {
+      console.error('User still exists after delete!');
+      showError('Błąd', 'Nie udało się usunąć gracza. Sprawdź uprawnienia w Supabase (RLS).');
+      return;
+    }
+
+    success('Usunięto!', `Gracz "${userNick}" został usunięty z systemu`);
+
+    // Close modals first
     setShowDeleteUserDialog(false);
     setShowUserModal(false);
     setUserToDelete(null);
     setDeleteConfirmText('');
     setSelectedUser(null);
-    fetchData();
+
+    // Update local state immediately
+    setUsers(prev => prev.filter(u => u.id !== userId));
+
+    // Then refresh data from server
+    await fetchData();
   };
 
   // === PHOTO PREVIEW ===
