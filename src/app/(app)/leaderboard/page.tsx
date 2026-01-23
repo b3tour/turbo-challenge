@@ -194,68 +194,64 @@ export default function LeaderboardPage() {
 
       {/* Top 3 Podium */}
       {!loading && leaderboard.length >= 3 && (
-        <div className="flex items-end justify-center gap-2 mb-6 h-40">
-          {/* 2nd place */}
-          <div className="flex flex-col items-center w-24">
-            <Avatar
-              src={leaderboard[1].avatar_url}
-              fallback={leaderboard[1].nick}
-              size="lg"
-              showBorder
-              borderColor="border-gray-400"
-            />
-            <div className="mt-2 text-center">
-              <p className="text-sm font-semibold text-white truncate w-full">
+        <Card className="mb-6 py-4">
+          <div className="flex items-end justify-center gap-3">
+            {/* 2nd place */}
+            <div className="flex flex-col items-center w-24">
+              <Avatar
+                src={leaderboard[1].avatar_url}
+                fallback={leaderboard[1].nick}
+                size="md"
+                showBorder
+                borderColor="border-gray-400"
+              />
+              <p className="text-xs font-semibold text-white truncate w-full text-center mt-1">
                 {leaderboard[1].nick}
               </p>
               <p className="text-xs text-gray-400">{formatNumber(leaderboard[1].total_xp)} XP</p>
+              <div className="w-full h-14 bg-gradient-to-t from-gray-500/30 to-gray-400/10 rounded-t-lg mt-2 flex items-center justify-center">
+                <span className="text-xl font-bold text-gray-300">2</span>
+              </div>
             </div>
-            <div className="w-full h-20 bg-gradient-to-t from-gray-500/30 to-gray-400/10 rounded-t-lg mt-2 flex items-center justify-center">
-              <span className="text-2xl font-bold text-gray-300">2</span>
-            </div>
-          </div>
 
-          {/* 1st place */}
-          <div className="flex flex-col items-center w-28">
-            <Crown className="w-8 h-8 text-yellow-400 mb-1" />
-            <Avatar
-              src={leaderboard[0].avatar_url}
-              fallback={leaderboard[0].nick}
-              size="xl"
-              showBorder
-              borderColor="border-yellow-400"
-            />
-            <div className="mt-2 text-center">
-              <p className="text-sm font-semibold text-white truncate w-full">
+            {/* 1st place */}
+            <div className="flex flex-col items-center w-28">
+              <Crown className="w-6 h-6 text-yellow-400 mb-1" />
+              <Avatar
+                src={leaderboard[0].avatar_url}
+                fallback={leaderboard[0].nick}
+                size="lg"
+                showBorder
+                borderColor="border-yellow-400"
+              />
+              <p className="text-sm font-semibold text-white truncate w-full text-center mt-1">
                 {leaderboard[0].nick}
               </p>
               <p className="text-xs text-yellow-400">{formatNumber(leaderboard[0].total_xp)} XP</p>
+              <div className="w-full h-20 bg-gradient-to-t from-yellow-500/30 to-yellow-400/10 rounded-t-lg mt-2 flex items-center justify-center">
+                <span className="text-2xl font-bold text-yellow-400">1</span>
+              </div>
             </div>
-            <div className="w-full h-28 bg-gradient-to-t from-yellow-500/30 to-yellow-400/10 rounded-t-lg mt-2 flex items-center justify-center">
-              <span className="text-3xl font-bold text-yellow-400">1</span>
-            </div>
-          </div>
 
-          {/* 3rd place */}
-          <div className="flex flex-col items-center w-24">
-            <Avatar
-              src={leaderboard[2].avatar_url}
-              fallback={leaderboard[2].nick}
-              size="lg"
-              showBorder
-              borderColor="border-amber-600"
-            />
-            <div className="mt-2 text-center">
-              <p className="text-sm font-semibold text-white truncate w-full">
+            {/* 3rd place */}
+            <div className="flex flex-col items-center w-24">
+              <Avatar
+                src={leaderboard[2].avatar_url}
+                fallback={leaderboard[2].nick}
+                size="md"
+                showBorder
+                borderColor="border-amber-600"
+              />
+              <p className="text-xs font-semibold text-white truncate w-full text-center mt-1">
                 {leaderboard[2].nick}
               </p>
               <p className="text-xs text-amber-600">{formatNumber(leaderboard[2].total_xp)} XP</p>
-            </div>
-            <div className="w-full h-16 bg-gradient-to-t from-amber-600/30 to-amber-500/10 rounded-t-lg mt-2 flex items-center justify-center">
-              <span className="text-2xl font-bold text-amber-600">3</span>
+              <div className="w-full h-10 bg-gradient-to-t from-amber-600/30 to-amber-500/10 rounded-t-lg mt-2 flex items-center justify-center">
+                <span className="text-xl font-bold text-amber-600">3</span>
+              </div>
             </div>
           </div>
-        </div>
+        </Card>
       )}
 
       {/* Full Leaderboard */}
