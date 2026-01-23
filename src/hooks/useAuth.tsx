@@ -50,36 +50,61 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Sprawdź cache
     const cached = profileCache[userId];
     if (!forceRefresh && cached && Date.now() - cached.timestamp < CACHE_TTL) {
+      console.log('[Auth] Profil z cache');
       return cached.data;
     }
 
     try {
-      const { data, error } = await supabase
+      console.log('[Auth] Pobieram profil z bazy dla:', userId);
+
+      // Dodaj timeout 5 sekund
+      const timeoutPromise = new Promise<{ data: null; error: { message: string } }>((resolve) => {
+        setTimeout(() => {
+          console.log('[Auth] Timeout pobierania profilu');
+          resolve({ data: null, error: { message: 'Timeout' } });
+        }, 5000);
+      });
+
+      const queryPromise = supabase
         .from('users')
         .select('id, email, nick, phone, avatar_url, total_xp, level, class, is_admin, created_at, updated_at')
         .eq('id', userId)
         .maybeSingle();
 
-      if (error || !data) {
+      const { data, error } = await Promise.race([queryPromise, timeoutPromise]);
+
+      if (error) {
+        console.log('[Auth] Błąd pobierania profilu:', error.message);
         return null;
       }
 
+      if (!data) {
+        console.log('[Auth] Profil nie istnieje w bazie');
+        return null;
+      }
+
+      console.log('[Auth] Profil pobrany:', data.nick);
       // Zapisz w cache
       profileCache[userId] = { data: data as User, timestamp: Date.now() };
       return data as User;
     } catch (e) {
+      console.error('[Auth] Exception przy pobieraniu profilu:', e);
       return null;
     }
   }, []);
 
-  // Inicjalizacja - jednorazowo
+  // Inicjalizacja - jednorazowo z retry
   useEffect(() => {
     let mounted = true;
     let timeoutId: NodeJS.Timeout;
+    let retryCount = 0;
+    const maxRetries = 1; // Zmniejszone z 2 - szybsze wykrywanie błędów
 
     const initAuth = async () => {
       try {
-        // Timeout na 8 sekund - jeśli Supabase nie odpowiada
+        console.log('[Auth] Inicjalizacja, próba:', retryCount + 1);
+
+        // Timeout na 8 sekund - skrócony dla lepszego UX
         const sessionPromise = supabase.auth.getSession();
         const timeoutPromise = new Promise((_, reject) => {
           timeoutId = setTimeout(() => reject(new Error('Auth timeout')), 8000);
@@ -90,9 +115,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (!mounted) return;
 
+        console.log('[Auth] Sesja pobrana:', session ? 'zalogowany' : 'brak sesji');
+
         let profile = null;
         if (session?.user) {
+          console.log('[Auth] Pobieram profil dla:', session.user.id);
           profile = await fetchProfile(session.user.id);
+          console.log('[Auth] Profil:', profile ? 'znaleziony' : 'brak');
         }
 
         setState({
@@ -104,14 +133,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
       } catch (error) {
         if (!mounted) return;
-        console.error('Auth initialization error:', error);
+        console.error('[Auth] Błąd inicjalizacji:', error, 'Próba:', retryCount + 1);
+
+        // Spróbuj ponownie tylko raz
+        if (retryCount < maxRetries) {
+          retryCount++;
+          console.log(`[Auth] Ponowna próba ${retryCount}/${maxRetries}...`);
+          setTimeout(() => initAuth(), 2000);
+          return;
+        }
+
         // Przy błędzie - ustaw loading na false, żeby strona się nie zawiesiła
+        console.error('[Auth] Wszystkie próby nieudane, pokazuję błąd');
         setState({
           session: null,
           user: null,
           profile: null,
           loading: false,
-          error: 'Błąd połączenia z serwerem',
+          error: 'Błąd połączenia z serwerem. Sprawdź internet i odśwież stronę.',
         });
       }
     };

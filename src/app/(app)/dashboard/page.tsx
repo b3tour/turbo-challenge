@@ -1,6 +1,5 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
@@ -27,7 +26,7 @@ import {
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { profile, refreshProfile } = useAuth();
+  const { profile } = useAuth();
   const { missions, userSubmissions, loading: missionsLoading } = useMissions({
     userId: profile?.id,
     activeOnly: true,
@@ -36,15 +35,10 @@ export default function DashboardPage() {
     limit: 5,
   });
 
-  const [userRank, setUserRank] = useState<number | null>(null);
-
-  useEffect(() => {
-    if (profile?.id) {
-      getUserRank(profile.id).then(setUserRank);
-    }
-  }, [profile?.id, getUserRank]);
-
   if (!profile) return null;
+
+  // Synchronicznie pobierz ranking użytkownika z cache
+  const userRank = getUserRank(profile.id);
 
   const level = calculateLevel(profile.total_xp);
   const progress = calculateLevelProgress(profile.total_xp);

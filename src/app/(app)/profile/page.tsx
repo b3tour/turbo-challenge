@@ -39,7 +39,6 @@ export default function ProfilePage() {
   const { getUserRank } = useLeaderboard();
   const { success, error: showError } = useToast();
 
-  const [userRank, setUserRank] = useState<number | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editNick, setEditNick] = useState('');
   const [editPhone, setEditPhone] = useState('');
@@ -49,11 +48,8 @@ export default function ProfilePage() {
   const [avatarImageSrc, setAvatarImageSrc] = useState<string | null>(null);
   const [nickChangesCount, setNickChangesCount] = useState(0);
 
-  useEffect(() => {
-    if (profile?.id) {
-      getUserRank(profile.id).then(setUserRank);
-    }
-  }, [profile?.id, getUserRank]);
+  // Synchronicznie pobierz ranking użytkownika z cache
+  const userRank = profile?.id ? getUserRank(profile.id) : null;
 
   useEffect(() => {
     if (profile) {

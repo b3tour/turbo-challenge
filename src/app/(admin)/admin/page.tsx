@@ -2,11 +2,12 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 import { Card, Button, Badge, Input, Modal, AlertDialog } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
-import { Mission, MissionStatus, Submission, User, QuizData, QuizQuestion, QuizAnswer, QuizMode } from '@/types';
+import { Mission, MissionStatus, Submission, User, QuizData, QuizQuestion, QuizMode } from '@/types';
 import {
   formatNumber,
   formatDateTime,
@@ -33,10 +34,19 @@ import {
   Calendar,
   Award,
   HelpCircle,
-  GripVertical,
+  Menu,
+  X,
+  ChevronRight,
 } from 'lucide-react';
 
 type AdminTab = 'overview' | 'submissions' | 'missions' | 'users';
+
+const tabs: { id: AdminTab; label: string; icon: React.ElementType; description: string }[] = [
+  { id: 'overview', label: 'Przeglad', icon: BarChart3, description: 'Statystyki i podsumowanie' },
+  { id: 'submissions', label: 'Zgloszenia', icon: Clock, description: 'Weryfikuj zgloszenia' },
+  { id: 'missions', label: 'Misje', icon: Target, description: 'Zarzadzaj misjami' },
+  { id: 'users', label: 'Gracze', icon: Users, description: 'Lista wszystkich graczy' },
+];
 
 export default function AdminPage() {
   const router = useRouter();
@@ -44,6 +54,7 @@ export default function AdminPage() {
   const { success, error: showError } = useToast();
 
   const [activeTab, setActiveTab] = useState<AdminTab>('overview');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [pendingSubmissions, setPendingSubmissions] = useState<Submission[]>([]);
   const [missions, setMissions] = useState<Mission[]>([]);
   const [users, setUsers] = useState<User[]>([]);
@@ -79,14 +90,13 @@ export default function AdminPage() {
     location_name: '',
     qr_code_value: '',
     status: 'active' as MissionStatus,
-    // Quiz data
     quiz_passing_score: 70,
     quiz_time_limit: 0,
     quiz_mode: 'classic' as QuizMode,
     quiz_questions: [] as QuizQuestion[],
   });
 
-  // Sprawdź czy użytkownik jest adminem
+  // Sprawdz czy uzytkownik jest adminem
   useEffect(() => {
     if (profile && !profile.is_admin) {
       router.push('/dashboard');
@@ -153,11 +163,10 @@ export default function AdminPage() {
       .eq('id', submission.id);
 
     if (error) {
-      showError('Błąd', 'Nie udało się zatwierdzić zgłoszenia');
+      showError('Blad', 'Nie udalo sie zatwierdzic zgloszenia');
       return;
     }
 
-    // Dodaj XP użytkownikowi
     await supabase.rpc('add_user_xp', {
       p_user_id: submission.user_id,
       p_xp_amount: submission.mission.xp_reward,
@@ -175,18 +184,18 @@ export default function AdminPage() {
       .from('submissions')
       .update({
         status: 'rejected',
-        admin_notes: reason || 'Zgłoszenie nie spełnia wymagań',
+        admin_notes: reason || 'Zgloszenie nie spelnia wymagan',
         reviewed_by: profile?.id,
         reviewed_at: new Date().toISOString(),
       })
       .eq('id', submission.id);
 
     if (error) {
-      showError('Błąd', 'Nie udało się odrzucić zgłoszenia');
+      showError('Blad', 'Nie udalo sie odrzucic zgloszenia');
       return;
     }
 
-    success('Odrzucone', 'Zgłoszenie zostało odrzucone');
+    success('Odrzucone', 'Zgloszenie zostalo odrzucone');
     setPendingSubmissions(prev => prev.filter(s => s.id !== submission.id));
     setShowSubmissionModal(false);
     setSelectedSubmission(null);
@@ -332,39 +341,37 @@ export default function AdminPage() {
 
   const handleSaveMission = async () => {
     if (!missionForm.title || !missionForm.description) {
-      showError('Błąd', 'Wypełnij wymagane pola (tytuł i opis)');
+      showError('Blad', 'Wypelnij wymagane pola (tytul i opis)');
       return;
     }
 
-    // Walidacja quizu
     if (missionForm.type === 'quiz') {
       if (missionForm.quiz_questions.length === 0) {
-        showError('Błąd', 'Quiz musi mieć co najmniej jedno pytanie');
+        showError('Blad', 'Quiz musi miec co najmniej jedno pytanie');
         return;
       }
       for (const q of missionForm.quiz_questions) {
         if (!q.question.trim()) {
-          showError('Błąd', 'Wszystkie pytania muszą mieć treść');
+          showError('Blad', 'Wszystkie pytania musza miec tresc');
           return;
         }
         if (q.answers.length < 2) {
-          showError('Błąd', 'Każde pytanie musi mieć co najmniej 2 odpowiedzi');
+          showError('Blad', 'Kazde pytanie musi miec co najmniej 2 odpowiedzi');
           return;
         }
         if (!q.answers.some(a => a.is_correct)) {
-          showError('Błąd', 'Każde pytanie musi mieć zaznaczoną poprawną odpowiedź');
+          showError('Blad', 'Kazde pytanie musi miec zaznaczona poprawna odpowiedz');
           return;
         }
         for (const a of q.answers) {
           if (!a.text.trim()) {
-            showError('Błąd', 'Wszystkie odpowiedzi muszą mieć treść');
+            showError('Blad', 'Wszystkie odpowiedzi musza miec tresc');
             return;
           }
         }
       }
     }
 
-    // Przygotuj quiz_data jeśli to quiz
     const quizData: QuizData | null = missionForm.type === 'quiz'
       ? {
           questions: missionForm.quiz_questions,
@@ -390,30 +397,28 @@ export default function AdminPage() {
     };
 
     if (isEditing && selectedMission) {
-      // Aktualizacja istniejącej misji
       const { error } = await supabase
         .from('missions')
         .update(missionData)
         .eq('id', selectedMission.id);
 
       if (error) {
-        showError('Błąd', 'Nie udało się zaktualizować misji');
+        showError('Blad', 'Nie udalo sie zaktualizowac misji');
         return;
       }
 
-      success('Zapisano!', 'Misja została zaktualizowana');
+      success('Zapisano!', 'Misja zostala zaktualizowana');
     } else {
-      // Tworzenie nowej misji
       const { error } = await supabase
         .from('missions')
         .insert(missionData);
 
       if (error) {
-        showError('Błąd', 'Nie udało się utworzyć misji');
+        showError('Blad', 'Nie udalo sie utworzyc misji');
         return;
       }
 
-      success('Utworzono!', 'Nowa misja została dodana');
+      success('Utworzono!', 'Nowa misja zostala dodana');
     }
 
     setShowMissionModal(false);
@@ -430,7 +435,7 @@ export default function AdminPage() {
       .eq('id', mission.id);
 
     if (error) {
-      showError('Błąd', 'Nie udało się zmienić statusu misji');
+      showError('Blad', 'Nie udalo sie zmienic statusu misji');
       return;
     }
 
@@ -450,35 +455,13 @@ export default function AdminPage() {
       .eq('id', missionToDelete.id);
 
     if (error) {
-      showError('Błąd', 'Nie udało się usunąć misji. Możliwe że są powiązane zgłoszenia.');
+      showError('Blad', 'Nie udalo sie usunac misji. Mozliwe ze sa powiazane zgloszenia.');
       return;
     }
 
-    success('Usunięto!', `Misja "${missionToDelete.title}" została usunięta`);
+    success('Usunieto!', `Misja "${missionToDelete.title}" zostala usunieta`);
     setShowDeleteDialog(false);
     setMissionToDelete(null);
-    fetchData();
-  };
-
-  const handleDuplicateMission = async (mission: Mission) => {
-    const { error } = await supabase
-      .from('missions')
-      .insert({
-        title: `${mission.title} (kopia)`,
-        description: mission.description,
-        xp_reward: mission.xp_reward,
-        type: mission.type,
-        location_name: mission.location_name,
-        qr_code_value: mission.type === 'qr_code' ? generateQRCode() : null,
-        status: 'inactive',
-      });
-
-    if (error) {
-      showError('Błąd', 'Nie udało się zduplikować misji');
-      return;
-    }
-
-    success('Zduplikowano!', 'Kopia misji została utworzona (nieaktywna)');
     fetchData();
   };
 
@@ -488,7 +471,6 @@ export default function AdminPage() {
     setShowUserModal(true);
     setLoadingUserDetails(true);
 
-    // Pobierz wszystkie zgłoszenia użytkownika
     const { data, error } = await supabase
       .from('submissions')
       .select('*, mission:missions(*)')
@@ -515,326 +497,430 @@ export default function AdminPage() {
     return null;
   }
 
-  const tabs = [
-    { id: 'overview', label: 'Przegląd', icon: BarChart3 },
-    { id: 'submissions', label: 'Zgłoszenia', icon: Clock, badge: stats.pendingSubmissions },
-    { id: 'missions', label: 'Misje', icon: Target, badge: stats.totalMissions },
-    { id: 'users', label: 'Gracze', icon: Users, badge: stats.totalUsers },
-  ];
+  const currentTab = tabs.find(t => t.id === activeTab);
 
   return (
-    <div className="py-4">
-      {/* Header */}
-      <div className="flex items-center gap-3 mb-6">
-        <div className="w-12 h-12 rounded-xl bg-turbo-500/20 flex items-center justify-center">
-          <Shield className="w-6 h-6 text-turbo-500" />
-        </div>
-        <div>
-          <h1 className="text-xl font-bold text-white">Panel Admina</h1>
-          <p className="text-sm text-dark-400">Zarządzaj Turbo Challenge</p>
+    <div className="min-h-screen bg-dark-900 lg:flex">
+      {/* Mobile Header */}
+      <div className="lg:hidden sticky top-0 z-40 bg-dark-900/95 backdrop-blur-lg border-b border-dark-800 px-4 py-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="p-2 rounded-lg bg-dark-800 text-white"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+            <div>
+              <h1 className="font-bold text-white">{currentTab?.label}</h1>
+              <p className="text-xs text-dark-400">{currentTab?.description}</p>
+            </div>
+          </div>
+          {activeTab === 'submissions' && stats.pendingSubmissions > 0 && (
+            <Badge variant="danger">{stats.pendingSubmissions}</Badge>
+          )}
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-2 overflow-x-auto pb-2 mb-6 -mx-4 px-4">
-        {tabs.map(tab => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id as AdminTab)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium whitespace-nowrap transition-colors ${
-              activeTab === tab.id
-                ? 'bg-turbo-500 text-white'
-                : 'bg-dark-700 text-dark-300 hover:bg-dark-600'
-            }`}
-          >
-            <tab.icon className="w-4 h-4" />
-            {tab.label}
-            {tab.badge !== undefined && tab.badge > 0 && (
-              <span className={`px-2 py-0.5 text-xs rounded-full ${
-                tab.id === 'submissions' ? 'bg-red-500' : 'bg-dark-600'
-              }`}>
-                {tab.badge}
-              </span>
-            )}
-          </button>
-        ))}
-      </div>
+      {/* Mobile Sidebar Overlay */}
+      {sidebarOpen && (
+        <div
+          className="lg:hidden fixed inset-0 z-50 bg-black/50"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
 
-      {/* Content */}
-      {loading ? (
-        <div className="space-y-4">
-          {[1, 2, 3].map(i => (
-            <Card key={i} className="h-24 animate-pulse bg-dark-700" />
-          ))}
-        </div>
-      ) : (
-        <>
-          {/* Overview Tab */}
-          {activeTab === 'overview' && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                <Card className="text-center">
-                  <Users className="w-8 h-8 text-blue-500 mx-auto mb-2" />
-                  <div className="text-2xl font-bold text-white">{stats.totalUsers}</div>
-                  <div className="text-sm text-dark-400">Graczy</div>
-                </Card>
-
-                <Card className="text-center">
-                  <Target className="w-8 h-8 text-turbo-500 mx-auto mb-2" />
-                  <div className="text-2xl font-bold text-white">
-                    {stats.activeMissions}/{stats.totalMissions}
-                  </div>
-                  <div className="text-sm text-dark-400">Aktywnych misji</div>
-                </Card>
-
-                <Card className="text-center">
-                  <Clock className="w-8 h-8 text-yellow-500 mx-auto mb-2" />
-                  <div className="text-2xl font-bold text-white">{stats.pendingSubmissions}</div>
-                  <div className="text-sm text-dark-400">Do weryfikacji</div>
-                </Card>
-
-                <Card className="text-center">
-                  <BarChart3 className="w-8 h-8 text-green-500 mx-auto mb-2" />
-                  <div className="text-2xl font-bold text-white">{formatNumber(stats.totalXP)}</div>
-                  <div className="text-sm text-dark-400">Łączne XP</div>
-                </Card>
+      {/* Sidebar */}
+      <aside className={`
+        fixed top-0 left-0 z-50 h-full w-72 bg-dark-850 border-r border-dark-800
+        transform transition-transform duration-300 ease-in-out
+        lg:relative lg:translate-x-0 lg:flex-shrink-0
+        ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+      `}>
+        {/* Sidebar Header */}
+        <div className="p-6 border-b border-dark-800">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-turbo-500/20 flex items-center justify-center">
+                <Shield className="w-5 h-5 text-turbo-500" />
               </div>
+              <div>
+                <h1 className="font-bold text-white">Panel Admina</h1>
+                <p className="text-xs text-dark-400">Turbo Challenge</p>
+              </div>
+            </div>
+            <button
+              onClick={() => setSidebarOpen(false)}
+              className="lg:hidden p-2 rounded-lg hover:bg-dark-700 text-dark-400"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
 
-              {stats.pendingSubmissions > 0 && (
-                <Card className="border-yellow-500/30 bg-yellow-500/5">
-                  <div className="flex items-center gap-3">
-                    <Clock className="w-6 h-6 text-yellow-500" />
-                    <div className="flex-1">
-                      <p className="font-medium text-white">Oczekujące zgłoszenia</p>
-                      <p className="text-sm text-dark-400">
-                        {stats.pendingSubmissions} zgłoszeń wymaga weryfikacji
-                      </p>
-                    </div>
-                    <Button size="sm" onClick={() => setActiveTab('submissions')}>
-                      Sprawdź
-                    </Button>
-                  </div>
-                </Card>
-              )}
+        {/* Navigation */}
+        <nav className="p-4 pb-40 space-y-1 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 100px)' }}>
+          {tabs.map(tab => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            const badge = tab.id === 'submissions' ? stats.pendingSubmissions : null;
 
-              {/* Szybkie akcje */}
-              <Card>
-                <h3 className="font-semibold text-white mb-3">Szybkie akcje</h3>
-                <div className="grid grid-cols-2 gap-2">
-                  <Button variant="secondary" size="sm" onClick={openCreateMission}>
-                    <Plus className="w-4 h-4 mr-1" />
-                    Nowa misja
-                  </Button>
-                  <Button variant="secondary" size="sm" onClick={() => setActiveTab('users')}>
-                    <Users className="w-4 h-4 mr-1" />
-                    Zobacz graczy
-                  </Button>
+            return (
+              <button
+                key={tab.id}
+                onClick={() => {
+                  setActiveTab(tab.id);
+                  setSidebarOpen(false);
+                }}
+                className={`
+                  w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-all
+                  ${isActive
+                    ? 'bg-turbo-500 text-white shadow-lg shadow-turbo-500/20'
+                    : 'text-dark-300 hover:bg-dark-700 hover:text-white'
+                  }
+                `}
+              >
+                <Icon className="w-5 h-5 flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium">{tab.label}</p>
+                  <p className={`text-xs truncate ${isActive ? 'text-white/70' : 'text-dark-500'}`}>
+                    {tab.description}
+                  </p>
                 </div>
-              </Card>
+                {badge !== null && badge > 0 && (
+                  <span className={`
+                    px-2 py-0.5 text-xs font-bold rounded-full
+                    ${isActive ? 'bg-white/20 text-white' : 'bg-red-500 text-white'}
+                  `}>
+                    {badge}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </nav>
+
+        {/* Sidebar Footer */}
+        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-dark-800 bg-dark-850">
+          <Link
+            href="/dashboard"
+            className="flex items-center gap-3 px-4 py-2 mb-2 rounded-xl bg-accent-500/10 hover:bg-accent-500/20 text-accent-400 transition-colors"
+          >
+            <ChevronRight className="w-4 h-4 rotate-180" />
+            <span className="text-sm font-medium">Panel gracza</span>
+          </Link>
+          <div className="flex items-center gap-3 px-4 py-2">
+            <div className="w-8 h-8 rounded-full bg-dark-700 flex items-center justify-center text-sm font-bold text-white">
+              {profile.nick?.charAt(0).toUpperCase()}
             </div>
-          )}
-
-          {/* Submissions Tab */}
-          {activeTab === 'submissions' && (
-            <div className="space-y-3">
-              {pendingSubmissions.length === 0 ? (
-                <Card className="text-center py-8">
-                  <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-3" />
-                  <p className="text-white font-medium">Wszystko sprawdzone!</p>
-                  <p className="text-dark-400 text-sm">Brak oczekujących zgłoszeń</p>
-                </Card>
-              ) : (
-                pendingSubmissions.map(submission => (
-                  <Card
-                    key={submission.id}
-                    hover
-                    onClick={() => {
-                      setSelectedSubmission(submission);
-                      setShowSubmissionModal(true);
-                    }}
-                  >
-                    <div className="flex items-center gap-3">
-                      {submission.photo_url && (
-                        <div className="w-16 h-16 rounded-lg bg-dark-700 overflow-hidden flex-shrink-0">
-                          <img
-                            src={submission.photo_url}
-                            alt="Zgłoszenie"
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-white truncate">
-                          {submission.mission?.title}
-                        </p>
-                        <p className="text-sm text-dark-400">
-                          od: <span className="text-accent-400">{submission.user?.nick}</span>
-                        </p>
-                        <p className="text-xs text-dark-500">
-                          {formatDateTime(submission.created_at)}
-                        </p>
-                      </div>
-                      <div className="flex flex-col items-end gap-1">
-                        <Badge variant="warning">Oczekuje</Badge>
-                        <span className="text-xs text-turbo-400">
-                          +{submission.mission?.xp_reward} XP
-                        </span>
-                      </div>
-                    </div>
-                  </Card>
-                ))
-              )}
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-white truncate">{profile.nick}</p>
+              <p className="text-xs text-dark-400">Administrator</p>
             </div>
-          )}
+          </div>
+        </div>
+      </aside>
 
-          {/* Missions Tab */}
-          {activeTab === 'missions' && (
-            <div className="space-y-4">
-              <Button fullWidth onClick={openCreateMission}>
-                <Plus className="w-5 h-5 mr-2" />
-                Dodaj nową misję
-              </Button>
+      {/* Main Content */}
+      <main className="flex-1 min-w-0">
+        {/* Desktop Header */}
+        <div className="hidden lg:block sticky top-0 z-40 bg-dark-900/95 backdrop-blur-lg border-b border-dark-800 px-8 py-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-white">{currentTab?.label}</h1>
+              <p className="text-dark-400">{currentTab?.description}</p>
+            </div>
+            {activeTab === 'submissions' && stats.pendingSubmissions > 0 && (
+              <Badge variant="danger" size="lg">{stats.pendingSubmissions} oczekujacych</Badge>
+            )}
+          </div>
+        </div>
 
-              <div className="space-y-3">
-                {missions.length === 0 ? (
-                  <Card className="text-center py-8">
-                    <Target className="w-12 h-12 text-dark-600 mx-auto mb-3" />
-                    <p className="text-dark-400">Brak misji</p>
-                    <p className="text-sm text-dark-500">Dodaj pierwszą misję powyżej</p>
-                  </Card>
-                ) : (
-                  missions.map(mission => (
-                    <Card key={mission.id}>
-                      {/* Nagłówek misji */}
-                      <div className="flex items-center gap-3 mb-3">
-                        <div className="text-2xl">{missionTypeIcons[mission.type]}</div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-white truncate">{mission.title}</p>
-                          <p className="text-sm text-dark-400">
-                            {missionTypeNames[mission.type]} • {mission.xp_reward} XP
+        {/* Content Area */}
+        <div className="p-4 lg:p-8 overflow-x-hidden">
+          {loading && activeTab === 'overview' ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {[1, 2, 3, 4].map(i => (
+                <Card key={i} className="h-32 animate-pulse bg-dark-700" />
+              ))}
+            </div>
+          ) : (
+            <>
+              {/* Overview Tab */}
+              {activeTab === 'overview' && (
+                <div className="space-y-6">
+                  {/* Stats Grid */}
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                    <Card className="text-center p-6">
+                      <Users className="w-10 h-10 text-blue-500 mx-auto mb-3" />
+                      <div className="text-3xl font-bold text-white">{stats.totalUsers}</div>
+                      <div className="text-dark-400">Graczy</div>
+                    </Card>
+
+                    <Card className="text-center p-6">
+                      <Target className="w-10 h-10 text-turbo-500 mx-auto mb-3" />
+                      <div className="text-3xl font-bold text-white">
+                        {stats.activeMissions}/{stats.totalMissions}
+                      </div>
+                      <div className="text-dark-400">Aktywnych misji</div>
+                    </Card>
+
+                    <Card className="text-center p-6">
+                      <Clock className="w-10 h-10 text-yellow-500 mx-auto mb-3" />
+                      <div className="text-3xl font-bold text-white">{stats.pendingSubmissions}</div>
+                      <div className="text-dark-400">Do weryfikacji</div>
+                    </Card>
+
+                    <Card className="text-center p-6">
+                      <BarChart3 className="w-10 h-10 text-green-500 mx-auto mb-3" />
+                      <div className="text-3xl font-bold text-white">{formatNumber(stats.totalXP)}</div>
+                      <div className="text-dark-400">Laczne XP</div>
+                    </Card>
+                  </div>
+
+                  {stats.pendingSubmissions > 0 && (
+                    <Card className="border-yellow-500/30 bg-yellow-500/5 p-6">
+                      <div className="flex items-center gap-4">
+                        <Clock className="w-8 h-8 text-yellow-500" />
+                        <div className="flex-1">
+                          <p className="font-medium text-white text-lg">Oczekujace zgloszenia</p>
+                          <p className="text-dark-400">
+                            {stats.pendingSubmissions} zgloszen wymaga weryfikacji
                           </p>
                         </div>
-                        <Badge variant={mission.status === 'active' ? 'success' : 'default'}>
-                          {mission.status === 'active' ? 'Aktywna' : 'Nieaktywna'}
-                        </Badge>
-                      </div>
-
-                      {/* Opis */}
-                      <p className="text-sm text-dark-300 mb-3 line-clamp-2">{mission.description}</p>
-
-                      {mission.location_name && (
-                        <p className="text-xs text-dark-400 mb-2">
-                          📍 {mission.location_name}
-                        </p>
-                      )}
-
-                      {/* Przyciski akcji - zawsze widoczne */}
-                      <div className="flex flex-wrap gap-2 pt-3 border-t border-dark-700">
-                        <Button
-                          size="sm"
-                          variant="secondary"
-                          onClick={() => openEditMission(mission)}
-                        >
-                          <Edit2 className="w-4 h-4 mr-1" />
-                          Edytuj
-                        </Button>
-
-                        <Button
-                          size="sm"
-                          variant="secondary"
-                          onClick={() => handleToggleMissionStatus(mission)}
-                        >
-                          {mission.status === 'active' ? (
-                            <>
-                              <ToggleRight className="w-4 h-4 mr-1" />
-                              Wyłącz
-                            </>
-                          ) : (
-                            <>
-                              <ToggleLeft className="w-4 h-4 mr-1" />
-                              Włącz
-                            </>
-                          )}
-                        </Button>
-
-                        <Button
-                          size="sm"
-                          variant="danger"
-                          onClick={() => {
-                            setMissionToDelete(mission);
-                            setShowDeleteDialog(true);
-                          }}
-                        >
-                          <Trash2 className="w-4 h-4 mr-1" />
-                          Usuń
+                        <Button onClick={() => setActiveTab('submissions')}>
+                          Sprawdz teraz
                         </Button>
                       </div>
                     </Card>
-                  ))
-                )}
-              </div>
-            </div>
-          )}
+                  )}
 
-          {/* Users Tab */}
-          {activeTab === 'users' && (
-            <div className="space-y-3">
-              {users.map((user, index) => (
-                <Card key={user.id} hover onClick={() => openUserDetails(user)}>
-                  <div className="flex items-center gap-3">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
-                      index === 0 ? 'bg-yellow-500 text-black' :
-                      index === 1 ? 'bg-gray-400 text-black' :
-                      index === 2 ? 'bg-amber-700 text-white' :
-                      'bg-dark-700 text-dark-300'
-                    }`}>
-                      {index + 1}
+                  {/* Quick Actions */}
+                  <Card className="p-6">
+                    <h3 className="font-semibold text-white text-lg mb-4">Szybkie akcje</h3>
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                      <Button variant="secondary" onClick={openCreateMission}>
+                        <Plus className="w-4 h-4 mr-2" />
+                        Nowa misja
+                      </Button>
+                      <Button variant="secondary" onClick={() => setActiveTab('submissions')}>
+                        <Clock className="w-4 h-4 mr-2" />
+                        Zgloszenia
+                      </Button>
+                      <Button variant="secondary" onClick={() => setActiveTab('missions')}>
+                        <Target className="w-4 h-4 mr-2" />
+                        Misje
+                      </Button>
+                      <Button variant="secondary" onClick={() => setActiveTab('users')}>
+                        <Users className="w-4 h-4 mr-2" />
+                        Gracze
+                      </Button>
                     </div>
-                    <div className="w-10 h-10 rounded-full bg-dark-700 flex items-center justify-center text-white font-bold overflow-hidden">
-                      {user.avatar_url ? (
-                        <img src={user.avatar_url} alt={user.nick} className="w-full h-full object-cover" />
-                      ) : (
-                        user.nick.charAt(0).toUpperCase()
-                      )}
+                  </Card>
+                </div>
+              )}
+
+              {/* Submissions Tab */}
+              {activeTab === 'submissions' && (
+                <div className="space-y-4">
+                  {pendingSubmissions.length === 0 ? (
+                    <Card className="text-center py-12">
+                      <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
+                      <p className="text-white font-medium text-lg">Wszystko sprawdzone!</p>
+                      <p className="text-dark-400">Brak oczekujacych zgloszen</p>
+                    </Card>
+                  ) : (
+                    pendingSubmissions.map(submission => (
+                      <Card
+                        key={submission.id}
+                        hover
+                        onClick={() => {
+                          setSelectedSubmission(submission);
+                          setShowSubmissionModal(true);
+                        }}
+                        className="p-4"
+                      >
+                        <div className="flex items-center gap-4">
+                          {submission.photo_url && (
+                            <div className="w-20 h-20 rounded-lg bg-dark-700 overflow-hidden flex-shrink-0">
+                              <img
+                                src={submission.photo_url}
+                                alt="Zgloszenie"
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-white text-lg truncate">
+                              {submission.mission?.title}
+                            </p>
+                            <p className="text-dark-400">
+                              od: <span className="text-accent-400">{submission.user?.nick}</span>
+                            </p>
+                            <p className="text-sm text-dark-500">
+                              {formatDateTime(submission.created_at)}
+                            </p>
+                          </div>
+                          <div className="flex flex-col items-end gap-2">
+                            <Badge variant="warning">Oczekuje</Badge>
+                            <span className="text-turbo-400 font-medium">
+                              +{submission.mission?.xp_reward} XP
+                            </span>
+                          </div>
+                        </div>
+                      </Card>
+                    ))
+                  )}
+                </div>
+              )}
+
+              {/* Missions Tab */}
+              {activeTab === 'missions' && (
+                <div className="space-y-4">
+                  <Button onClick={openCreateMission}>
+                    <Plus className="w-5 h-5 mr-2" />
+                    Dodaj nowa misje
+                  </Button>
+
+                  {missions.length === 0 ? (
+                    <Card className="text-center py-12">
+                      <Target className="w-16 h-16 text-dark-600 mx-auto mb-4" />
+                      <p className="text-dark-400">Brak misji</p>
+                      <p className="text-sm text-dark-500">Dodaj pierwsza misje powyzej</p>
+                    </Card>
+                  ) : (
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                      {missions.map(mission => (
+                        <Card key={mission.id} className="p-4">
+                          <div className="flex items-center gap-3 mb-3">
+                            <div className="text-2xl">{missionTypeIcons[mission.type]}</div>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-white truncate">{mission.title}</p>
+                              <p className="text-sm text-dark-400">
+                                {missionTypeNames[mission.type]} • {mission.xp_reward} XP
+                              </p>
+                            </div>
+                            <Badge variant={mission.status === 'active' ? 'success' : 'default'}>
+                              {mission.status === 'active' ? 'Aktywna' : 'Nieaktywna'}
+                            </Badge>
+                          </div>
+
+                          <p className="text-sm text-dark-300 mb-4 line-clamp-2">{mission.description}</p>
+
+                          {mission.location_name && (
+                            <p className="text-xs text-dark-400 mb-3">
+                              📍 {mission.location_name}
+                            </p>
+                          )}
+
+                          <div className="flex flex-wrap gap-2">
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              onClick={() => openEditMission(mission)}
+                            >
+                              <Edit2 className="w-4 h-4 mr-1" />
+                              Edytuj
+                            </Button>
+
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              onClick={() => handleToggleMissionStatus(mission)}
+                            >
+                              {mission.status === 'active' ? (
+                                <>
+                                  <ToggleRight className="w-4 h-4 mr-1" />
+                                  Wylacz
+                                </>
+                              ) : (
+                                <>
+                                  <ToggleLeft className="w-4 h-4 mr-1" />
+                                  Wlacz
+                                </>
+                              )}
+                            </Button>
+
+                            <Button
+                              size="sm"
+                              variant="danger"
+                              onClick={() => {
+                                setMissionToDelete(mission);
+                                setShowDeleteDialog(true);
+                              }}
+                            >
+                              <Trash2 className="w-4 h-4 mr-1" />
+                              Usun
+                            </Button>
+                          </div>
+                        </Card>
+                      ))}
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className="font-medium text-white truncate">{user.nick}</p>
-                        {user.is_admin && (
-                          <Badge variant="turbo" size="sm">Admin</Badge>
-                        )}
+                  )}
+                </div>
+              )}
+
+              {/* Users Tab */}
+              {activeTab === 'users' && (
+                <div className="space-y-3">
+                  {users.map((user, index) => (
+                    <Card key={user.id} hover onClick={() => openUserDetails(user)} className="p-4">
+                      <div className="flex items-center gap-4">
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold ${
+                          index === 0 ? 'bg-yellow-500 text-black' :
+                          index === 1 ? 'bg-gray-400 text-black' :
+                          index === 2 ? 'bg-amber-700 text-white' :
+                          'bg-dark-700 text-dark-300'
+                        }`}>
+                          {index + 1}
+                        </div>
+                        <div className="w-12 h-12 rounded-full bg-dark-700 flex items-center justify-center text-white font-bold overflow-hidden">
+                          {user.avatar_url ? (
+                            <img src={user.avatar_url} alt={user.nick} className="w-full h-full object-cover" />
+                          ) : (
+                            user.nick.charAt(0).toUpperCase()
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <p className="font-medium text-white truncate">{user.nick}</p>
+                            {user.is_admin && (
+                              <Badge variant="turbo" size="sm">Admin</Badge>
+                            )}
+                          </div>
+                          <p className="text-sm text-dark-400 truncate">{user.email}</p>
+                        </div>
+                        <div className="text-right mr-3">
+                          <div className="font-bold text-turbo-400 text-lg">{formatNumber(user.total_xp)}</div>
+                          <div className="text-xs text-dark-500">XP</div>
+                        </div>
+                        <Eye className="w-5 h-5 text-dark-400" />
                       </div>
-                      <p className="text-sm text-dark-400 truncate">{user.email}</p>
-                    </div>
-                    <div className="text-right mr-2">
-                      <div className="font-bold text-turbo-400">{formatNumber(user.total_xp)}</div>
-                      <div className="text-xs text-dark-500">XP</div>
-                    </div>
-                    <Eye className="w-5 h-5 text-dark-400" />
-                  </div>
-                </Card>
-              ))}
-            </div>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </>
           )}
-        </>
-      )}
+        </div>
+      </main>
 
-      {/* Mission Modal (Create/Edit) */}
+      {/* Mission Modal */}
       <Modal
         isOpen={showMissionModal}
         onClose={() => {
           setShowMissionModal(false);
           resetMissionForm();
         }}
-        title={isEditing ? 'Edytuj misję' : 'Nowa misja'}
+        title={isEditing ? 'Edytuj misje' : 'Nowa misja'}
         size="lg"
       >
         <div className="space-y-4">
           <Input
-            label="Tytuł misji *"
+            label="Tytul misji *"
             value={missionForm.title}
             onChange={e => setMissionForm(prev => ({ ...prev, title: e.target.value }))}
-            placeholder="np. Selfie z maskotką"
+            placeholder="np. Selfie z maskotka"
           />
 
           <div>
@@ -842,7 +928,7 @@ export default function AdminPage() {
             <textarea
               value={missionForm.description}
               onChange={e => setMissionForm(prev => ({ ...prev, description: e.target.value }))}
-              placeholder="Opisz co użytkownik ma zrobić..."
+              placeholder="Opisz co uzytkownik ma zrobic..."
               className="w-full bg-dark-800 border border-dark-600 rounded-xl px-4 py-2.5 text-white placeholder-dark-400 focus:outline-none focus:ring-2 focus:ring-turbo-500 min-h-[100px] resize-none"
             />
           </div>
@@ -855,11 +941,11 @@ export default function AdminPage() {
                 onChange={e => setMissionForm(prev => ({ ...prev, type: e.target.value as Mission['type'] }))}
                 className="w-full bg-dark-800 border border-dark-600 rounded-xl px-4 py-2.5 text-white"
               >
-                <option value="photo">📷 Zdjęcie</option>
+                <option value="photo">📷 Zdjecie</option>
                 <option value="qr_code">📱 Kod QR</option>
                 <option value="quiz">❓ Quiz</option>
                 <option value="gps">📍 Lokalizacja GPS</option>
-                <option value="manual">✋ Ręczna weryfikacja</option>
+                <option value="manual">✋ Reczna weryfikacja</option>
               </select>
             </div>
 
@@ -880,8 +966,8 @@ export default function AdminPage() {
                 onChange={e => setMissionForm(prev => ({ ...prev, status: e.target.value as MissionStatus }))}
                 className="w-full bg-dark-800 border border-dark-600 rounded-xl px-4 py-2.5 text-white"
               >
-                <option value="active">✅ Aktywna</option>
-                <option value="inactive">⏸️ Nieaktywna</option>
+                <option value="active">Aktywna</option>
+                <option value="inactive">Nieaktywna</option>
               </select>
             </div>
 
@@ -889,17 +975,17 @@ export default function AdminPage() {
               label="Lokalizacja"
               value={missionForm.location_name}
               onChange={e => setMissionForm(prev => ({ ...prev, location_name: e.target.value }))}
-              placeholder="np. Hala główna"
+              placeholder="np. Hala glowna"
             />
           </div>
 
           {missionForm.type === 'qr_code' && (
             <Input
-              label="Wartość kodu QR"
+              label="Wartosc kodu QR"
               value={missionForm.qr_code_value}
               onChange={e => setMissionForm(prev => ({ ...prev, qr_code_value: e.target.value }))}
               placeholder="Zostaw puste dla autogeneracji"
-              helperText="Unikalny kod który będzie zakodowany w QR"
+              helperText="Unikalny kod ktory bedzie zakodowany w QR"
             />
           )}
 
@@ -909,7 +995,7 @@ export default function AdminPage() {
               <div className="flex items-center justify-between">
                 <h4 className="font-medium text-white flex items-center gap-2">
                   <HelpCircle className="w-5 h-5 text-turbo-500" />
-                  Edytor Quizu
+                  Edytor Quizu ({missionForm.quiz_questions.length} pytan)
                 </h4>
                 <Button size="sm" onClick={addQuestion}>
                   <Plus className="w-4 h-4 mr-1" />
@@ -917,54 +1003,10 @@ export default function AdminPage() {
                 </Button>
               </div>
 
-              {/* Tryb quizu */}
-              <div>
-                <label className="block text-sm font-medium text-dark-200 mb-1.5">
-                  Tryb quizu
-                </label>
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setMissionForm(prev => ({ ...prev, quiz_mode: 'classic' }))}
-                    className={`p-3 rounded-xl border-2 text-left transition-all ${
-                      missionForm.quiz_mode === 'classic'
-                        ? 'border-turbo-500 bg-turbo-500/10'
-                        : 'border-dark-600 hover:border-dark-500'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2 mb-1">
-                      <Clock className="w-4 h-4 text-turbo-400" />
-                      <span className="font-medium text-white">Classic</span>
-                    </div>
-                    <p className="text-xs text-dark-400">
-                      Quiz z limitem czasu, odlicza w dół
-                    </p>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setMissionForm(prev => ({ ...prev, quiz_mode: 'speedrun' }))}
-                    className={`p-3 rounded-xl border-2 text-left transition-all ${
-                      missionForm.quiz_mode === 'speedrun'
-                        ? 'border-turbo-500 bg-turbo-500/10'
-                        : 'border-dark-600 hover:border-dark-500'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2 mb-1">
-                      <Award className="w-4 h-4 text-yellow-400" />
-                      <span className="font-medium text-white">Speedrun</span>
-                    </div>
-                    <p className="text-xs text-dark-400">
-                      Mierzy czas ukończenia, ranking czasowy
-                    </p>
-                  </button>
-                </div>
-              </div>
-
-              {/* Ustawienia quizu */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-dark-200 mb-1.5">
-                    Próg zaliczenia (%)
+                    Prog zaliczenia (%)
                   </label>
                   <input
                     type="number"
@@ -978,61 +1020,54 @@ export default function AdminPage() {
                     className="w-full bg-dark-800 border border-dark-600 rounded-xl px-4 py-2.5 text-white"
                   />
                 </div>
-                {missionForm.quiz_mode === 'classic' && (
-                  <div>
-                    <label className="block text-sm font-medium text-dark-200 mb-1.5">
-                      Limit czasu (sekundy)
-                    </label>
-                    <input
-                      type="number"
-                      value={missionForm.quiz_time_limit}
-                      onChange={e => setMissionForm(prev => ({
-                        ...prev,
-                        quiz_time_limit: Math.max(0, parseInt(e.target.value) || 0)
-                      }))}
-                      min={0}
-                      placeholder="0 = bez limitu"
-                      className="w-full bg-dark-800 border border-dark-600 rounded-xl px-4 py-2.5 text-white"
-                    />
-                    <p className="text-xs text-dark-400 mt-1">0 = bez limitu czasowego</p>
-                  </div>
-                )}
-                {missionForm.quiz_mode === 'speedrun' && (
-                  <div className="flex items-center">
-                    <div className="p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-xl text-sm">
-                      <p className="text-yellow-400 font-medium">Tryb Speedrun</p>
-                      <p className="text-xs text-dark-400 mt-1">
-                        Czas będzie mierzony automatycznie. Tylko wyniki z 100% poprawnych odpowiedzi trafią do rankingu.
-                      </p>
-                    </div>
-                  </div>
-                )}
+                <div>
+                  <label className="block text-sm font-medium text-dark-200 mb-1.5">Tryb</label>
+                  <select
+                    value={missionForm.quiz_mode}
+                    onChange={e => setMissionForm(prev => ({ ...prev, quiz_mode: e.target.value as QuizMode }))}
+                    className="w-full bg-dark-800 border border-dark-600 rounded-xl px-4 py-2.5 text-white"
+                  >
+                    <option value="classic">Classic (z limitem czasu)</option>
+                    <option value="speedrun">Speedrun (mierzy czas)</option>
+                  </select>
+                </div>
               </div>
 
-              {/* Lista pytań */}
-              {missionForm.quiz_questions.length === 0 ? (
-                <Card variant="outlined" className="text-center py-6">
-                  <HelpCircle className="w-10 h-10 text-dark-500 mx-auto mb-2" />
-                  <p className="text-dark-400">Brak pytań</p>
-                  <p className="text-sm text-dark-500">Kliknij "Dodaj pytanie" aby rozpocząć</p>
-                </Card>
-              ) : (
-                <div className="space-y-4 max-h-96 overflow-y-auto">
+              {missionForm.quiz_mode === 'classic' && (
+                <div>
+                  <label className="block text-sm font-medium text-dark-200 mb-1.5">
+                    Limit czasu (sekundy)
+                  </label>
+                  <input
+                    type="number"
+                    value={missionForm.quiz_time_limit}
+                    onChange={e => setMissionForm(prev => ({
+                      ...prev,
+                      quiz_time_limit: Math.max(0, parseInt(e.target.value) || 0)
+                    }))}
+                    min={0}
+                    placeholder="0 = bez limitu"
+                    className="w-full bg-dark-800 border border-dark-600 rounded-xl px-4 py-2.5 text-white"
+                  />
+                  <p className="text-xs text-dark-400 mt-1">0 = bez limitu czasowego</p>
+                </div>
+              )}
+
+              {missionForm.quiz_questions.length > 0 && (
+                <div className="space-y-3 max-h-64 overflow-y-auto">
                   {missionForm.quiz_questions.map((question, qIndex) => (
-                    <Card key={question.id} variant="outlined" className="relative">
-                      <div className="flex items-start gap-2 mb-3">
+                    <Card key={question.id} variant="outlined" className="p-3">
+                      <div className="flex items-start gap-2 mb-2">
                         <span className="bg-turbo-500 text-white text-xs font-bold px-2 py-1 rounded">
                           {qIndex + 1}
                         </span>
-                        <div className="flex-1">
-                          <input
-                            type="text"
-                            value={question.question}
-                            onChange={e => updateQuestion(question.id, 'question', e.target.value)}
-                            placeholder="Treść pytania..."
-                            className="w-full bg-dark-700 border border-dark-600 rounded-lg px-3 py-2 text-white text-sm"
-                          />
-                        </div>
+                        <input
+                          type="text"
+                          value={question.question}
+                          onChange={e => updateQuestion(question.id, 'question', e.target.value)}
+                          placeholder="Tresc pytania..."
+                          className="flex-1 bg-dark-700 border border-dark-600 rounded-lg px-3 py-2 text-white text-sm"
+                        />
                         <Button
                           size="sm"
                           variant="danger"
@@ -1041,10 +1076,7 @@ export default function AdminPage() {
                           <Trash2 className="w-4 h-4" />
                         </Button>
                       </div>
-
-                      {/* Odpowiedzi */}
-                      <div className="space-y-2 ml-8">
-                        <p className="text-xs text-dark-400 mb-1">Odpowiedzi (kliknij radio aby zaznaczyć poprawną):</p>
+                      <div className="space-y-1 ml-8">
                         {question.answers.map((answer, aIndex) => (
                           <div key={answer.id} className="flex items-center gap-2">
                             <input
@@ -1052,22 +1084,19 @@ export default function AdminPage() {
                               name={`correct_${question.id}`}
                               checked={answer.is_correct}
                               onChange={() => setCorrectAnswer(question.id, answer.id)}
-                              className="w-4 h-4 text-turbo-500 bg-dark-700 border-dark-500 focus:ring-turbo-500"
+                              className="w-4 h-4 text-turbo-500"
                             />
                             <input
                               type="text"
                               value={answer.text}
                               onChange={e => updateAnswer(question.id, answer.id, 'text', e.target.value)}
-                              placeholder={`Odpowiedź ${aIndex + 1}...`}
+                              placeholder={`Odpowiedz ${aIndex + 1}...`}
                               className={`flex-1 bg-dark-700 border rounded-lg px-3 py-1.5 text-sm ${
-                                answer.is_correct
-                                  ? 'border-green-500 text-green-400'
-                                  : 'border-dark-600 text-white'
+                                answer.is_correct ? 'border-green-500 text-green-400' : 'border-dark-600 text-white'
                               }`}
                             />
                             {question.answers.length > 2 && (
                               <button
-                                type="button"
                                 onClick={() => removeAnswer(question.id, answer.id)}
                                 className="text-dark-400 hover:text-red-400"
                               >
@@ -1078,26 +1107,16 @@ export default function AdminPage() {
                         ))}
                         {question.answers.length < 6 && (
                           <button
-                            type="button"
                             onClick={() => addAnswer(question.id)}
                             className="text-sm text-turbo-400 hover:text-turbo-300 flex items-center gap-1 mt-1"
                           >
                             <Plus className="w-3 h-3" />
-                            Dodaj odpowiedź
+                            Dodaj odpowiedz
                           </button>
                         )}
                       </div>
                     </Card>
                   ))}
-                </div>
-              )}
-
-              {missionForm.quiz_questions.length > 0 && (
-                <div className="text-sm text-dark-400 bg-dark-800 rounded-lg p-3">
-                  <strong>Podsumowanie:</strong> {missionForm.quiz_questions.length} pytań,
-                  tryb: {missionForm.quiz_mode === 'speedrun' ? 'Speedrun' : 'Classic'},
-                  próg zaliczenia: {missionForm.quiz_passing_score}%
-                  {missionForm.quiz_mode === 'classic' && missionForm.quiz_time_limit > 0 && `, limit: ${missionForm.quiz_time_limit}s`}
                 </div>
               )}
             </div>
@@ -1115,7 +1134,7 @@ export default function AdminPage() {
               Anuluj
             </Button>
             <Button onClick={handleSaveMission} className="flex-1">
-              {isEditing ? 'Zapisz zmiany' : 'Utwórz misję'}
+              {isEditing ? 'Zapisz zmiany' : 'Utworz misje'}
             </Button>
           </div>
         </div>
@@ -1128,7 +1147,7 @@ export default function AdminPage() {
           setShowSubmissionModal(false);
           setSelectedSubmission(null);
         }}
-        title="Weryfikacja zgłoszenia"
+        title="Weryfikacja zgloszenia"
         size="lg"
       >
         {selectedSubmission && (
@@ -1156,10 +1175,10 @@ export default function AdminPage() {
 
             {selectedSubmission.photo_url && (
               <div>
-                <p className="text-sm text-dark-400 mb-2">Przesłane zdjęcie:</p>
+                <p className="text-sm text-dark-400 mb-2">Przeslane zdjecie:</p>
                 <img
                   src={selectedSubmission.photo_url}
-                  alt="Zgłoszenie"
+                  alt="Zgloszenie"
                   className="w-full rounded-xl max-h-80 object-contain bg-dark-800"
                 />
               </div>
@@ -1174,7 +1193,7 @@ export default function AdminPage() {
                   </div>
                   {selectedSubmission.quiz_time_ms && (
                     <div className="text-right">
-                      <p className="text-sm text-dark-400">Czas (Speedrun)</p>
+                      <p className="text-sm text-dark-400">Czas</p>
                       <p className="text-2xl font-bold text-turbo-400">
                         {(selectedSubmission.quiz_time_ms / 1000).toFixed(2)}s
                       </p>
@@ -1191,7 +1210,7 @@ export default function AdminPage() {
                 className="flex-1"
               >
                 <XCircle className="w-5 h-5 mr-2" />
-                Odrzuć
+                Odrzuc
               </Button>
               <Button
                 variant="success"
@@ -1199,7 +1218,7 @@ export default function AdminPage() {
                 className="flex-1"
               >
                 <CheckCircle className="w-5 h-5 mr-2" />
-                Zatwierdź
+                Zatwierdz
               </Button>
             </div>
           </div>
@@ -1214,9 +1233,9 @@ export default function AdminPage() {
           setMissionToDelete(null);
         }}
         onConfirm={handleDeleteMission}
-        title="Usuń misję"
-        message={`Czy na pewno chcesz usunąć misję "${missionToDelete?.title}"? Ta operacja jest nieodwracalna.`}
-        confirmText="Usuń"
+        title="Usun misje"
+        message={`Czy na pewno chcesz usunac misje "${missionToDelete?.title}"? Ta operacja jest nieodwracalna.`}
+        confirmText="Usun"
         cancelText="Anuluj"
         variant="danger"
       />
@@ -1234,7 +1253,6 @@ export default function AdminPage() {
       >
         {selectedUser && (
           <div className="space-y-4">
-            {/* Dane użytkownika */}
             <Card variant="outlined">
               <div className="flex items-center gap-4 mb-4">
                 <div className="w-16 h-16 rounded-full bg-dark-700 flex items-center justify-center text-2xl font-bold text-white overflow-hidden">
@@ -1268,14 +1286,13 @@ export default function AdminPage() {
                 )}
                 <div className="flex items-center gap-2 text-dark-300">
                   <Calendar className="w-4 h-4" />
-                  <span>Dołączył: {formatDateTime(selectedUser.created_at)}</span>
+                  <span>Dolaczyl: {formatDateTime(selectedUser.created_at)}</span>
                 </div>
               </div>
             </Card>
 
-            {/* Statystyki misji */}
             {loadingUserDetails ? (
-              <div className="text-center py-4 text-dark-400">Ładowanie...</div>
+              <div className="text-center py-4 text-dark-400">Ladowanie...</div>
             ) : (
               <>
                 <div className="grid grid-cols-4 gap-2">
@@ -1297,15 +1314,14 @@ export default function AdminPage() {
                   </Card>
                 </div>
 
-                {/* Lista zgłoszeń */}
                 <div>
                   <h4 className="text-sm font-medium text-dark-300 mb-2">
-                    Historia zgłoszeń ({userSubmissions.length})
+                    Historia zgloszen ({userSubmissions.length})
                   </h4>
 
                   {userSubmissions.length === 0 ? (
                     <Card variant="outlined" className="text-center py-4">
-                      <p className="text-dark-400">Brak zgłoszeń</p>
+                      <p className="text-dark-400">Brak zgloszen</p>
                     </Card>
                   ) : (
                     <div className="space-y-2 max-h-60 overflow-y-auto">
@@ -1313,7 +1329,7 @@ export default function AdminPage() {
                         <Card key={submission.id} variant="outlined" padding="sm">
                           <div className="flex items-center gap-3">
                             <div className="text-xl">
-                              {submission.mission ? missionTypeIcons[submission.mission.type] : '❓'}
+                              {submission.mission ? missionTypeIcons[submission.mission.type] : '?'}
                             </div>
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-medium text-white truncate">
@@ -1338,15 +1354,6 @@ export default function AdminPage() {
                               )}
                             </div>
                           </div>
-                          {submission.photo_url && (
-                            <div className="mt-2">
-                              <img
-                                src={submission.photo_url}
-                                alt="Zdjęcie"
-                                className="w-full h-32 object-cover rounded-lg"
-                              />
-                            </div>
-                          )}
                         </Card>
                       ))}
                     </div>

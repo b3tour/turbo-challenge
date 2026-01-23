@@ -33,23 +33,19 @@ export default function LeaderboardPage() {
 
   const { missions } = useMissions({ activeOnly: false });
 
-  const [userRank, setUserRank] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<LeaderboardTab>('xp');
   const [speedrunData, setSpeedrunData] = useState<Record<string, SpeedrunEntry[]>>({});
   const [expandedQuiz, setExpandedQuiz] = useState<string | null>(null);
   const [loadingSpeedrun, setLoadingSpeedrun] = useState(false);
   const stats = getStats();
 
+  // Synchronicznie pobierz ranking użytkownika z cache
+  const userRank = profile?.id ? getUserRank(profile.id) : null;
+
   // Filtruj quizy speedrun
   const speedrunQuizzes = missions.filter(
     m => m.type === 'quiz' && m.quiz_data?.mode === 'speedrun'
   );
-
-  useEffect(() => {
-    if (profile?.id) {
-      getUserRank(profile.id).then(setUserRank);
-    }
-  }, [profile?.id, getUserRank]);
 
   // Załaduj dane speedrun dla rozwiniętego quizu
   useEffect(() => {
