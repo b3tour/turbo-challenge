@@ -183,3 +183,16 @@ export interface GeoPosition {
   accuracy: number;
   timestamp: number;
 }
+
+// Nagrody
+export interface Reward {
+  id: string;
+  place: number; // 1, 2, 3, etc.
+  title: string;
+  description: string;
+  image_url?: string | null;
+  sponsor?: string | null;
+  value?: string | null; // np. "500 zł", "Voucher"
+  is_active: boolean;
+  created_at: string;
+}

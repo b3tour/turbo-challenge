@@ -7,7 +7,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 import { Card, Button, Badge, Input, Modal, AlertDialog } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
-import { Mission, MissionStatus, Submission, User, QuizData, QuizQuestion, QuizMode } from '@/types';
+import { Mission, MissionStatus, Submission, User, QuizData, QuizQuestion, QuizMode, Reward } from '@/types';
 import {
   formatNumber,
   formatDateTime,
@@ -44,17 +44,20 @@ import {
   Undo2,
   Trophy,
   Save,
+  Gift,
+  Upload,
 } from 'lucide-react';
 import { LEVELS } from '@/lib/utils';
 import { Level } from '@/types';
 
-type AdminTab = 'overview' | 'submissions' | 'missions' | 'users' | 'levels';
+type AdminTab = 'overview' | 'submissions' | 'missions' | 'users' | 'levels' | 'rewards';
 
 const tabs: { id: AdminTab; label: string; icon: React.ElementType; description: string }[] = [
   { id: 'overview', label: 'Przeglad', icon: BarChart3, description: 'Statystyki i podsumowanie' },
   { id: 'submissions', label: 'Zgloszenia', icon: Clock, description: 'Weryfikuj zgloszenia' },
   { id: 'missions', label: 'Misje', icon: Target, description: 'Zarzadzaj misjami' },
   { id: 'users', label: 'Gracze', icon: Users, description: 'Lista wszystkich graczy' },
+  { id: 'rewards', label: 'Nagrody', icon: Gift, description: 'Nagrody dla TOP graczy' },
   { id: 'levels', label: 'Poziomy', icon: Trophy, description: 'Progi XP i nazwy poziomow' },
 ];
 
@@ -121,6 +124,21 @@ export default function AdminPage() {
 
   // Common emojis for levels
   const commonEmojis = ['🌱', '🏎️', '⚡', '🚀', '👹', '🏆', '💎', '👑', '🌟', '🔥', '💪', '🎯', '🎮', '🏅', '⭐', '💫', '🎖️', '🏁', '🎪', '🎭'];
+
+  // Rewards management
+  const [rewards, setRewards] = useState<Reward[]>([]);
+  const [rewardsLoaded, setRewardsLoaded] = useState(false);
+  const [savingRewards, setSavingRewards] = useState(false);
+  const [showRewardModal, setShowRewardModal] = useState(false);
+  const [editingReward, setEditingReward] = useState<Reward | null>(null);
+  const [rewardForm, setRewardForm] = useState({
+    place: 1,
+    title: '',
+    description: '',
+    value: '',
+    sponsor: '',
+    image_url: '',
+  });
 
   const [missionForm, setMissionForm] = useState({
     title: '',
@@ -715,6 +733,137 @@ export default function AdminPage() {
     }
   };
 
+  // === REWARDS MANAGEMENT ===
+  useEffect(() => {
+    if (activeTab === 'rewards' && !rewardsLoaded) {
+      loadRewards();
+    }
+  }, [activeTab, rewardsLoaded]);
+
+  const loadRewards = async () => {
+    const { data, error } = await supabase
+      .from('rewards')
+      .select('*')
+      .order('place', { ascending: true });
+
+    if (!error && data) {
+      setRewards(data as Reward[]);
+    } else {
+      // Domyślne nagrody
+      setRewards([
+        { id: '1', place: 1, title: 'Nagroda za 1. miejsce', description: '', is_active: true, created_at: new Date().toISOString() },
+        { id: '2', place: 2, title: 'Nagroda za 2. miejsce', description: '', is_active: true, created_at: new Date().toISOString() },
+        { id: '3', place: 3, title: 'Nagroda za 3. miejsce', description: '', is_active: true, created_at: new Date().toISOString() },
+      ]);
+    }
+    setRewardsLoaded(true);
+  };
+
+  const openRewardModal = (reward?: Reward) => {
+    if (reward) {
+      setEditingReward(reward);
+      setRewardForm({
+        place: reward.place,
+        title: reward.title,
+        description: reward.description,
+        value: reward.value || '',
+        sponsor: reward.sponsor || '',
+        image_url: reward.image_url || '',
+      });
+    } else {
+      setEditingReward(null);
+      const nextPlace = rewards.length > 0 ? Math.max(...rewards.map(r => r.place)) + 1 : 1;
+      setRewardForm({
+        place: nextPlace,
+        title: '',
+        description: '',
+        value: '',
+        sponsor: '',
+        image_url: '',
+      });
+    }
+    setShowRewardModal(true);
+  };
+
+  const handleSaveReward = async () => {
+    if (!rewardForm.title.trim()) {
+      showError('Błąd', 'Podaj tytuł nagrody');
+      return;
+    }
+
+    setSavingRewards(true);
+
+    const rewardData = {
+      place: rewardForm.place,
+      title: rewardForm.title.trim(),
+      description: rewardForm.description.trim(),
+      value: rewardForm.value.trim() || null,
+      sponsor: rewardForm.sponsor.trim() || null,
+      image_url: rewardForm.image_url.trim() || null,
+      is_active: true,
+    };
+
+    if (editingReward) {
+      // Update
+      const { error } = await supabase
+        .from('rewards')
+        .update(rewardData)
+        .eq('id', editingReward.id);
+
+      if (error) {
+        // Jeśli tabela nie istnieje, utwórz ją
+        if (error.code === '42P01') {
+          showError('Tabela nie istnieje', 'Utwórz tabelę "rewards" w Supabase');
+        } else {
+          showError('Błąd', error.message);
+        }
+        setSavingRewards(false);
+        return;
+      }
+
+      setRewards(prev => prev.map(r => r.id === editingReward.id ? { ...r, ...rewardData } : r));
+      success('Zapisano!', 'Nagroda została zaktualizowana');
+    } else {
+      // Insert
+      const { data, error } = await supabase
+        .from('rewards')
+        .insert(rewardData)
+        .select()
+        .single();
+
+      if (error) {
+        if (error.code === '42P01') {
+          showError('Tabela nie istnieje', 'Utwórz tabelę "rewards" w Supabase');
+        } else {
+          showError('Błąd', error.message);
+        }
+        setSavingRewards(false);
+        return;
+      }
+
+      setRewards(prev => [...prev, data as Reward].sort((a, b) => a.place - b.place));
+      success('Dodano!', 'Nowa nagroda została dodana');
+    }
+
+    setShowRewardModal(false);
+    setSavingRewards(false);
+  };
+
+  const handleDeleteReward = async (reward: Reward) => {
+    const { error } = await supabase
+      .from('rewards')
+      .delete()
+      .eq('id', reward.id);
+
+    if (error) {
+      showError('Błąd', error.message);
+      return;
+    }
+
+    setRewards(prev => prev.filter(r => r.id !== reward.id));
+    success('Usunięto!', 'Nagroda została usunięta');
+  };
+
   // === LEVELS MANAGEMENT ===
   useEffect(() => {
     if (activeTab === 'levels' && !levelsLoaded) {
@@ -1275,6 +1424,99 @@ export default function AdminPage() {
                       </div>
                     </Card>
                   ))}
+                </div>
+              )}
+
+              {/* Rewards Tab */}
+              {activeTab === 'rewards' && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-lg font-semibold text-white">Nagrody dla TOP graczy</h3>
+                      <p className="text-sm text-dark-400">Dodaj i edytuj nagrody za zajęcie miejsc w rankingu</p>
+                    </div>
+                    <Button onClick={() => openRewardModal()}>
+                      <Plus className="w-4 h-4 mr-1" />
+                      Dodaj nagrodę
+                    </Button>
+                  </div>
+
+                  {!rewardsLoaded ? (
+                    <div className="text-center py-8 text-dark-400">Ładowanie nagród...</div>
+                  ) : rewards.length === 0 ? (
+                    <Card className="text-center py-12">
+                      <Gift className="w-16 h-16 text-dark-600 mx-auto mb-4" />
+                      <p className="text-dark-400">Brak nagród</p>
+                      <p className="text-sm text-dark-500">Dodaj pierwszą nagrodę powyżej</p>
+                    </Card>
+                  ) : (
+                    <div className="space-y-3">
+                      {rewards.map(reward => (
+                        <Card key={reward.id} className="p-4">
+                          <div className="flex items-center gap-4">
+                            {/* Place badge */}
+                            <div className={`w-14 h-14 rounded-xl flex items-center justify-center text-xl font-bold ${
+                              reward.place === 1 ? 'bg-gradient-to-br from-yellow-400 to-amber-600 text-white' :
+                              reward.place === 2 ? 'bg-gradient-to-br from-gray-300 to-gray-500 text-white' :
+                              reward.place === 3 ? 'bg-gradient-to-br from-amber-600 to-orange-700 text-white' :
+                              'bg-dark-700 text-dark-300'
+                            }`}>
+                              {reward.place}
+                            </div>
+
+                            {/* Image preview */}
+                            {reward.image_url ? (
+                              <div className="w-16 h-16 rounded-lg bg-dark-700 overflow-hidden">
+                                <img src={reward.image_url} alt={reward.title} className="w-full h-full object-cover" />
+                              </div>
+                            ) : (
+                              <div className="w-16 h-16 rounded-lg bg-dark-700 flex items-center justify-center">
+                                <Gift className="w-6 h-6 text-dark-500" />
+                              </div>
+                            )}
+
+                            {/* Content */}
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-white truncate">{reward.title}</p>
+                              <p className="text-sm text-dark-400 truncate">{reward.description || 'Brak opisu'}</p>
+                              <div className="flex items-center gap-3 mt-1">
+                                {reward.value && (
+                                  <span className="text-xs text-turbo-400 font-medium">{reward.value}</span>
+                                )}
+                                {reward.sponsor && (
+                                  <span className="text-xs text-dark-500">Sponsor: {reward.sponsor}</span>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Actions */}
+                            <div className="flex items-center gap-2">
+                              <Button size="sm" variant="secondary" onClick={() => openRewardModal(reward)}>
+                                <Edit2 className="w-4 h-4" />
+                              </Button>
+                              <Button size="sm" variant="danger" onClick={() => handleDeleteReward(reward)}>
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        </Card>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Info */}
+                  <Card variant="outlined" className="border-blue-500/30 bg-blue-500/5">
+                    <div className="flex items-start gap-3 p-4">
+                      <HelpCircle className="w-5 h-5 text-blue-400 mt-0.5" />
+                      <div>
+                        <p className="text-blue-400 font-medium">Wskazówka</p>
+                        <p className="text-sm text-dark-300 mt-1">
+                          Nagrody wyświetlają się na stronie &quot;Nagrody&quot; widocznej dla wszystkich graczy.
+                          TOP 3 jest wyróżnione specjalnym designem.
+                        </p>
+                      </div>
+                    </div>
+                  </Card>
                 </div>
               )}
 
@@ -2341,6 +2583,121 @@ export default function AdminPage() {
             >
               <Edit2 className="w-4 h-4 mr-1" />
               Zmień nick
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Reward Modal */}
+      <Modal
+        isOpen={showRewardModal}
+        onClose={() => {
+          setShowRewardModal(false);
+          setEditingReward(null);
+        }}
+        title={editingReward ? 'Edytuj nagrodę' : 'Dodaj nagrodę'}
+        size="lg"
+      >
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-dark-200 mb-1.5">Miejsce *</label>
+              <select
+                value={rewardForm.place}
+                onChange={e => setRewardForm(prev => ({ ...prev, place: parseInt(e.target.value) }))}
+                className="w-full bg-dark-800 border border-dark-600 rounded-xl px-4 py-2.5 text-white"
+              >
+                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => (
+                  <option key={n} value={n}>{n}. miejsce</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-dark-200 mb-1.5">Wartość</label>
+              <input
+                type="text"
+                value={rewardForm.value}
+                onChange={e => setRewardForm(prev => ({ ...prev, value: e.target.value }))}
+                placeholder="np. 500 zł, Voucher..."
+                className="w-full bg-dark-800 border border-dark-600 rounded-xl px-4 py-2.5 text-white"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-dark-200 mb-1.5">Tytuł nagrody *</label>
+            <input
+              type="text"
+              value={rewardForm.title}
+              onChange={e => setRewardForm(prev => ({ ...prev, title: e.target.value }))}
+              placeholder="np. PlayStation 5, Voucher do sklepu..."
+              className="w-full bg-dark-800 border border-dark-600 rounded-xl px-4 py-2.5 text-white"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-dark-200 mb-1.5">Opis</label>
+            <textarea
+              value={rewardForm.description}
+              onChange={e => setRewardForm(prev => ({ ...prev, description: e.target.value }))}
+              placeholder="Szczegółowy opis nagrody..."
+              className="w-full bg-dark-800 border border-dark-600 rounded-xl px-4 py-2.5 text-white min-h-[80px] resize-none"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-dark-200 mb-1.5">Sponsor (opcjonalnie)</label>
+            <input
+              type="text"
+              value={rewardForm.sponsor}
+              onChange={e => setRewardForm(prev => ({ ...prev, sponsor: e.target.value }))}
+              placeholder="Nazwa sponsora nagrody..."
+              className="w-full bg-dark-800 border border-dark-600 rounded-xl px-4 py-2.5 text-white"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-dark-200 mb-1.5">URL zdjęcia (opcjonalnie)</label>
+            <input
+              type="url"
+              value={rewardForm.image_url}
+              onChange={e => setRewardForm(prev => ({ ...prev, image_url: e.target.value }))}
+              placeholder="https://..."
+              className="w-full bg-dark-800 border border-dark-600 rounded-xl px-4 py-2.5 text-white"
+            />
+            {rewardForm.image_url && (
+              <div className="mt-2 rounded-lg overflow-hidden w-32 h-32 bg-dark-700">
+                <img
+                  src={rewardForm.image_url}
+                  alt="Podgląd"
+                  className="w-full h-full object-cover"
+                  onError={e => {
+                    (e.target as HTMLImageElement).style.display = 'none';
+                  }}
+                />
+              </div>
+            )}
+          </div>
+
+          <div className="flex gap-3 pt-4">
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setShowRewardModal(false);
+                setEditingReward(null);
+              }}
+              className="flex-1"
+            >
+              Anuluj
+            </Button>
+            <Button
+              onClick={handleSaveReward}
+              loading={savingRewards}
+              className="flex-1"
+            >
+              <Save className="w-4 h-4 mr-1" />
+              {editingReward ? 'Zapisz zmiany' : 'Dodaj nagrodę'}
             </Button>
           </div>
         </div>
