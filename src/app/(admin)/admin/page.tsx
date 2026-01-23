@@ -7,7 +7,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 import { Card, Button, Badge, Input, Modal, AlertDialog } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
-import { Mission, MissionStatus, Submission, User, QuizData, QuizQuestion, QuizMode, Reward } from '@/types';
+import { Mission, MissionStatus, Submission, User, QuizData, QuizQuestion, QuizMode, Reward, CollectibleCard, CardRarity } from '@/types';
 import {
   formatNumber,
   formatDateTime,
@@ -46,11 +46,13 @@ import {
   Save,
   Gift,
   Upload,
+  Layers,
+  Sparkles,
 } from 'lucide-react';
 import { LEVELS } from '@/lib/utils';
 import { Level } from '@/types';
 
-type AdminTab = 'overview' | 'submissions' | 'missions' | 'users' | 'levels' | 'rewards';
+type AdminTab = 'overview' | 'submissions' | 'missions' | 'users' | 'levels' | 'rewards' | 'cards';
 
 const tabs: { id: AdminTab; label: string; icon: React.ElementType; description: string }[] = [
   { id: 'overview', label: 'Przeglad', icon: BarChart3, description: 'Statystyki i podsumowanie' },
@@ -58,7 +60,15 @@ const tabs: { id: AdminTab; label: string; icon: React.ElementType; description:
   { id: 'missions', label: 'Misje', icon: Target, description: 'Zarzadzaj misjami' },
   { id: 'users', label: 'Gracze', icon: Users, description: 'Lista wszystkich graczy' },
   { id: 'rewards', label: 'Nagrody', icon: Gift, description: 'Nagrody dla TOP graczy' },
+  { id: 'cards', label: 'Karty', icon: Layers, description: 'Karty kolekcjonerskie' },
   { id: 'levels', label: 'Poziomy', icon: Trophy, description: 'Progi XP i nazwy poziomow' },
+];
+
+const RARITY_OPTIONS: { value: CardRarity; label: string; color: string }[] = [
+  { value: 'common', label: 'Zwykła', color: 'text-gray-400' },
+  { value: 'rare', label: 'Rzadka', color: 'text-blue-400' },
+  { value: 'epic', label: 'Epicka', color: 'text-purple-400' },
+  { value: 'legendary', label: 'Legendarna', color: 'text-yellow-400' },
 ];
 
 export default function AdminPage() {
@@ -137,6 +147,22 @@ export default function AdminPage() {
     description: '',
     value: '',
     sponsor: '',
+    image_url: '',
+  });
+
+  // Cards management
+  const [cards, setCards] = useState<CollectibleCard[]>([]);
+  const [cardsLoaded, setCardsLoaded] = useState(false);
+  const [savingCard, setSavingCard] = useState(false);
+  const [showCardModal, setShowCardModal] = useState(false);
+  const [editingCard, setEditingCard] = useState<CollectibleCard | null>(null);
+  const [cardForm, setCardForm] = useState({
+    name: '',
+    description: '',
+    rarity: 'common' as CardRarity,
+    category: '',
+    points: 10,
+    total_supply: '',
     image_url: '',
   });
 
@@ -864,6 +890,151 @@ export default function AdminPage() {
     success('Usunięto!', 'Nagroda została usunięta');
   };
 
+  // === CARDS MANAGEMENT ===
+  useEffect(() => {
+    if (activeTab === 'cards' && !cardsLoaded) {
+      loadCards();
+    }
+  }, [activeTab, cardsLoaded]);
+
+  const loadCards = async () => {
+    const { data, error } = await supabase
+      .from('cards')
+      .select('*')
+      .order('rarity', { ascending: true })
+      .order('name', { ascending: true });
+
+    if (!error && data) {
+      setCards(data as CollectibleCard[]);
+    } else {
+      setCards([]);
+    }
+    setCardsLoaded(true);
+  };
+
+  const openCardModal = (card?: CollectibleCard) => {
+    if (card) {
+      setEditingCard(card);
+      setCardForm({
+        name: card.name,
+        description: card.description,
+        rarity: card.rarity,
+        category: card.category,
+        points: card.points,
+        total_supply: card.total_supply?.toString() || '',
+        image_url: card.image_url || '',
+      });
+    } else {
+      setEditingCard(null);
+      setCardForm({
+        name: '',
+        description: '',
+        rarity: 'common',
+        category: '',
+        points: 10,
+        total_supply: '',
+        image_url: '',
+      });
+    }
+    setShowCardModal(true);
+  };
+
+  const handleSaveCard = async () => {
+    if (!cardForm.name.trim()) {
+      showError('Błąd', 'Podaj nazwę karty');
+      return;
+    }
+    if (!cardForm.category.trim()) {
+      showError('Błąd', 'Podaj kategorię karty');
+      return;
+    }
+
+    setSavingCard(true);
+
+    const cardData = {
+      name: cardForm.name.trim(),
+      description: cardForm.description.trim(),
+      rarity: cardForm.rarity,
+      category: cardForm.category.trim(),
+      points: cardForm.points,
+      total_supply: cardForm.total_supply ? parseInt(cardForm.total_supply) : null,
+      image_url: cardForm.image_url.trim() || null,
+      is_active: true,
+    };
+
+    if (editingCard) {
+      const { error } = await supabase
+        .from('cards')
+        .update(cardData)
+        .eq('id', editingCard.id);
+
+      if (error) {
+        if (error.code === '42P01') {
+          showError('Tabela nie istnieje', 'Utwórz tabelę "cards" w Supabase');
+        } else {
+          showError('Błąd', error.message);
+        }
+        setSavingCard(false);
+        return;
+      }
+
+      setCards(prev => prev.map(c => c.id === editingCard.id ? { ...c, ...cardData } as CollectibleCard : c));
+      success('Zapisano!', 'Karta została zaktualizowana');
+    } else {
+      const { data, error } = await supabase
+        .from('cards')
+        .insert(cardData)
+        .select()
+        .single();
+
+      if (error) {
+        if (error.code === '42P01') {
+          showError('Tabela nie istnieje', 'Utwórz tabelę "cards" w Supabase');
+        } else {
+          showError('Błąd', error.message);
+        }
+        setSavingCard(false);
+        return;
+      }
+
+      setCards(prev => [...prev, data as CollectibleCard]);
+      success('Dodano!', 'Nowa karta została dodana');
+    }
+
+    setShowCardModal(false);
+    setSavingCard(false);
+  };
+
+  const handleDeleteCard = async (card: CollectibleCard) => {
+    const { error } = await supabase
+      .from('cards')
+      .delete()
+      .eq('id', card.id);
+
+    if (error) {
+      showError('Błąd', error.message);
+      return;
+    }
+
+    setCards(prev => prev.filter(c => c.id !== card.id));
+    success('Usunięto!', 'Karta została usunięta');
+  };
+
+  const handleToggleCard = async (card: CollectibleCard) => {
+    const { error } = await supabase
+      .from('cards')
+      .update({ is_active: !card.is_active })
+      .eq('id', card.id);
+
+    if (error) {
+      showError('Błąd', error.message);
+      return;
+    }
+
+    setCards(prev => prev.map(c => c.id === card.id ? { ...c, is_active: !c.is_active } : c));
+    success('Zmieniono!', card.is_active ? 'Karta ukryta' : 'Karta aktywna');
+  };
+
   // === LEVELS MANAGEMENT ===
   useEffect(() => {
     if (activeTab === 'levels' && !levelsLoaded) {
@@ -1513,6 +1684,112 @@ export default function AdminPage() {
                         <p className="text-sm text-dark-300 mt-1">
                           Nagrody wyświetlają się na stronie &quot;Nagrody&quot; widocznej dla wszystkich graczy.
                           TOP 3 jest wyróżnione specjalnym designem.
+                        </p>
+                      </div>
+                    </div>
+                  </Card>
+                </div>
+              )}
+
+              {/* Cards Tab */}
+              {activeTab === 'cards' && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-lg font-semibold text-white">Karty kolekcjonerskie</h3>
+                      <p className="text-sm text-dark-400">Twórz karty, które gracze mogą zbierać</p>
+                    </div>
+                    <Button onClick={() => openCardModal()}>
+                      <Plus className="w-4 h-4 mr-1" />
+                      Dodaj kartę
+                    </Button>
+                  </div>
+
+                  {!cardsLoaded ? (
+                    <div className="text-center py-8 text-dark-400">Ładowanie kart...</div>
+                  ) : cards.length === 0 ? (
+                    <Card className="text-center py-12">
+                      <Layers className="w-16 h-16 text-dark-600 mx-auto mb-4" />
+                      <p className="text-dark-400">Brak kart</p>
+                      <p className="text-sm text-dark-500">Dodaj pierwszą kartę kolekcjonerską</p>
+                    </Card>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {cards.map(card => {
+                        const rarityOpt = RARITY_OPTIONS.find(r => r.value === card.rarity);
+                        return (
+                          <Card key={card.id} className={`p-4 ${!card.is_active ? 'opacity-50' : ''}`}>
+                            <div className="flex items-center gap-4">
+                              {/* Card icon */}
+                              <div className={`w-14 h-14 rounded-xl flex items-center justify-center ${
+                                card.rarity === 'legendary' ? 'bg-yellow-500/20' :
+                                card.rarity === 'epic' ? 'bg-purple-500/20' :
+                                card.rarity === 'rare' ? 'bg-blue-500/20' :
+                                'bg-gray-500/20'
+                              }`}>
+                                {card.image_url ? (
+                                  <img src={card.image_url} alt={card.name} className="w-full h-full object-cover rounded-xl" />
+                                ) : (
+                                  <Sparkles className={`w-6 h-6 ${rarityOpt?.color || 'text-gray-400'}`} />
+                                )}
+                              </div>
+
+                              {/* Content */}
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <p className="font-medium text-white truncate">{card.name}</p>
+                                  <Badge variant={
+                                    card.rarity === 'legendary' ? 'warning' :
+                                    card.rarity === 'epic' ? 'turbo' :
+                                    card.rarity === 'rare' ? 'info' :
+                                    'default'
+                                  } size="sm">
+                                    {rarityOpt?.label}
+                                  </Badge>
+                                </div>
+                                <p className="text-sm text-dark-400">{card.category} • {card.points} pkt</p>
+                                {card.total_supply && (
+                                  <p className="text-xs text-dark-500">Limit: {card.total_supply} szt.</p>
+                                )}
+                              </div>
+
+                              {/* Actions */}
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => handleToggleCard(card)}
+                                  title={card.is_active ? 'Ukryj kartę' : 'Aktywuj kartę'}
+                                >
+                                  {card.is_active ? (
+                                    <ToggleRight className="w-5 h-5 text-green-500" />
+                                  ) : (
+                                    <ToggleLeft className="w-5 h-5 text-dark-500" />
+                                  )}
+                                </Button>
+                                <Button size="sm" variant="secondary" onClick={() => openCardModal(card)}>
+                                  <Edit2 className="w-4 h-4" />
+                                </Button>
+                                <Button size="sm" variant="danger" onClick={() => handleDeleteCard(card)}>
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            </div>
+                          </Card>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {/* Info */}
+                  <Card variant="outlined" className="border-purple-500/30 bg-purple-500/5">
+                    <div className="flex items-start gap-3 p-4">
+                      <HelpCircle className="w-5 h-5 text-purple-400 mt-0.5" />
+                      <div>
+                        <p className="text-purple-400 font-medium">Jak przyznawać karty?</p>
+                        <p className="text-sm text-dark-300 mt-1">
+                          Karty można przyznawać graczom ręcznie z poziomu szczegółów gracza lub automatycznie
+                          jako nagrody za misje i osiągnięcia.
                         </p>
                       </div>
                     </div>
@@ -2698,6 +2975,138 @@ export default function AdminPage() {
             >
               <Save className="w-4 h-4 mr-1" />
               {editingReward ? 'Zapisz zmiany' : 'Dodaj nagrodę'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Card Modal */}
+      <Modal
+        isOpen={showCardModal}
+        onClose={() => {
+          setShowCardModal(false);
+          setEditingCard(null);
+        }}
+        title={editingCard ? 'Edytuj kartę' : 'Dodaj kartę'}
+        size="lg"
+      >
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-dark-200 mb-1.5">Nazwa karty *</label>
+              <input
+                type="text"
+                value={cardForm.name}
+                onChange={e => setCardForm(prev => ({ ...prev, name: e.target.value }))}
+                placeholder="np. Speed Demon"
+                className="w-full bg-dark-800 border border-dark-600 rounded-xl px-4 py-2.5 text-white"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-dark-200 mb-1.5">Rzadkość *</label>
+              <select
+                value={cardForm.rarity}
+                onChange={e => setCardForm(prev => ({ ...prev, rarity: e.target.value as CardRarity }))}
+                className="w-full bg-dark-800 border border-dark-600 rounded-xl px-4 py-2.5 text-white"
+              >
+                {RARITY_OPTIONS.map(opt => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-dark-200 mb-1.5">Kategoria *</label>
+              <input
+                type="text"
+                value={cardForm.category}
+                onChange={e => setCardForm(prev => ({ ...prev, category: e.target.value }))}
+                placeholder="np. Samochody, Osiągnięcia..."
+                className="w-full bg-dark-800 border border-dark-600 rounded-xl px-4 py-2.5 text-white"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-dark-200 mb-1.5">Punkty</label>
+              <input
+                type="number"
+                value={cardForm.points}
+                onChange={e => setCardForm(prev => ({ ...prev, points: parseInt(e.target.value) || 10 }))}
+                min={1}
+                className="w-full bg-dark-800 border border-dark-600 rounded-xl px-4 py-2.5 text-white"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-dark-200 mb-1.5">Opis</label>
+            <textarea
+              value={cardForm.description}
+              onChange={e => setCardForm(prev => ({ ...prev, description: e.target.value }))}
+              placeholder="Opis karty..."
+              className="w-full bg-dark-800 border border-dark-600 rounded-xl px-4 py-2.5 text-white min-h-[80px] resize-none"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-dark-200 mb-1.5">Limit sztuk (opcjonalnie)</label>
+              <input
+                type="number"
+                value={cardForm.total_supply}
+                onChange={e => setCardForm(prev => ({ ...prev, total_supply: e.target.value }))}
+                placeholder="Brak limitu"
+                min={1}
+                className="w-full bg-dark-800 border border-dark-600 rounded-xl px-4 py-2.5 text-white"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-dark-200 mb-1.5">URL obrazka</label>
+              <input
+                type="url"
+                value={cardForm.image_url}
+                onChange={e => setCardForm(prev => ({ ...prev, image_url: e.target.value }))}
+                placeholder="https://..."
+                className="w-full bg-dark-800 border border-dark-600 rounded-xl px-4 py-2.5 text-white"
+              />
+            </div>
+          </div>
+
+          {cardForm.image_url && (
+            <div className="rounded-lg overflow-hidden w-24 h-32 bg-dark-700">
+              <img
+                src={cardForm.image_url}
+                alt="Podgląd"
+                className="w-full h-full object-cover"
+                onError={e => {
+                  (e.target as HTMLImageElement).style.display = 'none';
+                }}
+              />
+            </div>
+          )}
+
+          <div className="flex gap-3 pt-4">
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setShowCardModal(false);
+                setEditingCard(null);
+              }}
+              className="flex-1"
+            >
+              Anuluj
+            </Button>
+            <Button
+              onClick={handleSaveCard}
+              loading={savingCard}
+              className="flex-1"
+            >
+              <Save className="w-4 h-4 mr-1" />
+              {editingCard ? 'Zapisz zmiany' : 'Dodaj kartę'}
             </Button>
           </div>
         </div>

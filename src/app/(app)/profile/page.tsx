@@ -29,7 +29,10 @@ import {
   Shield,
   Camera,
   Loader2,
+  Layers,
 } from 'lucide-react';
+import Link from 'next/link';
+import { useCards, RARITY_CONFIG } from '@/hooks/useCards';
 import { supabase } from '@/lib/supabase';
 
 export default function ProfilePage() {
@@ -37,6 +40,7 @@ export default function ProfilePage() {
   const { profile, signOut, updateProfile, refreshProfile } = useAuth();
   const { userSubmissions } = useMissions({ userId: profile?.id });
   const { getUserRank } = useLeaderboard();
+  const { getCollectionStats, userCards } = useCards({ userId: profile?.id });
   const { success, error: showError } = useToast();
 
   const [showEditModal, setShowEditModal] = useState(false);
@@ -331,6 +335,42 @@ export default function ProfilePage() {
           <div className="text-sm text-dark-400">Oczekujących</div>
         </Card>
       </div>
+
+      {/* Card Collection */}
+      <Link href="/cards">
+        <Card className="relative overflow-hidden hover:border-purple-500/50 transition-colors">
+          <div className="absolute top-0 right-0 w-24 h-24 bg-purple-500/10 rounded-full blur-2xl" />
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 rounded-xl bg-purple-500/20 flex items-center justify-center">
+              <Layers className="w-7 h-7 text-purple-500" />
+            </div>
+            <div className="flex-1">
+              <h3 className="font-semibold text-white">Kolekcja Kart</h3>
+              <div className="flex items-center gap-2 mt-1">
+                {(() => {
+                  const stats = getCollectionStats();
+                  return (
+                    <>
+                      <span className="text-sm text-dark-400">
+                        {stats.collected}/{stats.total} kart
+                      </span>
+                      <div className="flex gap-1">
+                        {stats.byRarity.legendary.collected > 0 && (
+                          <span className="text-yellow-400">🌟{stats.byRarity.legendary.collected}</span>
+                        )}
+                        {stats.byRarity.epic.collected > 0 && (
+                          <span className="text-purple-400">🟣{stats.byRarity.epic.collected}</span>
+                        )}
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
+            </div>
+            <ChevronRight className="w-5 h-5 text-dark-400" />
+          </div>
+        </Card>
+      </Link>
 
       {/* Account Info */}
       <Card>

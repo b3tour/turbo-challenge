@@ -196,3 +196,28 @@ export interface Reward {
   is_active: boolean;
   created_at: string;
 }
+
+// Karty kolekcjonerskie
+export type CardRarity = 'common' | 'rare' | 'epic' | 'legendary';
+
+export interface CollectibleCard {
+  id: string;
+  name: string;
+  description: string;
+  image_url?: string | null;
+  rarity: CardRarity;
+  category: string; // np. "Samochody", "Kierowcy", "Tory"
+  points: number; // wartość punktowa karty
+  total_supply?: number | null; // ile kart istnieje (null = nieograniczone)
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface UserCard {
+  id: string;
+  user_id: string;
+  card_id: string;
+  obtained_at: string;
+  obtained_from: 'mission' | 'achievement' | 'daily_spin' | 'trade' | 'admin';
+  card?: CollectibleCard;
+}
