@@ -42,15 +42,20 @@ import {
   ImageIcon,
   AlertTriangle,
   Undo2,
+  Trophy,
+  Save,
 } from 'lucide-react';
+import { LEVELS } from '@/lib/utils';
+import { Level } from '@/types';
 
-type AdminTab = 'overview' | 'submissions' | 'missions' | 'users';
+type AdminTab = 'overview' | 'submissions' | 'missions' | 'users' | 'levels';
 
 const tabs: { id: AdminTab; label: string; icon: React.ElementType; description: string }[] = [
   { id: 'overview', label: 'Przeglad', icon: BarChart3, description: 'Statystyki i podsumowanie' },
   { id: 'submissions', label: 'Zgloszenia', icon: Clock, description: 'Weryfikuj zgloszenia' },
   { id: 'missions', label: 'Misje', icon: Target, description: 'Zarzadzaj misjami' },
   { id: 'users', label: 'Gracze', icon: Users, description: 'Lista wszystkich graczy' },
+  { id: 'levels', label: 'Poziomy', icon: Trophy, description: 'Progi XP i nazwy poziomow' },
 ];
 
 export default function AdminPage() {
@@ -102,6 +107,20 @@ export default function AdminPage() {
   const [showDeleteUserDialog, setShowDeleteUserDialog] = useState(false);
   const [userToDelete, setUserToDelete] = useState<User | null>(null);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
+
+  // Change nick
+  const [showChangeNickModal, setShowChangeNickModal] = useState(false);
+  const [newNick, setNewNick] = useState('');
+  const [nickError, setNickError] = useState('');
+
+  // Levels management
+  const [editableLevels, setEditableLevels] = useState<Level[]>([]);
+  const [levelsLoaded, setLevelsLoaded] = useState(false);
+  const [savingLevels, setSavingLevels] = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState<number | null>(null);
+
+  // Common emojis for levels
+  const commonEmojis = ['🌱', '🏎️', '⚡', '🚀', '👹', '🏆', '💎', '👑', '🌟', '🔥', '💪', '🎯', '🎮', '🏅', '⭐', '💫', '🎖️', '🏁', '🎪', '🎭'];
 
   const [missionForm, setMissionForm] = useState({
     title: '',
@@ -674,6 +693,161 @@ export default function AdminPage() {
     }
   };
 
+  // === LEVELS MANAGEMENT ===
+  useEffect(() => {
+    if (activeTab === 'levels' && !levelsLoaded) {
+      loadLevels();
+    }
+  }, [activeTab, levelsLoaded]);
+
+  const loadLevels = async () => {
+    // Spróbuj załadować z bazy danych
+    const { data, error } = await supabase
+      .from('levels')
+      .select('*')
+      .order('id', { ascending: true });
+
+    if (!error && data && data.length > 0) {
+      setEditableLevels(data as Level[]);
+    } else {
+      // Użyj domyślnych poziomów z kodu
+      setEditableLevels(LEVELS.map(l => ({ ...l })));
+    }
+    setLevelsLoaded(true);
+  };
+
+  const handleLevelChange = (index: number, field: keyof Level, value: string | number) => {
+    setEditableLevels(prev => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], [field]: value };
+      return updated;
+    });
+  };
+
+  const handleSaveLevels = async () => {
+    setSavingLevels(true);
+
+    // Walidacja
+    for (let i = 0; i < editableLevels.length; i++) {
+      const level = editableLevels[i];
+      if (!level.name.trim()) {
+        showError('Błąd', `Poziom ${i + 1} musi mieć nazwę`);
+        setSavingLevels(false);
+        return;
+      }
+      if (i > 0 && level.min_xp <= editableLevels[i - 1].min_xp) {
+        showError('Błąd', `Próg XP poziomu ${i + 1} musi być większy niż poprzedniego`);
+        setSavingLevels(false);
+        return;
+      }
+    }
+
+    // Spróbuj zapisać do bazy danych
+    const { error } = await supabase
+      .from('levels')
+      .upsert(editableLevels.map((l, i) => ({
+        id: l.id,
+        name: l.name,
+        min_xp: l.min_xp,
+        max_xp: i < editableLevels.length - 1 ? editableLevels[i + 1].min_xp - 1 : 999999,
+        badge_icon: l.badge_icon,
+        badge_color: l.badge_color,
+        unlocks_description: l.unlocks_description || null,
+      })));
+
+    if (error) {
+      // Jeśli tabela nie istnieje, pokaż instrukcję
+      if (error.code === '42P01') {
+        showError(
+          'Tabela nie istnieje',
+          'Utwórz tabelę "levels" w Supabase. Poziomy zostały zapisane lokalnie.'
+        );
+        // Zapisz do localStorage jako fallback
+        localStorage.setItem('turbo_levels', JSON.stringify(editableLevels));
+      } else {
+        showError('Błąd', `Nie udało się zapisać: ${error.message}`);
+      }
+    } else {
+      success('Zapisano!', 'Poziomy zostały zaktualizowane');
+    }
+
+    setSavingLevels(false);
+  };
+
+  const addLevel = () => {
+    const lastLevel = editableLevels[editableLevels.length - 1];
+    const newLevel: Level = {
+      id: editableLevels.length + 1,
+      name: 'Nowy Poziom',
+      min_xp: lastLevel.min_xp + 1000,
+      max_xp: lastLevel.min_xp + 2000,
+      badge_icon: '⭐',
+      badge_color: '#6b7280',
+    };
+    setEditableLevels(prev => [...prev, newLevel]);
+  };
+
+  const removeLevel = (index: number) => {
+    if (editableLevels.length <= 1) {
+      showError('Błąd', 'Musi pozostać co najmniej jeden poziom');
+      return;
+    }
+    setEditableLevels(prev => prev.filter((_, i) => i !== index));
+  };
+
+  // === CHANGE NICK ===
+  const handleChangeNick = async () => {
+    if (!selectedUser || !newNick.trim()) {
+      setNickError('Podaj nowy nick');
+      return;
+    }
+
+    if (newNick.length < 3) {
+      setNickError('Nick musi mieć co najmniej 3 znaki');
+      return;
+    }
+
+    if (newNick.length > 20) {
+      setNickError('Nick może mieć maksymalnie 20 znaków');
+      return;
+    }
+
+    // Sprawdź czy nick nie jest już zajęty
+    const { data: existingUser } = await supabase
+      .from('users')
+      .select('id')
+      .ilike('nick', newNick)
+      .neq('id', selectedUser.id)
+      .maybeSingle();
+
+    if (existingUser) {
+      setNickError('Ten nick jest już zajęty');
+      return;
+    }
+
+    // Zmień nick
+    const { error } = await supabase
+      .from('users')
+      .update({ nick: newNick.trim() })
+      .eq('id', selectedUser.id);
+
+    if (error) {
+      setNickError('Nie udało się zmienić nicku');
+      return;
+    }
+
+    success('Zmieniono!', `Nick zmieniony na "${newNick}"`);
+
+    // Aktualizuj lokalny stan
+    const updatedUser = { ...selectedUser, nick: newNick.trim() };
+    setSelectedUser(updatedUser);
+    setUsers(prev => prev.map(u => u.id === selectedUser.id ? updatedUser : u));
+
+    setShowChangeNickModal(false);
+    setNewNick('');
+    setNickError('');
+  };
+
   if (!profile?.is_admin) {
     return null;
   }
@@ -1081,6 +1255,150 @@ export default function AdminPage() {
                   ))}
                 </div>
               )}
+
+              {/* Levels Tab */}
+              {activeTab === 'levels' && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-lg font-semibold text-white">Konfiguracja poziomów</h3>
+                      <p className="text-sm text-dark-400">Edytuj nazwy, progi XP i ikony dla każdego poziomu</p>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button variant="secondary" onClick={addLevel}>
+                        <Plus className="w-4 h-4 mr-1" />
+                        Dodaj poziom
+                      </Button>
+                      <Button onClick={handleSaveLevels} loading={savingLevels}>
+                        <Save className="w-4 h-4 mr-1" />
+                        Zapisz zmiany
+                      </Button>
+                    </div>
+                  </div>
+
+                  {!levelsLoaded ? (
+                    <div className="text-center py-8 text-dark-400">Ładowanie poziomów...</div>
+                  ) : (
+                    <div className="space-y-3">
+                      {editableLevels.map((level, index) => (
+                        <Card key={level.id} className="p-4">
+                          <div className="flex items-center gap-4">
+                            {/* Level number */}
+                            <div
+                              className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl font-bold"
+                              style={{ backgroundColor: level.badge_color + '30', color: level.badge_color }}
+                            >
+                              {index + 1}
+                            </div>
+
+                            {/* Emoji selector */}
+                            <div className="relative">
+                              <button
+                                onClick={() => setShowEmojiPicker(showEmojiPicker === index ? null : index)}
+                                className="w-12 h-12 rounded-xl bg-dark-700 hover:bg-dark-600 flex items-center justify-center text-2xl transition-colors"
+                                title="Wybierz ikonę"
+                              >
+                                {level.badge_icon}
+                              </button>
+                              {showEmojiPicker === index && (
+                                <div className="absolute top-full left-0 mt-2 p-2 bg-dark-800 border border-dark-600 rounded-xl shadow-xl z-50 grid grid-cols-5 gap-1">
+                                  {commonEmojis.map(emoji => (
+                                    <button
+                                      key={emoji}
+                                      onClick={() => {
+                                        handleLevelChange(index, 'badge_icon', emoji);
+                                        setShowEmojiPicker(null);
+                                      }}
+                                      className="w-8 h-8 rounded hover:bg-dark-600 flex items-center justify-center text-lg"
+                                    >
+                                      {emoji}
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Name */}
+                            <div className="flex-1">
+                              <label className="block text-xs text-dark-400 mb-1">Nazwa poziomu</label>
+                              <input
+                                type="text"
+                                value={level.name}
+                                onChange={e => handleLevelChange(index, 'name', e.target.value)}
+                                className="w-full bg-dark-700 border border-dark-600 rounded-lg px-3 py-2 text-white"
+                                placeholder="Nazwa poziomu"
+                              />
+                            </div>
+
+                            {/* Min XP */}
+                            <div className="w-32">
+                              <label className="block text-xs text-dark-400 mb-1">Od XP</label>
+                              <input
+                                type="number"
+                                value={level.min_xp}
+                                onChange={e => handleLevelChange(index, 'min_xp', parseInt(e.target.value) || 0)}
+                                className="w-full bg-dark-700 border border-dark-600 rounded-lg px-3 py-2 text-white"
+                                min={0}
+                              />
+                            </div>
+
+                            {/* Color */}
+                            <div className="w-24">
+                              <label className="block text-xs text-dark-400 mb-1">Kolor</label>
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="color"
+                                  value={level.badge_color}
+                                  onChange={e => handleLevelChange(index, 'badge_color', e.target.value)}
+                                  className="w-10 h-10 rounded-lg cursor-pointer border-0"
+                                />
+                              </div>
+                            </div>
+
+                            {/* Delete button */}
+                            <button
+                              onClick={() => removeLevel(index)}
+                              className="p-2 rounded-lg text-dark-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                              title="Usuń poziom"
+                            >
+                              <Trash2 className="w-5 h-5" />
+                            </button>
+                          </div>
+
+                          {/* Unlocks description (optional) */}
+                          <div className="mt-3 pt-3 border-t border-dark-700">
+                            <label className="block text-xs text-dark-400 mb-1">Opis odblokowań (opcjonalnie)</label>
+                            <input
+                              type="text"
+                              value={level.unlocks_description || ''}
+                              onChange={e => handleLevelChange(index, 'unlocks_description', e.target.value)}
+                              className="w-full bg-dark-700 border border-dark-600 rounded-lg px-3 py-2 text-white text-sm"
+                              placeholder="np. Specjalny bonus, dostęp do VIP..."
+                            />
+                          </div>
+                        </Card>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Info card */}
+                  <Card variant="outlined" className="border-blue-500/30 bg-blue-500/5">
+                    <div className="flex items-start gap-3">
+                      <HelpCircle className="w-5 h-5 text-blue-400 mt-0.5" />
+                      <div>
+                        <p className="text-blue-400 font-medium">Jak to działa?</p>
+                        <p className="text-sm text-dark-300 mt-1">
+                          Każdy poziom ma próg XP (Od XP). Gracz awansuje gdy osiągnie ten próg.
+                          Ikona i kolor są wyświetlane przy nicku gracza i w rankingach.
+                        </p>
+                        <p className="text-xs text-dark-400 mt-2">
+                          Uwaga: Jeśli tabela &quot;levels&quot; nie istnieje w bazie, poziomy są zapisywane lokalnie.
+                        </p>
+                      </div>
+                    </div>
+                  </Card>
+                </div>
+              )}
             </>
           )}
         </div>
@@ -1447,6 +1765,17 @@ export default function AdminPage() {
                   <div className="flex items-center gap-2">
                     <h3 className="text-lg font-bold text-white">{selectedUser.nick}</h3>
                     {selectedUser.is_admin && <Badge variant="turbo">Admin</Badge>}
+                    <button
+                      onClick={() => {
+                        setNewNick(selectedUser.nick);
+                        setNickError('');
+                        setShowChangeNickModal(true);
+                      }}
+                      className="p-1 rounded hover:bg-dark-600 text-dark-400 hover:text-white transition-colors"
+                      title="Zmień nick"
+                    >
+                      <Edit2 className="w-4 h-4" />
+                    </button>
                   </div>
                   <p className="text-turbo-400 font-semibold text-xl">
                     {formatNumber(selectedUser.total_xp)} XP • Poziom {selectedUser.level}
@@ -1924,6 +2253,72 @@ export default function AdminPage() {
             >
               <Trash2 className="w-4 h-4 mr-1" />
               Usuń na zawsze
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Change Nick Modal */}
+      <Modal
+        isOpen={showChangeNickModal}
+        onClose={() => {
+          setShowChangeNickModal(false);
+          setNewNick('');
+          setNickError('');
+        }}
+        title="Zmień nick gracza"
+        size="sm"
+      >
+        <div className="space-y-4">
+          <div className="text-center py-2">
+            <p className="text-dark-400">Zmiana nicku dla:</p>
+            <p className="text-xl font-bold text-white">{selectedUser?.nick}</p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-dark-200 mb-1.5">
+              Nowy nick
+            </label>
+            <input
+              type="text"
+              value={newNick}
+              onChange={e => {
+                setNewNick(e.target.value);
+                setNickError('');
+              }}
+              placeholder="Wpisz nowy nick"
+              className={`w-full bg-dark-800 border rounded-xl px-4 py-2.5 text-white ${
+                nickError ? 'border-red-500' : 'border-dark-600'
+              }`}
+              maxLength={20}
+            />
+            {nickError && (
+              <p className="text-red-400 text-sm mt-1">{nickError}</p>
+            )}
+            <p className="text-xs text-dark-400 mt-1">
+              3-20 znaków
+            </p>
+          </div>
+
+          <div className="flex gap-3 pt-2">
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setShowChangeNickModal(false);
+                setNewNick('');
+                setNickError('');
+              }}
+              className="flex-1"
+            >
+              Anuluj
+            </Button>
+            <Button
+              onClick={handleChangeNick}
+              disabled={!newNick.trim() || newNick === selectedUser?.nick}
+              className="flex-1"
+            >
+              <Edit2 className="w-4 h-4 mr-1" />
+              Zmień nick
             </Button>
           </div>
         </div>

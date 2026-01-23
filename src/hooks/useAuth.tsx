@@ -247,12 +247,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { success: true, error: null };
   };
 
-  // Logowanie z hasłem
-  const signInWithPassword = async (email: string, password: string) => {
+  // Logowanie z hasłem (obsługuje nick lub email)
+  const signInWithPassword = async (loginIdentifier: string, password: string) => {
     setState(prev => ({ ...prev, loading: true, error: null }));
 
+    let emailToUse = loginIdentifier;
+
+    // Sprawdź czy to email (zawiera @) czy nick
+    if (!loginIdentifier.includes('@')) {
+      // To nick - znajdź email użytkownika
+      console.log('[Auth] Logowanie po nicku:', loginIdentifier);
+
+      const { data: userData, error: lookupError } = await supabase
+        .from('users')
+        .select('email')
+        .ilike('nick', loginIdentifier)
+        .maybeSingle();
+
+      if (lookupError || !userData) {
+        setState(prev => ({ ...prev, loading: false, error: null }));
+        return { success: false, error: 'Nie znaleziono użytkownika o takim nicku' };
+      }
+
+      emailToUse = userData.email;
+      console.log('[Auth] Znaleziono email dla nicku:', emailToUse);
+    }
+
     const { error } = await supabase.auth.signInWithPassword({
-      email,
+      email: emailToUse,
       password,
     });
 

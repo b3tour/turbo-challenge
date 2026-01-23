@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { Button, Input, Card } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
-import { Mail, Lock, ArrowLeft, AlertCircle, RefreshCw } from 'lucide-react';
+import { User, Lock, ArrowLeft, AlertCircle, RefreshCw } from 'lucide-react';
 import { LogoCircle } from '@/components/ui';
 import { supabaseConfigError } from '@/lib/supabase';
 
@@ -22,21 +22,21 @@ export default function LoginPage() {
     }
   }, [loading, isAuthenticated, hasProfile, router]);
 
-  const [email, setEmail] = useState('');
+  const [loginId, setLoginId] = useState('');
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!email || !password) {
+    if (!loginId || !password) {
       showError('Błąd', 'Wypełnij wszystkie pola');
       return;
     }
 
     setIsSubmitting(true);
 
-    const { success, error } = await signInWithPassword(email, password);
+    const { success, error } = await signInWithPassword(loginId, password);
 
     if (!success) {
       showError('Błąd logowania', error || 'Nieprawidłowy email lub hasło');
@@ -116,12 +116,12 @@ export default function LoginPage() {
       <Card className="w-full max-w-sm">
         <form onSubmit={handleEmailLogin} className="space-y-4">
           <Input
-            type="email"
-            label="Email"
-            placeholder="twoj@email.pl"
-            value={email}
-            onChange={e => setEmail(e.target.value)}
-            icon={<Mail className="w-5 h-5" />}
+            type="text"
+            label="Nick lub Email"
+            placeholder="TwojNick lub twoj@email.pl"
+            value={loginId}
+            onChange={e => setLoginId(e.target.value)}
+            icon={<User className="w-5 h-5" />}
             disabled={isSubmitting || loading}
           />
 
