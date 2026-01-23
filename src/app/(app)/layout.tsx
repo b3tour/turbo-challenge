@@ -11,14 +11,22 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const refreshAttempts = useRef(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [redirecting, setRedirecting] = useState(false);
-  const maxRetries = 2; // Zmniejszone z 3
+  const hadProfileBefore = useRef(false); // Zapamiętaj czy użytkownik miał profil
+  const maxRetries = 3;
+
+  // Zapamiętaj że użytkownik miał profil (zabezpieczenie przed fałszywym przekierowaniem)
+  useEffect(() => {
+    if (hasProfile) {
+      hadProfileBefore.current = true;
+    }
+  }, [hasProfile]);
 
   useEffect(() => {
     // Czekaj aż loading się zakończy
     if (loading || isRefreshing || redirecting) return;
 
-    // Błąd połączenia - przekieruj do logowania
-    if (error) {
+    // Błąd połączenia - przekieruj do logowania, ale NIE jeśli to tylko tymczasowy błąd
+    if (error && !hadProfileBefore.current) {
       console.log('[Layout] Błąd auth, przekierowuję do login');
       setRedirecting(true);
       router.replace('/login');
@@ -34,20 +42,34 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     }
 
     // Zalogowany ale bez profilu -> spróbuj odświeżyć lub przekieruj
+    // Dodatkowe zabezpieczenie: jeśli użytkownik miał profil wcześniej, daj więcej prób
     if (!hasProfile && user) {
-      if (refreshAttempts.current < maxRetries) {
+      const actualMaxRetries = hadProfileBefore.current ? maxRetries + 2 : maxRetries;
+
+      if (refreshAttempts.current < actualMaxRetries) {
         refreshAttempts.current += 1;
-        console.log(`[Layout] Refresh profilu ${refreshAttempts.current}/${maxRetries}`);
+        console.log(`[Layout] Refresh profilu ${refreshAttempts.current}/${actualMaxRetries}`);
         setIsRefreshing(true);
 
         setTimeout(async () => {
           await refreshProfile();
           setIsRefreshing(false);
-        }, 1000);
+        }, 1500); // Dłuższy timeout dla lepszej stabilności
       } else {
-        console.log('[Layout] Brak profilu, przekierowuję do onboarding');
-        setRedirecting(true);
-        router.replace('/onboarding');
+        // Jeśli użytkownik miał profil wcześniej, to może być tymczasowy problem - nie przekierowuj od razu
+        if (hadProfileBefore.current) {
+          console.log('[Layout] Brak profilu ale użytkownik miał go wcześniej - poczekaj');
+          // Ostatnia próba po 3 sekundach
+          setTimeout(async () => {
+            await refreshProfile();
+            // Jeśli nadal nie ma profilu, to rzeczywiście coś jest nie tak
+            // Ale nie przekierowujemy - zostawiamy użytkownika na stronie
+          }, 3000);
+        } else {
+          console.log('[Layout] Brak profilu, przekierowuję do onboarding');
+          setRedirecting(true);
+          router.replace('/onboarding');
+        }
       }
     }
   }, [isAuthenticated, hasProfile, loading, router, refreshProfile, user, isRefreshing, error, redirecting]);

@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cd:*)",
+      "Bash(robocopy:*)",
+      "Bash(xcopy \"C:\\\\Users\\\\WORK\\\\Desktop\\\\Aplikacja Turbo\\\\turbo-challenge\" \"C:\\\\Users\\\\WORK\\\\Desktop\\\\Aplikacja Turbo\\\\turbo-grywalizacja\"\" /E /I /EXCLUDE:C:\\\\Users\\\\WORK\\\\Desktop\\\\Aplikacja Turbo\\\\exclude.txt 2>nul || echo \"Creating folder and copying... \")",
+      "Bash(powershell:*)",
+      "Bash(dir \"C:\\\\Users\\\\WORK\\\\Desktop\\\\Aplikacja Turbo\\\\turbo-grywalizacja\")",
+      "Bash(dir \"C:\\\\Users\\\\WORK\\\\Desktop\\\\Aplikacja Turbo\\\\turbo-grywalizacja\\\\src\")",
+      "Bash(npm run build:*)",
+      "Bash(npm install)",
+      "Bash(git init:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git remote add:*)",
+      "Bash(git branch:*)",
+      "Bash(git push:*)",
+      "WebFetch(domain:turbo-grywalizacja.vercel.app)",
+      "Bash(curl:*)",
+      "Bash(npm run dev:*)",
+      "Bash(timeout:*)",
+      "Bash(dir \"C:\\\\Users\\\\WORK\\\\Desktop\\\\Aplikacja Turbo\\\\turbo-challenge\\\\public\\\\*.png\")",
+      "WebSearch",
+      "Bash(npm audit:*)",
+      "Bash(ls:*)"
+    ]
+  }
+}

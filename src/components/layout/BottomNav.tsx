@@ -3,11 +3,11 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { Home, Target, Trophy, User, ScanLine, Gift } from 'lucide-react';
+import { Home, Target, Trophy, User, ScanLine } from 'lucide-react';
 
 const navItems = [
   { href: '/dashboard', label: 'Start', icon: Home },
-  { href: '/rewards', label: 'Nagrody', icon: Gift },
+  { href: '/missions', label: 'Misje', icon: Target },
   { href: '/scan', label: 'Skanuj', icon: ScanLine, highlight: true },
   { href: '/leaderboard', label: 'Ranking', icon: Trophy },
   { href: '/profile', label: 'Profil', icon: User },

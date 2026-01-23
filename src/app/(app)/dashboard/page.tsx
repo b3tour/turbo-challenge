@@ -22,6 +22,9 @@ import {
   ChevronRight,
   Zap,
   Medal,
+  Gift,
+  Crown,
+  Award,
 } from 'lucide-react';
 
 export default function DashboardPage() {
@@ -231,6 +234,65 @@ export default function DashboardPage() {
             </div>
           </Card>
         )}
+      </div>
+
+      {/* Rewards Preview */}
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+            <Gift className="w-5 h-5 text-yellow-500" />
+            Nagrody do zdobycia
+          </h2>
+          <Link
+            href="/rewards"
+            className="text-sm text-accent-400 flex items-center"
+          >
+            Zobacz wszystkie
+            <ChevronRight className="w-4 h-4" />
+          </Link>
+        </div>
+
+        <Card className="relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-br from-yellow-500/5 via-transparent to-amber-500/5" />
+          <div className="relative">
+            {/* Podium preview */}
+            <div className="flex items-end justify-center gap-2 py-4">
+              {/* 2. miejsce */}
+              <div className="flex flex-col items-center">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-gray-300 to-gray-500 flex items-center justify-center mb-1 shadow-lg">
+                  <Medal className="w-5 h-5 text-white" />
+                </div>
+                <div className="w-16 h-12 bg-gradient-to-t from-gray-500 to-gray-400 rounded-t-lg flex items-center justify-center">
+                  <span className="text-white font-bold text-lg">2</span>
+                </div>
+              </div>
+
+              {/* 1. miejsce */}
+              <div className="flex flex-col items-center -mt-4">
+                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-yellow-400 to-amber-600 flex items-center justify-center mb-1 shadow-lg shadow-yellow-500/30">
+                  <Crown className="w-6 h-6 text-white" />
+                </div>
+                <div className="w-20 h-16 bg-gradient-to-t from-yellow-600 to-yellow-400 rounded-t-lg flex items-center justify-center">
+                  <span className="text-white font-bold text-xl">1</span>
+                </div>
+              </div>
+
+              {/* 3. miejsce */}
+              <div className="flex flex-col items-center">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-600 to-orange-800 flex items-center justify-center mb-1 shadow-lg">
+                  <Award className="w-5 h-5 text-white" />
+                </div>
+                <div className="w-16 h-10 bg-gradient-to-t from-amber-800 to-amber-600 rounded-t-lg flex items-center justify-center">
+                  <span className="text-white font-bold text-lg">3</span>
+                </div>
+              </div>
+            </div>
+
+            <p className="text-center text-dark-300 text-sm pb-2">
+              Zdobądź TOP 3 i wygraj nagrody!
+            </p>
+          </div>
+        </Card>
       </div>
     </div>
   );

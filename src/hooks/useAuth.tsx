@@ -31,7 +31,7 @@ const AuthContext = createContext<AuthContextType | null>(null);
 
 // Cache dla profilu
 let profileCache: { [userId: string]: { data: User; timestamp: number } } = {};
-const CACHE_TTL = 60000; // 1 minuta
+const CACHE_TTL = 600000; // 10 minut - dłuższy cache zapobiega niepotrzebnym odświeżeniom
 
 // Cache dla sprawdzania nicków (poza komponentem)
 let nickCheckCache: { [nick: string]: { available: boolean; timestamp: number } } = {};
@@ -161,26 +161,61 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!mounted) return;
 
+      console.log('[Auth] onAuthStateChange:', event);
+
       // Ignoruj INITIAL_SESSION - już obsłużone powyżej
       if (event === 'INITIAL_SESSION') return;
 
-      let profile = null;
-      if (session?.user) {
-        // Przy SIGNED_IN wymuś odświeżenie
-        const forceRefresh = event === 'SIGNED_IN';
-        profile = await fetchProfile(session.user.id, forceRefresh);
-      } else {
-        // Wyczyść cache przy wylogowaniu
-        profileCache = {};
+      // Przy TOKEN_REFRESHED lub USER_UPDATED - tylko aktualizuj sesję, zachowaj istniejący profil
+      // To zapobiega niepotrzebnemu ładowaniu i przekierowaniom
+      if (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
+        console.log('[Auth] Token/User odświeżony, zachowuję profil');
+        setState(prev => ({
+          ...prev,
+          session,
+          user: session?.user ?? null,
+          // Zachowaj istniejący profil - nie resetuj!
+        }));
+        return;
       }
 
-      setState({
-        session,
-        user: session?.user ?? null,
-        profile,
-        loading: false,
-        error: null,
-      });
+      // Przy SIGNED_OUT - wyczyść wszystko
+      if (event === 'SIGNED_OUT') {
+        console.log('[Auth] Wylogowano');
+        profileCache = {};
+        setState({
+          session: null,
+          user: null,
+          profile: null,
+          loading: false,
+          error: null,
+        });
+        return;
+      }
+
+      // Przy SIGNED_IN - pobierz profil
+      if (event === 'SIGNED_IN' && session?.user) {
+        console.log('[Auth] Zalogowano, pobieram profil');
+        const profile = await fetchProfile(session.user.id, true);
+        setState({
+          session,
+          user: session.user,
+          profile,
+          loading: false,
+          error: null,
+        });
+        return;
+      }
+
+      // Dla innych eventów - zachowaj istniejący profil jeśli mamy sesję
+      if (session?.user) {
+        setState(prev => ({
+          ...prev,
+          session,
+          user: session.user,
+          // Zachowaj profil z poprzedniego stanu
+        }));
+      }
     });
 
     return () => {
