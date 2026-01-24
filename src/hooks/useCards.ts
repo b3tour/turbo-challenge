@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
-import { CollectibleCard, UserCard, CardRarity } from '@/types';
+import { CollectibleCard, UserCard, CardRarity, CardType } from '@/types';
 
 interface UseCardsOptions {
   userId?: string;
@@ -18,7 +18,8 @@ interface UseCardsReturn {
   hasCard: (cardId: string) => boolean;
   getCardsByRarity: (rarity: CardRarity) => CollectibleCard[];
   getCardsByCategory: (category: string) => CollectibleCard[];
-  getCollectionStats: () => {
+  getCardsByType: (type: CardType) => CollectibleCard[];
+  getCollectionStats: (cardType?: CardType) => {
     total: number;
     collected: number;
     byRarity: Record<CardRarity, { total: number; collected: number }>;
@@ -148,8 +149,14 @@ export function useCards({ userId }: UseCardsOptions = {}): UseCardsReturn {
     [allCards]
   );
 
-  const getCollectionStats = useCallback(() => {
+  const getCardsByType = useCallback(
+    (type: CardType) => allCards.filter(c => c.card_type === type),
+    [allCards]
+  );
+
+  const getCollectionStats = useCallback((cardType?: CardType) => {
     const collectedCardIds = new Set(userCards.map(uc => uc.card_id));
+    const filteredCards = cardType ? allCards.filter(c => c.card_type === cardType) : allCards;
 
     const byRarity: Record<CardRarity, { total: number; collected: number }> = {
       common: { total: 0, collected: 0 },
@@ -158,16 +165,18 @@ export function useCards({ userId }: UseCardsOptions = {}): UseCardsReturn {
       legendary: { total: 0, collected: 0 },
     };
 
-    allCards.forEach(card => {
+    filteredCards.forEach(card => {
       byRarity[card.rarity].total++;
       if (collectedCardIds.has(card.id)) {
         byRarity[card.rarity].collected++;
       }
     });
 
+    const collected = filteredCards.filter(c => collectedCardIds.has(c.id)).length;
+
     return {
-      total: allCards.length,
-      collected: collectedCardIds.size,
+      total: filteredCards.length,
+      collected,
       byRarity,
     };
   }, [allCards, userCards]);
@@ -182,6 +191,7 @@ export function useCards({ userId }: UseCardsOptions = {}): UseCardsReturn {
     hasCard,
     getCardsByRarity,
     getCardsByCategory,
+    getCardsByType,
     getCollectionStats,
     refreshCards: fetchCards,
   };

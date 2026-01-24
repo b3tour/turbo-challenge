@@ -204,18 +204,28 @@ export interface Reward {
 
 // Karty kolekcjonerskie
 export type CardRarity = 'common' | 'rare' | 'epic' | 'legendary';
+export type CardType = 'achievement' | 'car';
 
+// Karta osiągnięć (pionowa)
 export interface CollectibleCard {
   id: string;
   name: string;
   description: string;
   image_url?: string | null;
   rarity: CardRarity;
-  category: string; // np. "Samochody", "Kierowcy", "Tory"
+  card_type: CardType;
+  category: string; // np. "Eventy", "Poziomy", "Misje" lub marka samochodu
   points: number; // wartość punktowa karty
   total_supply?: number | null; // ile kart istnieje (null = nieograniczone)
   is_active: boolean;
   created_at: string;
+  // Pola tylko dla kart samochodów (card_type = 'car')
+  car_brand?: string | null; // Marka np. "Porsche"
+  car_model?: string | null; // Model np. "911 Turbo S"
+  car_horsepower?: number | null; // Moc w KM
+  car_torque?: number | null; // Moment obrotowy w Nm
+  car_max_speed?: number | null; // Prędkość max w km/h
+  car_year?: number | null; // Rok produkcji
 }
 
 export interface UserCard {

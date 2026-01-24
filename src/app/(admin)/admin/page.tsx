@@ -7,7 +7,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 import { Card, Button, Badge, Input, Modal, AlertDialog } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
-import { Mission, MissionStatus, Submission, User, QuizData, QuizQuestion, QuizMode, Reward, CollectibleCard, CardRarity } from '@/types';
+import { Mission, MissionStatus, Submission, User, QuizData, QuizQuestion, QuizMode, Reward, CollectibleCard, CardRarity, CardType } from '@/types';
 import {
   formatNumber,
   formatDateTime,
@@ -161,10 +161,18 @@ export default function AdminPage() {
     name: '',
     description: '',
     rarity: 'common' as CardRarity,
+    card_type: 'achievement' as CardType,
     category: '',
     points: 10,
     total_supply: '',
     image_url: '',
+    // Pola dla samochodów
+    car_brand: '',
+    car_model: '',
+    car_horsepower: '',
+    car_torque: '',
+    car_max_speed: '',
+    car_year: '',
   });
 
   const [missionForm, setMissionForm] = useState({
@@ -944,10 +952,17 @@ export default function AdminPage() {
         name: card.name,
         description: card.description,
         rarity: card.rarity,
+        card_type: card.card_type || 'achievement',
         category: card.category,
         points: card.points,
         total_supply: card.total_supply?.toString() || '',
         image_url: card.image_url || '',
+        car_brand: card.car_brand || '',
+        car_model: card.car_model || '',
+        car_horsepower: card.car_horsepower?.toString() || '',
+        car_torque: card.car_torque?.toString() || '',
+        car_max_speed: card.car_max_speed?.toString() || '',
+        car_year: card.car_year?.toString() || '',
       });
     } else {
       setEditingCard(null);
@@ -955,10 +970,17 @@ export default function AdminPage() {
         name: '',
         description: '',
         rarity: 'common',
+        card_type: 'achievement',
         category: '',
         points: 10,
         total_supply: '',
         image_url: '',
+        car_brand: '',
+        car_model: '',
+        car_horsepower: '',
+        car_torque: '',
+        car_max_speed: '',
+        car_year: '',
       });
     }
     setShowCardModal(true);
@@ -980,11 +1002,19 @@ export default function AdminPage() {
       name: cardForm.name.trim(),
       description: cardForm.description.trim(),
       rarity: cardForm.rarity,
+      card_type: cardForm.card_type,
       category: cardForm.category.trim(),
       points: cardForm.points,
       total_supply: cardForm.total_supply ? parseInt(cardForm.total_supply) : null,
       image_url: cardForm.image_url.trim() || null,
       is_active: true,
+      // Pola dla samochodów
+      car_brand: cardForm.card_type === 'car' ? cardForm.car_brand.trim() || null : null,
+      car_model: cardForm.card_type === 'car' ? cardForm.car_model.trim() || null : null,
+      car_horsepower: cardForm.card_type === 'car' && cardForm.car_horsepower ? parseInt(cardForm.car_horsepower) : null,
+      car_torque: cardForm.card_type === 'car' && cardForm.car_torque ? parseInt(cardForm.car_torque) : null,
+      car_max_speed: cardForm.card_type === 'car' && cardForm.car_max_speed ? parseInt(cardForm.car_max_speed) : null,
+      car_year: cardForm.card_type === 'car' && cardForm.car_year ? parseInt(cardForm.car_year) : null,
     };
 
     if (editingCard) {
@@ -1762,6 +1792,7 @@ export default function AdminPage() {
                               {/* Content */}
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2">
+                                  <span className="text-sm">{card.card_type === 'car' ? '🚗' : '🏆'}</span>
                                   <p className="font-medium text-white truncate">{card.name}</p>
                                   <Badge variant={
                                     card.rarity === 'legendary' ? 'warning' :
@@ -1772,7 +1803,11 @@ export default function AdminPage() {
                                     {rarityOpt?.label}
                                   </Badge>
                                 </div>
-                                <p className="text-sm text-dark-400">{card.category} • {card.points} pkt</p>
+                                <p className="text-sm text-dark-400">
+                                  {card.card_type === 'car' && card.car_brand ? `${card.car_brand} • ` : ''}
+                                  {card.category} • {card.points} pkt
+                                  {card.card_type === 'car' && card.car_horsepower ? ` • ${card.car_horsepower} KM` : ''}
+                                </p>
                                 {card.total_supply && (
                                   <p className="text-xs text-dark-500">Limit: {card.total_supply} szt.</p>
                                 )}
@@ -3038,7 +3073,36 @@ export default function AdminPage() {
         title={editingCard ? 'Edytuj kartę' : 'Dodaj kartę'}
         size="lg"
       >
-        <div className="space-y-4">
+        <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
+          {/* Typ karty */}
+          <div>
+            <label className="block text-sm font-medium text-dark-200 mb-1.5">Typ karty *</label>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setCardForm(prev => ({ ...prev, card_type: 'achievement' }))}
+                className={`flex-1 py-2.5 px-4 rounded-xl border transition-colors ${
+                  cardForm.card_type === 'achievement'
+                    ? 'bg-turbo-500 border-turbo-500 text-white'
+                    : 'bg-dark-800 border-dark-600 text-dark-300 hover:border-dark-500'
+                }`}
+              >
+                🏆 Osiągnięcie
+              </button>
+              <button
+                type="button"
+                onClick={() => setCardForm(prev => ({ ...prev, card_type: 'car' }))}
+                className={`flex-1 py-2.5 px-4 rounded-xl border transition-colors ${
+                  cardForm.card_type === 'car'
+                    ? 'bg-turbo-500 border-turbo-500 text-white'
+                    : 'bg-dark-800 border-dark-600 text-dark-300 hover:border-dark-500'
+                }`}
+              >
+                🚗 Samochód
+              </button>
+            </div>
+          </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-dark-200 mb-1.5">Nazwa karty *</label>
@@ -3046,7 +3110,7 @@ export default function AdminPage() {
                 type="text"
                 value={cardForm.name}
                 onChange={e => setCardForm(prev => ({ ...prev, name: e.target.value }))}
-                placeholder="np. Speed Demon"
+                placeholder={cardForm.card_type === 'car' ? 'np. Porsche 911 Turbo S' : 'np. Speed Demon'}
                 className="w-full bg-dark-800 border border-dark-600 rounded-xl px-4 py-2.5 text-white"
               />
             </div>
@@ -3067,12 +3131,14 @@ export default function AdminPage() {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-dark-200 mb-1.5">Kategoria *</label>
+              <label className="block text-sm font-medium text-dark-200 mb-1.5">
+                {cardForm.card_type === 'car' ? 'Marka (kategoria) *' : 'Kategoria *'}
+              </label>
               <input
                 type="text"
                 value={cardForm.category}
                 onChange={e => setCardForm(prev => ({ ...prev, category: e.target.value }))}
-                placeholder="np. Samochody, Osiągnięcia..."
+                placeholder={cardForm.card_type === 'car' ? 'np. Porsche, Ferrari, BMW...' : 'np. Eventy, Poziomy, Misje...'}
                 className="w-full bg-dark-800 border border-dark-600 rounded-xl px-4 py-2.5 text-white"
               />
             </div>
@@ -3089,12 +3155,94 @@ export default function AdminPage() {
             </div>
           </div>
 
+          {/* Pola specyficzne dla samochodów */}
+          {cardForm.card_type === 'car' && (
+            <>
+              <div className="border-t border-dark-700 pt-4 mt-4">
+                <h4 className="text-sm font-medium text-turbo-400 mb-3">🚗 Dane samochodu</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-dark-200 mb-1.5">Marka</label>
+                    <input
+                      type="text"
+                      value={cardForm.car_brand}
+                      onChange={e => setCardForm(prev => ({ ...prev, car_brand: e.target.value }))}
+                      placeholder="np. Porsche"
+                      className="w-full bg-dark-800 border border-dark-600 rounded-xl px-4 py-2.5 text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-dark-200 mb-1.5">Model</label>
+                    <input
+                      type="text"
+                      value={cardForm.car_model}
+                      onChange={e => setCardForm(prev => ({ ...prev, car_model: e.target.value }))}
+                      placeholder="np. 911 Turbo S"
+                      className="w-full bg-dark-800 border border-dark-600 rounded-xl px-4 py-2.5 text-white"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-dark-200 mb-1.5">Moc (KM)</label>
+                  <input
+                    type="number"
+                    value={cardForm.car_horsepower}
+                    onChange={e => setCardForm(prev => ({ ...prev, car_horsepower: e.target.value }))}
+                    placeholder="np. 650"
+                    min={0}
+                    className="w-full bg-dark-800 border border-dark-600 rounded-xl px-4 py-2.5 text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-dark-200 mb-1.5">Moment obrotowy (Nm)</label>
+                  <input
+                    type="number"
+                    value={cardForm.car_torque}
+                    onChange={e => setCardForm(prev => ({ ...prev, car_torque: e.target.value }))}
+                    placeholder="np. 800"
+                    min={0}
+                    className="w-full bg-dark-800 border border-dark-600 rounded-xl px-4 py-2.5 text-white"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-dark-200 mb-1.5">Prędkość max (km/h)</label>
+                  <input
+                    type="number"
+                    value={cardForm.car_max_speed}
+                    onChange={e => setCardForm(prev => ({ ...prev, car_max_speed: e.target.value }))}
+                    placeholder="np. 330"
+                    min={0}
+                    className="w-full bg-dark-800 border border-dark-600 rounded-xl px-4 py-2.5 text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-dark-200 mb-1.5">Rok produkcji</label>
+                  <input
+                    type="number"
+                    value={cardForm.car_year}
+                    onChange={e => setCardForm(prev => ({ ...prev, car_year: e.target.value }))}
+                    placeholder="np. 2024"
+                    min={1900}
+                    max={2030}
+                    className="w-full bg-dark-800 border border-dark-600 rounded-xl px-4 py-2.5 text-white"
+                  />
+                </div>
+              </div>
+            </>
+          )}
+
           <div>
             <label className="block text-sm font-medium text-dark-200 mb-1.5">Opis</label>
             <textarea
               value={cardForm.description}
               onChange={e => setCardForm(prev => ({ ...prev, description: e.target.value }))}
-              placeholder="Opis karty..."
+              placeholder={cardForm.card_type === 'car' ? 'Opis samochodu...' : 'Opis karty...'}
               className="w-full bg-dark-800 border border-dark-600 rounded-xl px-4 py-2.5 text-white min-h-[80px] resize-none"
             />
           </div>
@@ -3125,7 +3273,9 @@ export default function AdminPage() {
           </div>
 
           {cardForm.image_url && (
-            <div className="rounded-lg overflow-hidden w-24 h-32 bg-dark-700">
+            <div className={`rounded-lg overflow-hidden bg-dark-700 ${
+              cardForm.card_type === 'car' ? 'w-48 h-28' : 'w-24 h-32'
+            }`}>
               <img
                 src={cardForm.image_url}
                 alt="Podgląd"
