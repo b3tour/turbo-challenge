@@ -120,7 +120,7 @@ export default function DashboardPage() {
         <div className="pt-3 border-t border-dark-700">
           <div className="flex justify-between text-sm mb-1">
             <span className="text-dark-400 flex items-center gap-1">
-              <Heart className="w-4 h-4 text-red-500" />
+              <span className="text-base leading-none">❤️</span>
               Wsparcie Turbo Pomoc
             </span>
             <span className="text-red-400 font-medium">

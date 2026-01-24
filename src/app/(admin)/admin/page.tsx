@@ -193,6 +193,11 @@ export default function AdminPage() {
     hero_title: '',
   });
 
+  // Upload obrazka karty
+  const [cardImageFile, setCardImageFile] = useState<File | null>(null);
+  const [cardImagePreview, setCardImagePreview] = useState<string | null>(null);
+  const [uploadingCardImage, setUploadingCardImage] = useState(false);
+
   // Zamówienia kart
   const [orders, setOrders] = useState<CardOrder[]>([]);
   const [ordersLoaded, setOrdersLoaded] = useState(false);
@@ -1093,7 +1098,78 @@ export default function AdminPage() {
         hero_title: '',
       });
     }
+    // Reset image states
+    setCardImageFile(null);
+    setCardImagePreview(null);
     setShowCardModal(true);
+  };
+
+  // Obsługa wyboru pliku obrazka karty
+  const handleCardImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Walidacja formatu
+    const validTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!validTypes.includes(file.type)) {
+      showError('Nieprawidłowy format', 'Dozwolone formaty: JPG, PNG, WebP');
+      return;
+    }
+
+    // Walidacja rozmiaru (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      showError('Za duży plik', 'Maksymalny rozmiar pliku to 5MB');
+      return;
+    }
+
+    setCardImageFile(file);
+
+    // Tworzenie podglądu
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setCardImagePreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Usuwanie wybranego obrazka
+  const handleRemoveCardImage = () => {
+    setCardImageFile(null);
+    setCardImagePreview(null);
+    setCardForm(prev => ({ ...prev, image_url: '' }));
+  };
+
+  // Upload obrazka do Supabase Storage
+  const uploadCardImage = async (file: File): Promise<string | null> => {
+    setUploadingCardImage(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `card-${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+      const filePath = `cards/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('card-images')
+        .upload(filePath, file);
+
+      if (uploadError) {
+        console.error('Upload error:', uploadError);
+        showError('Błąd uploadu', uploadError.message);
+        return null;
+      }
+
+      // Pobierz publiczny URL
+      const { data: urlData } = supabase.storage
+        .from('card-images')
+        .getPublicUrl(filePath);
+
+      return urlData.publicUrl;
+    } catch (err) {
+      console.error('Upload failed:', err);
+      showError('Błąd', 'Nie udało się wgrać obrazka');
+      return null;
+    } finally {
+      setUploadingCardImage(false);
+    }
   };
 
   const handleSaveCard = async () => {
@@ -1108,6 +1184,18 @@ export default function AdminPage() {
 
     setSavingCard(true);
 
+    // Upload obrazka jeśli wybrano plik
+    let imageUrl = cardForm.image_url.trim() || null;
+    if (cardImageFile) {
+      const uploadedUrl = await uploadCardImage(cardImageFile);
+      if (uploadedUrl) {
+        imageUrl = uploadedUrl;
+      } else {
+        setSavingCard(false);
+        return; // Błąd uploadu - przerwij
+      }
+    }
+
     const cardData = {
       name: cardForm.name.trim(),
       description: cardForm.description.trim(),
@@ -1116,7 +1204,7 @@ export default function AdminPage() {
       category: cardForm.category.trim(),
       points: cardForm.points,
       total_supply: cardForm.total_supply ? parseInt(cardForm.total_supply) : null,
-      image_url: cardForm.image_url.trim() || null,
+      image_url: imageUrl,
       is_active: true,
       // Pola do zakupu
       is_purchasable: cardForm.is_purchasable,
@@ -3851,45 +3939,80 @@ export default function AdminPage() {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-dark-200 mb-1.5">Limit sztuk (opcjonalnie)</label>
-              <input
-                type="number"
-                value={cardForm.total_supply}
-                onChange={e => setCardForm(prev => ({ ...prev, total_supply: e.target.value }))}
-                placeholder="Brak limitu"
-                min={1}
-                className="w-full bg-dark-800 border border-dark-600 rounded-xl px-4 py-2.5 text-white"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-dark-200 mb-1.5">URL obrazka</label>
-              <input
-                type="url"
-                value={cardForm.image_url}
-                onChange={e => setCardForm(prev => ({ ...prev, image_url: e.target.value }))}
-                placeholder="https://..."
-                className="w-full bg-dark-800 border border-dark-600 rounded-xl px-4 py-2.5 text-white"
-              />
-            </div>
+          <div>
+            <label className="block text-sm font-medium text-dark-200 mb-1.5">Limit sztuk (opcjonalnie)</label>
+            <input
+              type="number"
+              value={cardForm.total_supply}
+              onChange={e => setCardForm(prev => ({ ...prev, total_supply: e.target.value }))}
+              placeholder="Brak limitu"
+              min={1}
+              className="w-full bg-dark-800 border border-dark-600 rounded-xl px-4 py-2.5 text-white"
+            />
           </div>
 
-          {cardForm.image_url && (
-            <div className={`rounded-lg overflow-hidden bg-dark-700 ${
-              cardForm.card_type === 'car' ? 'w-48 h-28' : 'w-24 h-32'
-            }`}>
-              <img
-                src={cardForm.image_url}
-                alt="Podgląd"
-                className="w-full h-full object-cover"
-                onError={e => {
-                  (e.target as HTMLImageElement).style.display = 'none';
-                }}
-              />
-            </div>
-          )}
+          {/* Upload obrazka */}
+          <div>
+            <label className="block text-sm font-medium text-dark-200 mb-1.5">
+              Zdjęcie karty {cardForm.card_type === 'car' ? '(16:9 poziome)' : '(3:4 pionowe)'}
+            </label>
+
+            {/* Podgląd aktualnego/wybranego obrazka */}
+            {(cardImagePreview || cardForm.image_url) ? (
+              <div className="flex items-start gap-4">
+                <div className={`rounded-lg overflow-hidden bg-dark-700 flex-shrink-0 ${
+                  cardForm.card_type === 'car' ? 'w-48 h-28' : 'w-24 h-32'
+                }`}>
+                  <img
+                    src={cardImagePreview || cardForm.image_url}
+                    alt="Podgląd"
+                    className="w-full h-full object-cover"
+                    onError={e => {
+                      (e.target as HTMLImageElement).style.display = 'none';
+                    }}
+                  />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <label className="cursor-pointer">
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      onChange={handleCardImageSelect}
+                      className="hidden"
+                    />
+                    <span className="inline-flex items-center gap-2 px-3 py-2 bg-dark-700 hover:bg-dark-600 border border-dark-600 rounded-lg text-sm text-dark-200 transition-colors">
+                      <Upload className="w-4 h-4" />
+                      Zmień
+                    </span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={handleRemoveCardImage}
+                    className="inline-flex items-center gap-2 px-3 py-2 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 rounded-lg text-sm text-red-400 transition-colors"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    Usuń
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <label className="cursor-pointer block">
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={handleCardImageSelect}
+                  className="hidden"
+                />
+                <div className={`border-2 border-dashed border-dark-600 hover:border-turbo-500 rounded-xl p-6 text-center transition-colors ${
+                  cardForm.card_type === 'car' ? 'aspect-video' : 'aspect-[3/4] max-w-[200px]'
+                }`}>
+                  <Upload className="w-8 h-8 text-dark-400 mx-auto mb-2" />
+                  <p className="text-sm text-dark-300">Kliknij aby wybrać zdjęcie</p>
+                  <p className="text-xs text-dark-500 mt-1">JPG, PNG lub WebP (max 5MB)</p>
+                </div>
+              </label>
+            )}
+          </div>
 
           <div className="flex gap-3 pt-4">
             <Button
@@ -3904,11 +4027,11 @@ export default function AdminPage() {
             </Button>
             <Button
               onClick={handleSaveCard}
-              loading={savingCard}
+              loading={savingCard || uploadingCardImage}
               className="flex-1"
             >
               <Save className="w-4 h-4 mr-1" />
-              {editingCard ? 'Zapisz zmiany' : 'Dodaj kartę'}
+              {uploadingCardImage ? 'Wgrywanie zdjęcia...' : editingCard ? 'Zapisz zmiany' : 'Dodaj kartę'}
             </Button>
           </div>
         </div>

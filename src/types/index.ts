@@ -202,6 +202,8 @@ export interface GeoPosition {
 }
 
 // Nagrody
+export type RewardType = 'xp' | 'donation';
+
 export interface Reward {
   id: string;
   place: number; // 1, 2, 3, etc.
@@ -212,6 +214,7 @@ export interface Reward {
   value?: string | null; // np. "500 zł", "Voucher"
   is_active: boolean;
   created_at: string;
+  reward_type?: RewardType; // 'xp' = ranking XP, 'donation' = ranking wsparcia
 }
 
 // Karty kolekcjonerskie
