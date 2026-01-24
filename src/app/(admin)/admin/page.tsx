@@ -759,6 +759,7 @@ export default function AdminPage() {
     ));
   };
 
+  // Przywróć wycofaną misję (status revoked -> approved, oddaj XP)
   const handleRestoreSubmission = async (submission: Submission) => {
     if (!submission.mission || !selectedUser) return;
 
@@ -793,6 +794,28 @@ export default function AdminPage() {
     setUserSubmissions(prev => prev.map(s =>
       s.id === submission.id ? { ...s, status: 'approved' as const } : s
     ));
+  };
+
+  // Resetuj misję (usuń zgłoszenie - pozwól na ponowną próbę)
+  // Używane dla: failed, rejected
+  const handleResetSubmission = async (submission: Submission) => {
+    if (!submission.mission) return;
+
+    // Usuń zgłoszenie całkowicie
+    const { error } = await supabase
+      .from('submissions')
+      .delete()
+      .eq('id', submission.id);
+
+    if (error) {
+      showError('Błąd', 'Nie udało się zresetować misji');
+      return;
+    }
+
+    success('Zresetowano!', `Misja "${submission.mission.title}" została zresetowana - gracz może spróbować ponownie`);
+
+    // Usuń z lokalnego stanu
+    setUserSubmissions(prev => prev.filter(s => s.id !== submission.id));
   };
 
   // === DELETE USER ===
@@ -2923,7 +2946,16 @@ export default function AdminPage() {
                                 <Badge variant="warning" size="sm">Oczekuje</Badge>
                               )}
                               {submission.status === 'rejected' && (
-                                <Badge variant="danger" size="sm">Odrzucone</Badge>
+                                <>
+                                  <Badge variant="danger" size="sm">Odrzucone</Badge>
+                                  <button
+                                    onClick={() => handleResetSubmission(submission)}
+                                    className="p-1.5 rounded-lg bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 transition-colors"
+                                    title="Resetuj (pozwól ponownie wykonać)"
+                                  >
+                                    <RotateCcw className="w-4 h-4" />
+                                  </button>
+                                </>
                               )}
                               {submission.status === 'revoked' && (
                                 <>
@@ -2931,7 +2963,7 @@ export default function AdminPage() {
                                   <button
                                     onClick={() => handleRestoreSubmission(submission)}
                                     className="p-1.5 rounded-lg bg-green-500/20 text-green-400 hover:bg-green-500/30 transition-colors"
-                                    title="Przywróć misję"
+                                    title="Przywróć misję (oddaj XP)"
                                   >
                                     <RotateCcw className="w-4 h-4" />
                                   </button>
@@ -2941,9 +2973,9 @@ export default function AdminPage() {
                                 <>
                                   <Badge variant="danger" size="sm">Nieukończone</Badge>
                                   <button
-                                    onClick={() => handleRestoreSubmission(submission)}
-                                    className="p-1.5 rounded-lg bg-green-500/20 text-green-400 hover:bg-green-500/30 transition-colors"
-                                    title="Odblokuj (pozwól ponownie wykonać)"
+                                    onClick={() => handleResetSubmission(submission)}
+                                    className="p-1.5 rounded-lg bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 transition-colors"
+                                    title="Resetuj (pozwól ponownie wykonać)"
                                   >
                                     <RotateCcw className="w-4 h-4" />
                                   </button>
