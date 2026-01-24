@@ -100,8 +100,8 @@ module.exports = {
           '50%': { transform: 'rotate(3deg)' },
         },
         'wiggle-intense': {
-          '0%, 100%': { transform: 'rotate(-8deg)' },
-          '50%': { transform: 'rotate(8deg)' },
+          '0%, 100%': { transform: 'rotate(-7deg)' },
+          '50%': { transform: 'rotate(7deg)' },
         },
       },
     },

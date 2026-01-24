@@ -353,32 +353,12 @@ export default function CardsPage() {
         </div>
       </Card>
 
-      {/* Mystery Garage Link - TEST ANIMACJI (do usunięcia) */}
-      <Card className="mb-4 border-yellow-500/50 bg-yellow-500/10">
-        <p className="text-yellow-400 text-sm font-medium mb-3 text-center">Porównanie animacji - wybierz najlepszą:</p>
-        <div className="flex justify-around items-center">
-          <div className="text-center">
-            <div className="w-16 h-16 rounded-xl bg-emerald-500/20 flex items-center justify-center mx-auto mb-2">
-              <span className="text-4xl animate-shake-soft">🎁</span>
-            </div>
-            <p className="text-xs text-dark-300">SHAKE</p>
-            <p className="text-xs text-dark-500">(delikatny)</p>
-          </div>
-          <div className="text-center">
-            <div className="w-16 h-16 rounded-xl bg-emerald-500/20 flex items-center justify-center mx-auto mb-2">
-              <span className="text-4xl animate-wiggle-intense">🎁</span>
-            </div>
-            <p className="text-xs text-dark-300">WIGGLE</p>
-            <p className="text-xs text-dark-500">(intensywny)</p>
-          </div>
-        </div>
-      </Card>
-
+      {/* Mystery Garage Link */}
       <Link href="/mystery">
         <Card className="mb-6 border-emerald-500/50 hover:border-emerald-400 transition-colors">
           <div className="flex items-center gap-4">
             <div className="w-14 h-14 rounded-xl bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
-              <span className="text-3xl animate-bounce">🎁</span>
+              <span className="text-3xl animate-wiggle-intense">🎁</span>
             </div>
             <div className="flex-1 min-w-0">
               <h3 className="font-bold text-white text-lg">Mystery Garage</h3>
