@@ -111,3 +111,173 @@ body {
 .level-up-animation {
   animation: level-up 0.8s ease-out;
 }
+
+/* === CARD EFFECTS === */
+
+/* Holographic shimmer effect for legendary cards */
+@keyframes holographic {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.card-holographic {
+  position: relative;
+  overflow: hidden;
+}
+
+.card-holographic::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    125deg,
+    transparent 0%,
+    rgba(255, 215, 0, 0.1) 15%,
+    rgba(255, 0, 128, 0.1) 30%,
+    rgba(0, 255, 255, 0.1) 45%,
+    transparent 50%,
+    rgba(255, 215, 0, 0.1) 65%,
+    rgba(255, 0, 128, 0.1) 80%,
+    transparent 100%
+  );
+  background-size: 400% 400%;
+  animation: holographic 4s ease infinite;
+  pointer-events: none;
+  z-index: 10;
+}
+
+/* Pulsing glow for epic cards */
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(168, 85, 247, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 40px rgba(168, 85, 247, 0.7);
+  }
+}
+
+.card-pulse-epic {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+/* Legendary golden glow */
+@keyframes golden-glow {
+  0%, 100% {
+    box-shadow: 0 0 25px rgba(234, 179, 8, 0.5), 0 0 50px rgba(234, 179, 8, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 40px rgba(234, 179, 8, 0.8), 0 0 80px rgba(234, 179, 8, 0.4);
+  }
+}
+
+.card-glow-legendary {
+  animation: golden-glow 3s ease-in-out infinite;
+}
+
+/* Shimmer effect on hover for rare cards */
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%) rotate(25deg);
+  }
+  100% {
+    transform: translateX(200%) rotate(25deg);
+  }
+}
+
+.card-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+
+.card-shimmer::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 50%;
+  height: 200%;
+  background: linear-gradient(
+    to right,
+    transparent 0%,
+    rgba(255, 255, 255, 0.15) 50%,
+    transparent 100%
+  );
+  transform: rotate(25deg);
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
+}
+
+.card-shimmer:hover::after {
+  opacity: 1;
+  animation: shimmer 0.8s ease-in-out;
+}
+
+/* Sparkle particles for legendary */
+@keyframes sparkle {
+  0%, 100% {
+    opacity: 0;
+    transform: scale(0);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.sparkle-particle {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  background: white;
+  border-radius: 50%;
+  pointer-events: none;
+  animation: sparkle 2s ease-in-out infinite;
+}
+
+/* Speed lines background */
+.speed-lines {
+  background: repeating-linear-gradient(
+    90deg,
+    transparent,
+    transparent 10px,
+    rgba(255, 255, 255, 0.03) 10px,
+    rgba(255, 255, 255, 0.03) 20px
+  );
+}
+
+/* Card brand logo position */
+.card-brand-logo {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  width: 32px;
+  height: 32px;
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(4px);
+}
+
+/* Stats bar animation */
+@keyframes fill-stat {
+  from {
+    width: 0%;
+  }
+  to {
+    width: var(--stat-value);
+  }
+}
+
+.stat-bar-fill {
+  animation: fill-stat 1s ease-out forwards;
+}

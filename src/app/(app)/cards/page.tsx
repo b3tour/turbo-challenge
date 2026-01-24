@@ -26,6 +26,7 @@ import {
   Crown,
   User,
 } from 'lucide-react';
+import { CollectibleCardDisplay } from '@/components/cards';
 
 type ViewTab = 'car' | 'achievement';
 
@@ -232,68 +233,16 @@ export default function CardsPage() {
   // === RENDER: Karta Hero (pełna szerokość, 16:9) ===
   const renderHeroCard = (card: CollectibleCard) => {
     const owned = !isDemoMode && hasCard(card.id);
-    const config = RARITY_CONFIG[card.rarity];
 
     return (
-      <button
+      <CollectibleCardDisplay
         key={card.id}
+        card={card}
+        owned={owned}
+        variant="hero"
         onClick={() => setSelectedCard(card)}
-        className={`relative w-full text-left transition-all duration-300 ${
-          owned ? 'hover:scale-[1.01]' : 'opacity-80 hover:opacity-100'
-        }`}
-      >
-        <div className={`relative rounded-2xl border-2 overflow-hidden ${config.borderColor} ${
-          owned ? `shadow-xl ${config.glowColor}` : ''
-        }`}>
-          {/* Zdjęcie 16:9 */}
-          <div className="aspect-video relative">
-            {card.image_url ? (
-              <img
-                src={card.image_url}
-                alt={card.name}
-                className={`w-full h-full object-cover ${!owned && !isDemoMode ? 'grayscale' : ''}`}
-              />
-            ) : (
-              <div className={`w-full h-full ${config.bgColor} flex items-center justify-center`}>
-                <div className="text-center">
-                  <User className={`w-16 h-16 ${config.color} mx-auto`} />
-                  <Car className={`w-10 h-10 ${config.color} mx-auto mt-2`} />
-                </div>
-              </div>
-            )}
-
-            {/* Overlay dla nieposiadanych */}
-            {!owned && !isDemoMode && (
-              <div className="absolute inset-0 bg-dark-900/50 flex items-center justify-center">
-                <Lock className="w-12 h-12 text-dark-400" />
-              </div>
-            )}
-
-            {/* Badge HERO */}
-            <div className="absolute top-3 left-3 flex items-center gap-2">
-              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-yellow-500 to-orange-500 text-white text-sm font-bold shadow-lg">
-                <Crown className="w-4 h-4" />
-                TURBO HERO
-              </div>
-            </div>
-
-            {/* Badge rzadkości */}
-            <div className={`absolute top-3 right-3 px-3 py-1 rounded-full font-bold text-sm ${config.bgColor} ${config.color}`}>
-              {config.name}
-            </div>
-
-            {/* Gradient overlay na dole */}
-            <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-dark-900 to-transparent" />
-
-            {/* Info na dole zdjęcia */}
-            <div className="absolute bottom-3 left-3 right-3">
-              <p className="text-yellow-400 text-sm font-medium">{card.hero_title}</p>
-              <h3 className="text-xl font-bold text-white">{card.hero_name || card.name}</h3>
-              <p className="text-dark-300 text-sm">{card.car_brand} {card.car_model}</p>
-            </div>
-          </div>
-        </div>
-      </button>
+        isDemoMode={isDemoMode}
+      />
     );
   };
 
@@ -301,80 +250,19 @@ export default function CardsPage() {
   const renderCarCard = (card: CollectibleCard) => {
     const owned = !isDemoMode && hasCard(card.id);
     const pendingOrder = !isDemoMode ? getUserOrderForCard(card.id) : undefined;
-    const config = RARITY_CONFIG[card.rarity];
+    const count = !isDemoMode ? getUserCardCount(card.id) : 0;
 
     return (
-      <button
+      <CollectibleCardDisplay
         key={card.id}
+        card={card}
+        owned={owned}
+        pendingOrder={pendingOrder?.status === 'pending'}
+        count={count}
+        variant="grid"
         onClick={() => setSelectedCard(card)}
-        className={`relative text-left transition-all duration-300 ${
-          owned ? 'hover:scale-[1.02]' : 'opacity-75 hover:opacity-100'
-        }`}
-      >
-        <div className={`relative rounded-xl border-2 overflow-hidden ${config.borderColor} ${
-          owned ? `shadow-lg ${config.glowColor}` : ''
-        }`}>
-          {/* Zdjęcie - proporcje 4:3 */}
-          <div className="aspect-[4/3] relative">
-            {card.image_url ? (
-              <img
-                src={card.image_url}
-                alt={card.name}
-                className={`w-full h-full object-cover ${!owned && !isDemoMode ? 'grayscale' : ''}`}
-              />
-            ) : (
-              <div className={`w-full h-full ${config.bgColor} flex items-center justify-center`}>
-                <Car className={`w-12 h-12 ${config.color}`} />
-              </div>
-            )}
-
-            {/* Overlay dla nieposiadanych */}
-            {!owned && !isDemoMode && (
-              <div className="absolute inset-0 bg-dark-900/50 flex items-center justify-center">
-                <Lock className="w-8 h-8 text-dark-400" />
-              </div>
-            )}
-
-            {/* Oczekuje na płatność */}
-            {pendingOrder?.status === 'pending' && (
-              <div className="absolute top-2 left-2 flex items-center gap-1 px-2 py-1 rounded-full bg-yellow-500/90 text-xs font-medium text-dark-900">
-                <Clock className="w-3 h-3" />
-                Oczekuje
-              </div>
-            )}
-
-            {/* Posiadana */}
-            {owned && (
-              <div className="absolute top-2 left-2">
-                <CheckCircle className="w-6 h-6 text-green-500 drop-shadow-lg" />
-              </div>
-            )}
-
-            {/* Badge rzadkości */}
-            <div className={`absolute top-2 right-2 w-6 h-6 rounded-full flex items-center justify-center text-sm ${config.bgColor}`}>
-              {config.icon}
-            </div>
-
-            {/* Cena (jeśli do kupienia) */}
-            {card.is_purchasable && card.price && !owned && (
-              <div className="absolute bottom-2 right-2 px-2 py-1 rounded-lg bg-turbo-500 text-white text-xs font-bold shadow-lg">
-                {card.price} zł
-              </div>
-            )}
-          </div>
-
-          {/* Info pod zdjęciem */}
-          <div className="p-2.5 bg-dark-800">
-            <h3 className={`font-semibold text-sm truncate ${owned ? 'text-white' : 'text-dark-300'}`}>
-              {card.car_model || card.name}
-            </h3>
-            <div className="flex items-center justify-between mt-1">
-              <span className="text-xs text-dark-500">{card.car_brand}</span>
-              <span className={`text-xs font-medium ${config.color}`}>+{card.points} pkt</span>
-            </div>
-          </div>
-        </div>
-      </button>
+        isDemoMode={isDemoMode}
+      />
     );
   };
 
