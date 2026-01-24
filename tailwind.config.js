@@ -63,6 +63,8 @@ module.exports = {
         'slide-up': 'slide-up 0.3s ease-out',
         'fade-in': 'fade-in 0.3s ease-out',
         'shimmer': 'shimmer 2s infinite',
+        'shake': 'shake 0.5s ease-in-out infinite',
+        'wiggle': 'wiggle 1s ease-in-out infinite',
       },
       keyframes: {
         'pulse-glow': {
@@ -80,6 +82,15 @@ module.exports = {
         'shimmer': {
           '0%': { transform: 'translateX(-100%) skewX(-12deg)' },
           '100%': { transform: 'translateX(200%) skewX(-12deg)' },
+        },
+        'shake': {
+          '0%, 100%': { transform: 'translateX(0)' },
+          '25%': { transform: 'translateX(-4px) rotate(-5deg)' },
+          '75%': { transform: 'translateX(4px) rotate(5deg)' },
+        },
+        'wiggle': {
+          '0%, 100%': { transform: 'rotate(-3deg)' },
+          '50%': { transform: 'rotate(3deg)' },
         },
       },
     },

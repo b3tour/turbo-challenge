@@ -353,7 +353,31 @@ export default function CardsPage() {
         </div>
       </Card>
 
-      {/* Mystery Garage Link */}
+      {/* Mystery Garage Link - TEST ANIMACJI (do usunięcia) */}
+      <Card className="mb-4 border-yellow-500/50 bg-yellow-500/10">
+        <p className="text-yellow-400 text-sm font-medium mb-3 text-center">Porównanie animacji - wybierz najlepszą:</p>
+        <div className="flex justify-around items-center">
+          <div className="text-center">
+            <div className="w-16 h-16 rounded-xl bg-emerald-500/20 flex items-center justify-center mx-auto mb-2">
+              <span className="text-4xl animate-bounce">🎁</span>
+            </div>
+            <p className="text-xs text-dark-300">BOUNCE</p>
+          </div>
+          <div className="text-center">
+            <div className="w-16 h-16 rounded-xl bg-emerald-500/20 flex items-center justify-center mx-auto mb-2">
+              <span className="text-4xl animate-shake">🎁</span>
+            </div>
+            <p className="text-xs text-dark-300">SHAKE</p>
+          </div>
+          <div className="text-center">
+            <div className="w-16 h-16 rounded-xl bg-emerald-500/20 flex items-center justify-center mx-auto mb-2">
+              <span className="text-4xl animate-wiggle">🎁</span>
+            </div>
+            <p className="text-xs text-dark-300">WIGGLE</p>
+          </div>
+        </div>
+      </Card>
+
       <Link href="/mystery">
         <Card className="mb-6 border-emerald-500/50 hover:border-emerald-400 transition-colors">
           <div className="flex items-center gap-4">
