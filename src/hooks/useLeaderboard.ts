@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
-import { LeaderboardEntry } from '@/types';
+import { LeaderboardEntry, DonationLeaderboardEntry } from '@/types';
 import { LEVELS } from '@/lib/utils';
 
 interface UseLeaderboardOptions {
@@ -245,6 +245,55 @@ export function useLeaderboard(options: UseLeaderboardOptions = {}) {
     return { rank, time_ms: userEntry.quiz_time_ms! };
   }, []);
 
+  // Ranking wsparcia (datki) - użytkownicy z donation_total > 0
+  const getDonationLeaderboard = useCallback(async (topN: number = 50): Promise<DonationLeaderboardEntry[]> => {
+    const { data: users, error: usersError } = await supabase
+      .from('users')
+      .select('id, nick, avatar_url, donation_total')
+      .gt('donation_total', 0)
+      .order('donation_total', { ascending: false })
+      .limit(topN);
+
+    if (usersError || !users) return [];
+
+    // Pobierz liczbę zakupionych kart dla każdego użytkownika
+    const userIds = users.map(u => u.id);
+    const { data: orders } = await supabase
+      .from('card_orders')
+      .select('user_id')
+      .eq('status', 'paid')
+      .in('user_id', userIds);
+
+    // Zlicz karty na użytkownika
+    const cardCounts: Record<string, number> = {};
+    orders?.forEach(o => {
+      cardCounts[o.user_id] = (cardCounts[o.user_id] || 0) + 1;
+    });
+
+    return users.map((user, index) => ({
+      rank: index + 1,
+      user_id: user.id,
+      nick: user.nick,
+      avatar_url: user.avatar_url,
+      donation_total: user.donation_total || 0,
+      cards_purchased: cardCounts[user.id] || 0,
+    }));
+  }, []);
+
+  // Pobierz pozycję użytkownika w rankingu wsparcia
+  const getUserDonationRank = useCallback(async (userId: string): Promise<number | null> => {
+    const { data, error: fetchError } = await supabase
+      .from('users')
+      .select('id')
+      .gt('donation_total', 0)
+      .order('donation_total', { ascending: false });
+
+    if (fetchError || !data) return null;
+
+    const rank = data.findIndex(u => u.id === userId);
+    return rank >= 0 ? rank + 1 : null;
+  }, []);
+
   return {
     leaderboard,
     loading,
@@ -256,5 +305,7 @@ export function useLeaderboard(options: UseLeaderboardOptions = {}) {
     getStats,
     getSpeedrunLeaderboard,
     getUserSpeedrunRank,
+    getDonationLeaderboard,
+    getUserDonationRank,
   };
 }

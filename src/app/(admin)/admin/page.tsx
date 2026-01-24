@@ -1177,17 +1177,34 @@ export default function AdminPage() {
 
       if (cardError) throw cardError;
 
-      // 3. Dodaj XP użytkownikowi
-      if (order.xp_reward > 0) {
+      // 3. Sprawdź typ karty - karty samochodowe dodają do donation_total, inne do XP
+      const isCarCard = order.card?.card_type === 'car';
+
+      if (isCarCard) {
+        // Karty samochodów - dodaj do donation_total (datki)
         const { data: userData } = await supabase
-          .from('profiles')
+          .from('users')
+          .select('donation_total')
+          .eq('id', order.user_id)
+          .single();
+
+        if (userData) {
+          await supabase
+            .from('users')
+            .update({ donation_total: (userData.donation_total || 0) + order.amount })
+            .eq('id', order.user_id);
+        }
+      } else if (order.xp_reward > 0) {
+        // Inne karty - dodaj XP
+        const { data: userData } = await supabase
+          .from('users')
           .select('total_xp')
           .eq('id', order.user_id)
           .single();
 
         if (userData) {
           await supabase
-            .from('profiles')
+            .from('users')
             .update({ total_xp: (userData.total_xp || 0) + order.xp_reward })
             .eq('id', order.user_id);
         }
@@ -1203,7 +1220,11 @@ export default function AdminPage() {
           : o
       ));
 
-      success('Zatwierdzone!', `Karta przyznana, +${order.xp_reward} XP dodane`);
+      if (isCarCard) {
+        success('Zatwierdzone!', `Karta przyznana, +${order.amount.toFixed(2)} zł do wsparcia`);
+      } else {
+        success('Zatwierdzone!', `Karta przyznana, +${order.xp_reward} XP dodane`);
+      }
     } catch (e: unknown) {
       const errorMessage = e instanceof Error ? e.message : 'Nieznany błąd';
       showError('Błąd', errorMessage);

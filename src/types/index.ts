@@ -16,6 +16,8 @@ export interface User {
   nick_changes_count?: number;
   pending_nick?: string;
   pending_nick_requested_at?: string;
+  // Suma datków (zakup kart samochodów)
+  donation_total?: number;
 }
 
 // Typy dla poziomu
@@ -116,6 +118,16 @@ export interface LeaderboardEntry {
   level: number;
   level_name: string;
   missions_completed: number;
+}
+
+// Ranking wsparcia (datki)
+export interface DonationLeaderboardEntry {
+  rank: number;
+  user_id: string;
+  nick: string;
+  avatar_url?: string;
+  donation_total: number;
+  cards_purchased: number;
 }
 
 // Odznaki i achievementy

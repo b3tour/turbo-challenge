@@ -307,6 +307,30 @@ export default function ProfilePage() {
               : 'Maksymalny poziom osiągnięty!'}
           </p>
         </div>
+
+        {/* Donation Progress */}
+        {(profile.donation_total || 0) > 0 && (
+          <div className="pt-4 mt-4 border-t border-dark-700">
+            <div className="flex justify-between text-sm mb-2">
+              <span className="text-dark-400 flex items-center gap-1">
+                <Heart className="w-4 h-4 text-red-500" />
+                Wsparcie Turbo Pomoc
+              </span>
+              <span className="text-red-400 font-bold">
+                {(profile.donation_total || 0).toFixed(2)} zł
+              </span>
+            </div>
+            <div className="h-3 bg-dark-700 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-gradient-to-r from-red-500 to-pink-500 rounded-full transition-all"
+                style={{ width: `${Math.min(100, ((profile.donation_total || 0) / 100) * 100)}%` }}
+              />
+            </div>
+            <p className="text-xs text-dark-500 mt-2 text-center">
+              Dziękujemy za Twój wkład! ❤️
+            </p>
+          </div>
+        )}
       </Card>
 
       {/* Stats */}

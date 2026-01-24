@@ -6,10 +6,10 @@ import { useLeaderboard } from '@/hooks/useLeaderboard';
 import { useMissions } from '@/hooks/useMissions';
 import { Card, Avatar, Badge } from '@/components/ui';
 import { formatNumber, LEVELS } from '@/lib/utils';
-import { Trophy, Medal, Crown, TrendingUp, Users, Zap, Timer, ChevronDown, ChevronUp } from 'lucide-react';
-import { Mission } from '@/types';
+import { Trophy, Medal, Crown, TrendingUp, Users, Zap, Timer, ChevronDown, ChevronUp, Heart, Layers } from 'lucide-react';
+import { Mission, DonationLeaderboardEntry } from '@/types';
 
-type LeaderboardTab = 'xp' | 'speedrun';
+type LeaderboardTab = 'xp' | 'speedrun' | 'donation';
 
 interface SpeedrunEntry {
   rank: number;
@@ -29,6 +29,8 @@ export default function LeaderboardPage() {
     getUserRank,
     getStats,
     getSpeedrunLeaderboard,
+    getDonationLeaderboard,
+    getUserDonationRank,
   } = useLeaderboard({ limit: 100 });
 
   const { missions } = useMissions({ activeOnly: false });
@@ -37,6 +39,9 @@ export default function LeaderboardPage() {
   const [speedrunData, setSpeedrunData] = useState<Record<string, SpeedrunEntry[]>>({});
   const [expandedQuiz, setExpandedQuiz] = useState<string | null>(null);
   const [loadingSpeedrun, setLoadingSpeedrun] = useState(false);
+  const [donationData, setDonationData] = useState<DonationLeaderboardEntry[]>([]);
+  const [loadingDonation, setLoadingDonation] = useState(false);
+  const [userDonationRank, setUserDonationRank] = useState<number | null>(null);
   const stats = getStats();
 
   // Synchronicznie pobierz ranking użytkownika z cache
@@ -57,6 +62,22 @@ export default function LeaderboardPage() {
       });
     }
   }, [expandedQuiz, speedrunData, getSpeedrunLeaderboard]);
+
+  // Załaduj dane wsparcia gdy tab jest aktywny
+  useEffect(() => {
+    if (activeTab === 'donation' && donationData.length === 0) {
+      setLoadingDonation(true);
+      getDonationLeaderboard(50).then(data => {
+        setDonationData(data);
+        setLoadingDonation(false);
+      });
+      if (profile?.id) {
+        getUserDonationRank(profile.id).then(rank => {
+          setUserDonationRank(rank);
+        });
+      }
+    }
+  }, [activeTab, donationData.length, getDonationLeaderboard, getUserDonationRank, profile?.id]);
 
   const formatTimeMs = (ms: number) => {
     const totalSeconds = Math.floor(ms / 1000);
@@ -112,30 +133,36 @@ export default function LeaderboardPage() {
       <div className="flex gap-2 mb-6">
         <button
           onClick={() => setActiveTab('xp')}
-          className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-medium transition-colors ${
+          className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-3 rounded-xl font-medium transition-colors ${
             activeTab === 'xp'
               ? 'bg-turbo-500 text-white'
               : 'bg-dark-700 text-dark-300 hover:bg-dark-600'
           }`}
         >
-          <Zap className="w-5 h-5" />
-          Ranking XP
+          <Zap className="w-4 h-4" />
+          <span className="text-sm">XP</span>
         </button>
         <button
-          onClick={() => setActiveTab('speedrun')}
-          className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-medium transition-colors ${
-            activeTab === 'speedrun'
-              ? 'bg-turbo-500 text-white'
+          onClick={() => setActiveTab('donation')}
+          className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-3 rounded-xl font-medium transition-colors ${
+            activeTab === 'donation'
+              ? 'bg-red-500 text-white'
               : 'bg-dark-700 text-dark-300 hover:bg-dark-600'
           }`}
         >
-          <Timer className="w-5 h-5" />
-          Speedrun
-          {speedrunQuizzes.length > 0 && (
-            <span className="bg-yellow-500 text-black text-xs px-1.5 py-0.5 rounded-full">
-              {speedrunQuizzes.length}
-            </span>
-          )}
+          <Heart className="w-4 h-4" />
+          <span className="text-sm">Wsparcie</span>
+        </button>
+        <button
+          onClick={() => setActiveTab('speedrun')}
+          className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-3 rounded-xl font-medium transition-colors ${
+            activeTab === 'speedrun'
+              ? 'bg-yellow-500 text-black'
+              : 'bg-dark-700 text-dark-300 hover:bg-dark-600'
+          }`}
+        >
+          <Timer className="w-4 h-4" />
+          <span className="text-sm">Speedrun</span>
         </button>
       </div>
 
@@ -336,6 +363,216 @@ export default function LeaderboardPage() {
           </div>
         )}
       </Card>
+        </>
+      )}
+
+      {/* === DONATION TAB CONTENT === */}
+      {activeTab === 'donation' && (
+        <>
+          {/* User's Position in Donation Ranking */}
+          {userDonationRank && profile && (profile.donation_total || 0) > 0 && (
+            <Card variant="glass" className="mb-6 border-red-500/30">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-full bg-red-500 flex items-center justify-center text-xl font-bold text-white">
+                  #{userDonationRank}
+                </div>
+                <Avatar
+                  src={profile.avatar_url}
+                  fallback={profile.nick}
+                  size="md"
+                  showBorder
+                />
+                <div className="flex-1">
+                  <p className="font-semibold text-white">{profile.nick}</p>
+                  <p className="text-sm text-red-400">Twój wkład w Turbo Pomoc</p>
+                </div>
+                <div className="text-right">
+                  <div className="text-xl font-bold text-red-400">
+                    {((profile.donation_total || 0)).toFixed(2)} zł
+                  </div>
+                  <div className="text-xs text-dark-400">wsparte</div>
+                </div>
+              </div>
+            </Card>
+          )}
+
+          {/* Donation Stats */}
+          <div className="grid grid-cols-2 gap-3 mb-6">
+            <Card padding="sm" className="text-center">
+              <Heart className="w-5 h-5 text-red-500 mx-auto mb-1" />
+              <div className="text-lg font-bold text-white">
+                {donationData.reduce((sum, d) => sum + d.donation_total, 0).toFixed(2)} zł
+              </div>
+              <div className="text-xs text-dark-400">Łącznie zebrano</div>
+            </Card>
+
+            <Card padding="sm" className="text-center">
+              <Layers className="w-5 h-5 text-purple-500 mx-auto mb-1" />
+              <div className="text-lg font-bold text-white">
+                {donationData.reduce((sum, d) => sum + d.cards_purchased, 0)}
+              </div>
+              <div className="text-xs text-dark-400">Kart zakupionych</div>
+            </Card>
+          </div>
+
+          {/* Top 3 Donors Podium */}
+          {!loadingDonation && donationData.length >= 3 && (
+            <Card className="mb-6 py-4">
+              <div className="text-center mb-4">
+                <Heart className="w-6 h-6 text-red-500 mx-auto mb-1" />
+                <p className="text-sm text-dark-400">Top Wspierający</p>
+              </div>
+              <div className="flex items-end justify-center gap-3">
+                {/* 2nd place */}
+                <div className="flex flex-col items-center w-24">
+                  <Avatar
+                    src={donationData[1].avatar_url}
+                    fallback={donationData[1].nick}
+                    size="md"
+                    showBorder
+                    borderColor="border-gray-400"
+                  />
+                  <p className="text-xs font-semibold text-white truncate w-full text-center mt-1">
+                    {donationData[1].nick}
+                  </p>
+                  <p className="text-xs text-red-400">{donationData[1].donation_total.toFixed(2)} zł</p>
+                  <div className="w-full h-14 bg-gradient-to-t from-gray-500/30 to-gray-400/10 rounded-t-lg mt-2 flex items-center justify-center">
+                    <span className="text-xl font-bold text-gray-300">2</span>
+                  </div>
+                </div>
+
+                {/* 1st place */}
+                <div className="flex flex-col items-center w-28">
+                  <Crown className="w-6 h-6 text-red-400 mb-1" />
+                  <Avatar
+                    src={donationData[0].avatar_url}
+                    fallback={donationData[0].nick}
+                    size="lg"
+                    showBorder
+                    borderColor="border-red-400"
+                  />
+                  <p className="text-sm font-semibold text-white truncate w-full text-center mt-1">
+                    {donationData[0].nick}
+                  </p>
+                  <p className="text-xs text-red-400">{donationData[0].donation_total.toFixed(2)} zł</p>
+                  <div className="w-full h-20 bg-gradient-to-t from-red-500/30 to-red-400/10 rounded-t-lg mt-2 flex items-center justify-center">
+                    <span className="text-2xl font-bold text-red-400">1</span>
+                  </div>
+                </div>
+
+                {/* 3rd place */}
+                <div className="flex flex-col items-center w-24">
+                  <Avatar
+                    src={donationData[2].avatar_url}
+                    fallback={donationData[2].nick}
+                    size="md"
+                    showBorder
+                    borderColor="border-amber-600"
+                  />
+                  <p className="text-xs font-semibold text-white truncate w-full text-center mt-1">
+                    {donationData[2].nick}
+                  </p>
+                  <p className="text-xs text-red-400">{donationData[2].donation_total.toFixed(2)} zł</p>
+                  <div className="w-full h-10 bg-gradient-to-t from-amber-600/30 to-amber-500/10 rounded-t-lg mt-2 flex items-center justify-center">
+                    <span className="text-xl font-bold text-amber-600">3</span>
+                  </div>
+                </div>
+              </div>
+            </Card>
+          )}
+
+          {/* Full Donation Leaderboard */}
+          <Card>
+            <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+              <Heart className="w-5 h-5 text-red-500" />
+              Ranking Wsparcia
+            </h2>
+
+            {loadingDonation ? (
+              <div className="space-y-3">
+                {[1, 2, 3, 4, 5].map(i => (
+                  <div key={i} className="h-16 bg-dark-700 rounded-xl animate-pulse" />
+                ))}
+              </div>
+            ) : donationData.length === 0 ? (
+              <div className="text-center py-12">
+                <Heart className="w-12 h-12 text-dark-600 mx-auto mb-3" />
+                <p className="text-dark-400 font-medium">Brak wspierających</p>
+                <p className="text-sm text-dark-500 mt-1">
+                  Bądź pierwszy - kup kartę i wesprzyj Turbo Pomoc!
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {donationData.map(entry => {
+                  const isCurrentUser = entry.user_id === profile?.id;
+
+                  return (
+                    <div
+                      key={entry.user_id}
+                      className={`flex items-center gap-3 p-3 rounded-xl border transition-colors ${
+                        isCurrentUser
+                          ? 'bg-red-500/10 border-red-500/30'
+                          : `border-transparent ${getRankStyle(entry.rank)}`
+                      }`}
+                    >
+                      {/* Rank */}
+                      <div className="w-8 flex items-center justify-center">
+                        {entry.rank <= 3 ? (
+                          getRankIcon(entry.rank)
+                        ) : (
+                          <span className="text-lg font-bold text-dark-400">
+                            {entry.rank}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Avatar */}
+                      <Avatar
+                        src={entry.avatar_url}
+                        fallback={entry.nick}
+                        size="sm"
+                        showBorder={entry.rank <= 3}
+                        borderColor={
+                          entry.rank === 1
+                            ? 'border-red-400'
+                            : entry.rank === 2
+                            ? 'border-gray-400'
+                            : entry.rank === 3
+                            ? 'border-amber-600'
+                            : undefined
+                        }
+                      />
+
+                      {/* Info */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className={`font-medium truncate ${isCurrentUser ? 'text-red-400' : 'text-white'}`}>
+                            {entry.nick}
+                          </p>
+                          {isCurrentUser && (
+                            <Badge variant="danger" size="sm">Ty</Badge>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1 text-xs text-dark-400">
+                          <Layers className="w-3 h-3" />
+                          <span>{entry.cards_purchased} kart</span>
+                        </div>
+                      </div>
+
+                      {/* Amount */}
+                      <div className="text-right">
+                        <div className={`font-bold ${entry.rank <= 3 ? 'text-red-400' : 'text-white'}`}>
+                          {entry.donation_total.toFixed(2)} zł
+                        </div>
+                        <div className="text-xs text-dark-500">wsparte</div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </Card>
         </>
       )}
 
