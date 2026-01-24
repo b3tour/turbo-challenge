@@ -13,7 +13,6 @@ import {
   User,
   CheckCircle,
   Clock,
-  Star,
 } from 'lucide-react';
 
 // Konfiguracja efektów według rzadkości
@@ -27,7 +26,7 @@ const RARITY_EFFECTS: Record<CardRarity, {
     cardClass: '',
     frameClass: 'border-slate-500/50',
     showSparkles: false,
-    statsVisible: false,
+    statsVisible: true,
   },
   rare: {
     cardClass: 'card-shimmer',
@@ -49,32 +48,6 @@ const RARITY_EFFECTS: Record<CardRarity, {
   },
 };
 
-// Mapa logo marek
-const BRAND_LOGOS: Record<string, string> = {
-  'Porsche': '🔴',
-  'Ferrari': '🐎',
-  'Lamborghini': '🐂',
-  'BMW': '🔵',
-  'Mercedes': '⭐',
-  'Audi': '⚪',
-  'McLaren': '🧡',
-  'Bugatti': '🔷',
-  'Koenigsegg': '👻',
-  'Pagani': '💎',
-  'Aston Martin': '🦅',
-  'Bentley': '🅱️',
-  'Rolls-Royce': '👑',
-  'Maserati': '🔱',
-  'Alfa Romeo': '🍀',
-  'Toyota': '🔺',
-  'Nissan': '🔴',
-  'Honda': '🔴',
-  'Mazda': '⭕',
-  'Subaru': '⭐',
-  'Ford': '🔵',
-  'Chevrolet': '➕',
-  'Dodge': '🔴',
-};
 
 interface CollectibleCardDisplayProps {
   card: CollectibleCard;
@@ -99,7 +72,6 @@ export function CollectibleCardDisplay({
 
   const config = RARITY_CONFIG[card.rarity];
   const effects = RARITY_EFFECTS[card.rarity];
-  const brandLogo = card.car_brand ? BRAND_LOGOS[card.car_brand] || '🚗' : '🚗';
 
   // Oblicz procent dla statystyk (max wartości dla normalizacji)
   const maxHP = 1500;
@@ -187,10 +159,7 @@ export function CollectibleCardDisplay({
             <div className="absolute bottom-0 left-0 right-0 p-4">
               <p className="text-yellow-400 text-sm font-medium">{card.hero_title}</p>
               <h3 className="text-2xl font-bold text-white">{card.hero_name || card.name}</h3>
-              <div className="flex items-center gap-2 mt-1">
-                <span className="text-2xl">{brandLogo}</span>
-                <span className="text-dark-300">{card.car_brand} {card.car_model}</span>
-              </div>
+              <p className="text-dark-300 mt-1">{card.car_brand} {card.car_model}</p>
             </div>
           </div>
 
@@ -290,11 +259,6 @@ export function CollectibleCardDisplay({
             <span>{config.icon}</span>
           </div>
 
-          {/* Logo marki */}
-          <div className="card-brand-logo">
-            <span className="text-lg">{brandLogo}</span>
-          </div>
-
           {/* Cena (jeśli do kupienia) */}
           {card.is_purchasable && card.price && !owned && (
             <div className="absolute bottom-2 left-2 px-2 py-1 rounded-lg bg-gradient-to-r from-turbo-500 to-purple-500 text-white text-xs font-bold shadow-lg">
@@ -360,17 +324,6 @@ export function CollectibleCardDisplay({
             </div>
           )}
 
-          {/* Punkty - tylko dla common (bez statystyk) */}
-          {!effects.statsVisible && (
-            <div className="flex items-center justify-between mt-1">
-              <span className="text-xs text-dark-500">+{card.points} pkt</span>
-              <div className="flex items-center gap-0.5">
-                {Array.from({ length: ['common', 'rare', 'epic', 'legendary'].indexOf(card.rarity) + 1 }).map((_, i) => (
-                  <Star key={i} className={`w-3 h-3 ${config.color}`} fill="currentColor" />
-                ))}
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </button>
