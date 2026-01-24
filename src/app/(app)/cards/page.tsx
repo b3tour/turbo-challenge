@@ -25,7 +25,10 @@ import {
   CreditCard,
   Crown,
   User,
+  Package,
+  ChevronRight,
 } from 'lucide-react';
+import Link from 'next/link';
 import { CollectibleCardDisplay } from '@/components/cards';
 
 type ViewTab = 'car' | 'achievement';
@@ -349,6 +352,24 @@ export default function CardsPage() {
           </div>
         </div>
       </Card>
+
+      {/* Mystery Garage Link */}
+      <Link href="/mystery">
+        <Card className="mb-4 border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 transition-colors">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-emerald-500/20 flex items-center justify-center">
+              <Package className="w-5 h-5 text-emerald-500" />
+            </div>
+            <div className="flex-1">
+              <p className="text-emerald-400 font-medium">Mystery Garage</p>
+              <p className="text-sm text-emerald-400/70">
+                Kup pakiet losowych kart i odkryj co w nim jest!
+              </p>
+            </div>
+            <ChevronRight className="w-5 h-5 text-emerald-500" />
+          </div>
+        </Card>
+      </Link>
 
       {/* Demo mode notice */}
       {isDemoMode && (

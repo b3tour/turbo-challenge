@@ -7,7 +7,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 import { Card, Button, Badge, Input, Modal, AlertDialog } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
-import { Mission, MissionStatus, Submission, User, QuizData, QuizQuestion, QuizMode, Reward, CollectibleCard, CardRarity, CardType, CardOrder, CardOrderStatus } from '@/types';
+import { Mission, MissionStatus, Submission, User, QuizData, QuizQuestion, QuizMode, Reward, CollectibleCard, CardRarity, CardType, CardOrder, CardOrderStatus, MysteryPackPurchase, MysteryPackStatus } from '@/types';
 import {
   formatNumber,
   formatDateTime,
@@ -53,11 +53,12 @@ import {
   Heart,
   CreditCard,
   Crown,
+  Package,
 } from 'lucide-react';
 import { LEVELS } from '@/lib/utils';
 import { Level } from '@/types';
 
-type AdminTab = 'overview' | 'submissions' | 'missions' | 'users' | 'levels' | 'rewards' | 'cards' | 'orders';
+type AdminTab = 'overview' | 'submissions' | 'missions' | 'users' | 'levels' | 'rewards' | 'cards' | 'orders' | 'mystery';
 
 const tabs: { id: AdminTab; label: string; icon: React.ElementType; description: string }[] = [
   { id: 'overview', label: 'Przeglad', icon: BarChart3, description: 'Statystyki i podsumowanie' },
@@ -67,6 +68,7 @@ const tabs: { id: AdminTab; label: string; icon: React.ElementType; description:
   { id: 'rewards', label: 'Nagrody', icon: Gift, description: 'Nagrody dla TOP graczy' },
   { id: 'cards', label: 'Karty', icon: Layers, description: 'Karty kolekcjonerskie' },
   { id: 'orders', label: 'Zamówienia', icon: ShoppingCart, description: 'Zamówienia kart' },
+  { id: 'mystery', label: 'Mystery', icon: Package, description: 'Pakiety Mystery Garage' },
   { id: 'levels', label: 'Poziomy', icon: Trophy, description: 'Progi XP i nazwy poziomow' },
 ];
 
@@ -219,6 +221,11 @@ export default function AdminPage() {
   const [orders, setOrders] = useState<CardOrder[]>([]);
   const [ordersLoaded, setOrdersLoaded] = useState(false);
   const [processingOrder, setProcessingOrder] = useState<string | null>(null);
+
+  // Mystery Garage purchases
+  const [mysteryPurchases, setMysteryPurchases] = useState<MysteryPackPurchase[]>([]);
+  const [mysteryLoaded, setMysteryLoaded] = useState(false);
+  const [processingMystery, setProcessingMystery] = useState<string | null>(null);
 
   const [missionForm, setMissionForm] = useState({
     title: '',
@@ -1443,6 +1450,215 @@ export default function AdminPage() {
     setProcessingOrder(null);
   };
 
+  // === MYSTERY GARAGE MANAGEMENT ===
+  useEffect(() => {
+    if (activeTab === 'mystery' && !mysteryLoaded) {
+      loadMysteryPurchases();
+    }
+  }, [activeTab, mysteryLoaded]);
+
+  const loadMysteryPurchases = async () => {
+    const { data, error } = await supabase
+      .from('mystery_pack_purchases')
+      .select('*, user:users(nick, email), pack_type:mystery_pack_types(*)')
+      .order('created_at', { ascending: false });
+
+    if (!error && data) {
+      setMysteryPurchases(data as MysteryPackPurchase[]);
+    } else {
+      setMysteryPurchases([]);
+    }
+    setMysteryLoaded(true);
+  };
+
+  const handleApproveMysteryPurchase = async (purchase: MysteryPackPurchase) => {
+    if (!profile?.id) return;
+    setProcessingMystery(purchase.id);
+
+    try {
+      // 1. Zmień status na 'paid'
+      const { error: updateError } = await supabase
+        .from('mystery_pack_purchases')
+        .update({
+          status: 'paid',
+          paid_at: new Date().toISOString(),
+        })
+        .eq('id', purchase.id);
+
+      if (updateError) throw updateError;
+
+      // 2. Pobierz dostępne karty samochodów
+      const { data: availableCards, error: cardsError } = await supabase
+        .from('collectible_cards')
+        .select('*')
+        .eq('card_type', 'car')
+        .eq('is_active', true);
+
+      if (cardsError || !availableCards || availableCards.length === 0) {
+        throw new Error('Brak dostępnych kart w systemie');
+      }
+
+      // 3. Pobierz typ pakietu
+      const packType = purchase.pack_type;
+      if (!packType) {
+        throw new Error('Nieznany typ pakietu');
+      }
+
+      // 4. Losuj karty według szans
+      const cardCount = packType.card_count || 3;
+      const selectedCards: CollectibleCard[] = [];
+
+      // Grupuj karty po rzadkości
+      const cardsByRarity: Record<string, CollectibleCard[]> = {
+        common: availableCards.filter((c: CollectibleCard) => c.rarity === 'common'),
+        rare: availableCards.filter((c: CollectibleCard) => c.rarity === 'rare'),
+        epic: availableCards.filter((c: CollectibleCard) => c.rarity === 'epic'),
+        legendary: availableCards.filter((c: CollectibleCard) => c.rarity === 'legendary'),
+      };
+
+      // Funkcja losująca rzadkość
+      const rollRarity = (): CardRarity => {
+        const roll = Math.random() * 100;
+        if (roll < (packType.legendary_chance || 3)) return 'legendary';
+        if (roll < (packType.legendary_chance || 3) + (packType.epic_chance || 12)) return 'epic';
+        if (roll < (packType.legendary_chance || 3) + (packType.epic_chance || 12) + (packType.rare_chance || 25)) return 'rare';
+        return 'common';
+      };
+
+      // Losuj karty
+      for (let i = 0; i < cardCount; i++) {
+        let targetRarity = rollRarity();
+
+        // Dla dużego pakietu - ostatnia karta gwarantowana Epic+
+        if (packType.size === 'large' && i === cardCount - 1 &&
+            !selectedCards.some(c => c.rarity === 'epic' || c.rarity === 'legendary')) {
+          targetRarity = Math.random() < 0.3 ? 'legendary' : 'epic';
+        }
+
+        let pool = cardsByRarity[targetRarity];
+
+        // Fallback jeśli brak kart o danej rzadkości
+        if (!pool || pool.length === 0) {
+          const fallbackOrder: CardRarity[] = ['epic', 'rare', 'common'];
+          for (const fallback of fallbackOrder) {
+            if (cardsByRarity[fallback] && cardsByRarity[fallback].length > 0) {
+              pool = cardsByRarity[fallback];
+              break;
+            }
+          }
+        }
+
+        if (pool && pool.length > 0) {
+          const randomIndex = Math.floor(Math.random() * pool.length);
+          selectedCards.push(pool[randomIndex]);
+        }
+      }
+
+      // 5. Dodaj karty do kolekcji użytkownika
+      const userCards = selectedCards.map(card => ({
+        user_id: purchase.user_id,
+        card_id: card.id,
+        obtained_from: 'purchase' as const,
+      }));
+
+      const { error: insertError } = await supabase
+        .from('user_cards')
+        .insert(userCards);
+
+      if (insertError) throw insertError;
+
+      // 6. Zaktualizuj status na 'opened'
+      await supabase
+        .from('mystery_pack_purchases')
+        .update({
+          status: 'opened',
+          cards_received: selectedCards.map(c => c.id),
+          opened_at: new Date().toISOString(),
+        })
+        .eq('id', purchase.id);
+
+      // 7. Dodaj do donation_total
+      const { data: userData } = await supabase
+        .from('users')
+        .select('donation_total')
+        .eq('id', purchase.user_id)
+        .single();
+
+      if (userData) {
+        await supabase
+          .from('users')
+          .update({ donation_total: (userData.donation_total || 0) + purchase.amount })
+          .eq('id', purchase.user_id);
+      }
+
+      // 8. Dodaj XP za karty (1 XP za kartę)
+      const { data: userXpData } = await supabase
+        .from('users')
+        .select('total_xp')
+        .eq('id', purchase.user_id)
+        .single();
+
+      if (userXpData) {
+        await supabase
+          .from('users')
+          .update({ total_xp: (userXpData.total_xp || 0) + selectedCards.length })
+          .eq('id', purchase.user_id);
+      }
+
+      // Aktualizuj lokalny stan
+      setMysteryPurchases(prev => prev.map(p =>
+        p.id === purchase.id
+          ? { ...p, status: 'opened' as MysteryPackStatus, opened_at: new Date().toISOString() }
+          : p
+      ));
+
+      const rarityNames: Record<CardRarity, string> = {
+        common: 'zwykłych',
+        rare: 'rzadkich',
+        epic: 'epickich',
+        legendary: 'legendarnych'
+      };
+
+      const summary = selectedCards.reduce((acc, c) => {
+        acc[c.rarity] = (acc[c.rarity] || 0) + 1;
+        return acc;
+      }, {} as Record<CardRarity, number>);
+
+      const summaryText = Object.entries(summary)
+        .map(([rarity, count]) => `${count} ${rarityNames[rarity as CardRarity]}`)
+        .join(', ');
+
+      success('Pakiet otwarty!', `Gracz otrzymał: ${summaryText}`);
+    } catch (e: unknown) {
+      const errorMessage = e instanceof Error ? e.message : 'Nieznany błąd';
+      showError('Błąd', errorMessage);
+    } finally {
+      setProcessingMystery(null);
+    }
+  };
+
+  const handleCancelMysteryPurchase = async (purchase: MysteryPackPurchase) => {
+    setProcessingMystery(purchase.id);
+
+    const { error } = await supabase
+      .from('mystery_pack_purchases')
+      .update({ status: 'cancelled' })
+      .eq('id', purchase.id);
+
+    if (error) {
+      showError('Błąd', error.message);
+    } else {
+      setMysteryPurchases(prev => prev.map(p =>
+        p.id === purchase.id
+          ? { ...p, status: 'cancelled' as MysteryPackStatus }
+          : p
+      ));
+      success('Anulowane!', 'Zamówienie pakietu zostało anulowane');
+    }
+
+    setProcessingMystery(null);
+  };
+
   // === LEVELS MANAGEMENT ===
   useEffect(() => {
     if (activeTab === 'levels' && !levelsLoaded) {
@@ -2342,6 +2558,145 @@ export default function AdminPage() {
                         <p className="text-sm text-dark-300 mt-1">
                           Przed zatwierdzeniem zamówienia sprawdź, czy wpłata z kodem zamówienia wpłynęła na konto Fundacji.
                           Po zatwierdzeniu karta zostanie automatycznie przypisana do gracza.
+                        </p>
+                      </div>
+                    </div>
+                  </Card>
+                </div>
+              )}
+
+              {/* Mystery Garage Tab */}
+              {activeTab === 'mystery' && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-lg font-semibold text-white">Mystery Garage</h3>
+                      <p className="text-sm text-dark-400">Zamówienia pakietów losowych kart</p>
+                    </div>
+                    <Button variant="secondary" onClick={loadMysteryPurchases}>
+                      <RotateCcw className="w-4 h-4 mr-1" />
+                      Odśwież
+                    </Button>
+                  </div>
+
+                  {/* Statystyki */}
+                  <div className="grid grid-cols-3 gap-3">
+                    <Card className="text-center">
+                      <div className="text-2xl font-bold text-yellow-500">
+                        {mysteryPurchases.filter(p => p.status === 'pending').length}
+                      </div>
+                      <div className="text-xs text-dark-400">Oczekujące</div>
+                    </Card>
+                    <Card className="text-center">
+                      <div className="text-2xl font-bold text-green-500">
+                        {mysteryPurchases.filter(p => p.status === 'opened').length}
+                      </div>
+                      <div className="text-xs text-dark-400">Otwarte</div>
+                    </Card>
+                    <Card className="text-center">
+                      <div className="text-2xl font-bold text-turbo-400">
+                        {mysteryPurchases.filter(p => p.status === 'opened').reduce((sum, p) => sum + p.amount, 0).toFixed(0)} zł
+                      </div>
+                      <div className="text-xs text-dark-400">Zebrano</div>
+                    </Card>
+                  </div>
+
+                  {!mysteryLoaded ? (
+                    <div className="text-center py-8 text-dark-400">Ładowanie zamówień...</div>
+                  ) : mysteryPurchases.length === 0 ? (
+                    <Card className="text-center py-12">
+                      <Package className="w-16 h-16 text-dark-600 mx-auto mb-4" />
+                      <p className="text-dark-400">Brak zamówień pakietów</p>
+                      <p className="text-sm text-dark-500">Gdy użytkownicy zaczną kupować pakiety Mystery Garage, zamówienia pojawią się tutaj</p>
+                    </Card>
+                  ) : (
+                    <div className="space-y-3">
+                      {mysteryPurchases.map(purchase => (
+                        <Card key={purchase.id} className={`p-4 ${purchase.status !== 'pending' ? 'opacity-60' : ''}`}>
+                          <div className="flex items-center gap-4">
+                            {/* Ikona statusu */}
+                            <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+                              purchase.status === 'pending' ? 'bg-yellow-500/20' :
+                              purchase.status === 'opened' ? 'bg-green-500/20' :
+                              'bg-dark-700'
+                            }`}>
+                              {purchase.status === 'pending' ? (
+                                <Clock className="w-6 h-6 text-yellow-500" />
+                              ) : purchase.status === 'opened' ? (
+                                <CheckCircle className="w-6 h-6 text-green-500" />
+                              ) : (
+                                <XCircle className="w-6 h-6 text-dark-400" />
+                              )}
+                            </div>
+
+                            {/* Dane zamówienia */}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <p className="font-medium text-white">{(purchase.user as { nick?: string })?.nick || 'Nieznany'}</p>
+                                <span className="text-xs text-dark-500">•</span>
+                                <span className="font-mono text-emerald-400 text-sm">{purchase.order_code}</span>
+                              </div>
+                              <p className="text-sm text-dark-400">
+                                {purchase.pack_type?.name || 'Nieznany pakiet'} • {purchase.amount} zł • {purchase.pack_type?.card_count || '?'} kart
+                              </p>
+                              <p className="text-xs text-dark-500">
+                                {new Date(purchase.created_at).toLocaleDateString('pl-PL', {
+                                  day: 'numeric',
+                                  month: 'short',
+                                  year: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                })}
+                              </p>
+                            </div>
+
+                            {/* Akcje */}
+                            {purchase.status === 'pending' && (
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  size="sm"
+                                  onClick={() => handleApproveMysteryPurchase(purchase)}
+                                  loading={processingMystery === purchase.id}
+                                >
+                                  <CheckCircle className="w-4 h-4 mr-1" />
+                                  Zatwierdź
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="danger"
+                                  onClick={() => handleCancelMysteryPurchase(purchase)}
+                                  loading={processingMystery === purchase.id}
+                                >
+                                  <XCircle className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            )}
+
+                            {purchase.status === 'opened' && (
+                              <span className="text-green-400 text-sm flex items-center gap-1">
+                                <CheckCircle className="w-4 h-4" />
+                                Otwarte
+                              </span>
+                            )}
+
+                            {purchase.status === 'cancelled' && (
+                              <span className="text-dark-400 text-sm">Anulowane</span>
+                            )}
+                          </div>
+                        </Card>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Info */}
+                  <Card variant="outlined" className="border-emerald-500/30 bg-emerald-500/5">
+                    <div className="flex items-start gap-3 p-4">
+                      <Package className="w-5 h-5 text-emerald-500 mt-0.5" />
+                      <div>
+                        <p className="text-emerald-400 font-medium">Jak to działa?</p>
+                        <p className="text-sm text-dark-300 mt-1">
+                          Gracz kupuje pakiet → otrzymuje kod zamówienia → płaci przelewem z kodem w tytule →
+                          Ty zatwierdzasz płatność → System automatycznie losuje karty i dodaje je do kolekcji gracza.
                         </p>
                       </div>
                     </div>

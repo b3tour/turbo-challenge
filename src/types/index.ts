@@ -281,6 +281,42 @@ export interface CardOrder {
   card?: CollectibleCard;
 }
 
+// Mystery Garage - Pakiety losowych kart
+export type MysteryPackSize = 'small' | 'medium' | 'large';
+export type MysteryPackStatus = 'pending' | 'paid' | 'opened' | 'cancelled';
+
+export interface MysteryPackType {
+  id: string;
+  name: string;
+  description: string;
+  size: MysteryPackSize;
+  card_count: number; // 3, 5, lub 10
+  price: number; // cena w PLN
+  // Szanse na rzadkość (sumują się do 100)
+  common_chance: number; // np. 60
+  rare_chance: number; // np. 25
+  epic_chance: number; // np. 12
+  legendary_chance: number; // np. 3
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface MysteryPackPurchase {
+  id: string;
+  user_id: string;
+  pack_type_id: string;
+  order_code: string;
+  amount: number;
+  status: MysteryPackStatus;
+  cards_received?: string[]; // ID kart które wylosowano
+  created_at: string;
+  paid_at?: string | null;
+  opened_at?: string | null;
+  // Relacje
+  pack_type?: MysteryPackType;
+  user?: User;
+}
+
 // Turbo Bitwy
 export type BattleCategory = 'power' | 'torque' | 'speed' | 'total';
 export type BattleRewardType = 'xp' | 'cards';
