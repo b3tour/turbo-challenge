@@ -48,6 +48,7 @@ import {
   Upload,
   Layers,
   Sparkles,
+  Ban,
 } from 'lucide-react';
 import { LEVELS } from '@/lib/utils';
 import { Level } from '@/types';
@@ -280,6 +281,30 @@ export default function AdminPage() {
     }
 
     success('Odrzucone', 'Zgloszenie zostalo odrzucone');
+    setPendingSubmissions(prev => prev.filter(s => s.id !== submission.id));
+    setShowSubmissionModal(false);
+    setSelectedSubmission(null);
+    fetchData();
+  };
+
+  // Oznacz jako nieukończone (gracz nie może ponownie wykonać misji)
+  const handleFailSubmission = async (submission: Submission, reason?: string) => {
+    const { error } = await supabase
+      .from('submissions')
+      .update({
+        status: 'failed',
+        admin_notes: reason || 'Misja nieukonczona - brak mozliwosci ponownego wykonania',
+        reviewed_by: profile?.id,
+        reviewed_at: new Date().toISOString(),
+      })
+      .eq('id', submission.id);
+
+    if (error) {
+      showError('Blad', 'Nie udalo sie oznaczyc jako nieukonczone');
+      return;
+    }
+
+    success('Nieukonczone', 'Misja zostala oznaczona jako nieukonczona');
     setPendingSubmissions(prev => prev.filter(s => s.id !== submission.id));
     setShowSubmissionModal(false);
     setSelectedSubmission(null);
@@ -2243,22 +2268,32 @@ export default function AdminPage() {
               </Card>
             )}
 
-            <div className="flex gap-3 pt-4">
+            <div className="flex flex-col gap-3 pt-4">
+              <div className="flex gap-3">
+                <Button
+                  variant="danger"
+                  onClick={() => handleRejectSubmission(selectedSubmission)}
+                  className="flex-1"
+                >
+                  <XCircle className="w-5 h-5 mr-2" />
+                  Odrzuc
+                </Button>
+                <Button
+                  variant="success"
+                  onClick={() => handleApproveSubmission(selectedSubmission)}
+                  className="flex-1"
+                >
+                  <CheckCircle className="w-5 h-5 mr-2" />
+                  Zatwierdz
+                </Button>
+              </div>
               <Button
-                variant="danger"
-                onClick={() => handleRejectSubmission(selectedSubmission)}
-                className="flex-1"
+                variant="secondary"
+                onClick={() => handleFailSubmission(selectedSubmission)}
+                className="w-full border-red-500/30 text-red-400 hover:bg-red-500/10"
               >
-                <XCircle className="w-5 h-5 mr-2" />
-                Odrzuc
-              </Button>
-              <Button
-                variant="success"
-                onClick={() => handleApproveSubmission(selectedSubmission)}
-                className="flex-1"
-              >
-                <CheckCircle className="w-5 h-5 mr-2" />
-                Zatwierdz
+                <Ban className="w-5 h-5 mr-2" />
+                Nieukonczone (zablokuj ponowne wykonanie)
               </Button>
             </div>
           </div>
@@ -2479,6 +2514,18 @@ export default function AdminPage() {
                                   </button>
                                 </>
                               )}
+                              {submission.status === 'failed' && (
+                                <>
+                                  <Badge variant="danger" size="sm">Nieukończone</Badge>
+                                  <button
+                                    onClick={() => handleRestoreSubmission(submission)}
+                                    className="p-1.5 rounded-lg bg-green-500/20 text-green-400 hover:bg-green-500/30 transition-colors"
+                                    title="Odblokuj (pozwól ponownie wykonać)"
+                                  >
+                                    <RotateCcw className="w-4 h-4" />
+                                  </button>
+                                </>
+                              )}
                               {submission.photo_url && (
                                 <button
                                   onClick={() => openPhotoPreview(submission)}
@@ -2687,6 +2734,7 @@ export default function AdminPage() {
                       {selectedPhotoSubmission.status === 'pending' && <Badge variant="warning">Oczekuje</Badge>}
                       {selectedPhotoSubmission.status === 'rejected' && <Badge variant="danger">Odrzucone</Badge>}
                       {selectedPhotoSubmission.status === 'revoked' && <Badge variant="default">Wycofane</Badge>}
+                      {selectedPhotoSubmission.status === 'failed' && <Badge variant="danger">Nieukończone</Badge>}
                     </div>
                   </div>
                   <div>

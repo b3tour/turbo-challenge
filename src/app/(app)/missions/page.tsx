@@ -54,9 +54,12 @@ export default function MissionsPage() {
       return 1; // Oczekuje na weryfikację
     }
     if (submission.status === 'approved') {
-      return 2; // Ukończone - najniższy priorytet
+      return 2; // Ukończone
     }
-    return 3;
+    if (submission.status === 'failed') {
+      return 3; // Nieukończone (zablokowane) - najniższy priorytet
+    }
+    return 4;
   };
 
   // Filtruj i sortuj misje: najpierw do zrobienia (najnowsze), potem oczekujące, potem ukończone
@@ -85,6 +88,11 @@ export default function MissionsPage() {
 
     if (submission?.status === 'pending') {
       info('Oczekuje na weryfikację', 'Twoje zgłoszenie jest weryfikowane');
+      return;
+    }
+
+    if (submission?.status === 'failed') {
+      info('Misja nieukończona', 'Nie możesz ponownie wykonać tej misji');
       return;
     }
 

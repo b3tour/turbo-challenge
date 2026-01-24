@@ -51,9 +51,9 @@ export default function DashboardPage() {
   const xpNeeded = xpToNextLevel(profile.total_xp);
   const nextLevel = LEVELS.find(l => l.id === level.id + 1);
 
-  // Misje które są już ukończone lub oczekują na weryfikację (nie pokazujemy ich jako dostępne)
+  // Misje które są już ukończone, oczekują na weryfikację lub nieukończone (nie pokazujemy ich jako dostępne)
   const busyMissionIds = userSubmissions
-    .filter(s => s.status === 'approved' || s.status === 'pending')
+    .filter(s => s.status === 'approved' || s.status === 'pending' || s.status === 'failed')
     .map(s => s.mission_id);
 
   // Dostępne misje - tylko te bez zgłoszenia lub odrzucone/wycofane, posortowane od najnowszych

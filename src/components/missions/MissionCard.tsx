@@ -3,7 +3,7 @@
 import { Mission, Submission } from '@/types';
 import { Card, Badge, Button } from '@/components/ui';
 import { missionTypeIcons, missionTypeNames, formatNumber } from '@/lib/utils';
-import { MapPin, Clock, Star, CheckCircle, Loader2, XCircle } from 'lucide-react';
+import { MapPin, Clock, Star, CheckCircle, Loader2, XCircle, Ban } from 'lucide-react';
 
 interface MissionCardProps {
   mission: Mission;
@@ -21,6 +21,10 @@ export function MissionCard({
   const isCompleted = userSubmission?.status === 'approved';
   const isPending = userSubmission?.status === 'pending';
   const isRejected = userSubmission?.status === 'rejected';
+  const isFailed = userSubmission?.status === 'failed';
+
+  // Czy misja jest zablokowana (nie można wykonać)
+  const isBlocked = isCompleted || isPending || isFailed;
 
   const getStatusBadge = () => {
     if (isCompleted) {
@@ -39,6 +43,14 @@ export function MissionCard({
         </Badge>
       );
     }
+    if (isFailed) {
+      return (
+        <Badge variant="danger" size="sm">
+          <Ban className="w-3 h-3 mr-1" />
+          Nieukończono
+        </Badge>
+      );
+    }
     if (isRejected) {
       return (
         <Badge variant="danger" size="sm">
@@ -53,9 +65,9 @@ export function MissionCard({
   if (compact) {
     return (
       <Card
-        hover={!isCompleted && !isPending}
-        onClick={!isCompleted && !isPending ? onClick : undefined}
-        className={isCompleted ? 'opacity-60' : ''}
+        hover={!isBlocked}
+        onClick={!isBlocked ? onClick : undefined}
+        className={isBlocked ? 'opacity-60' : ''}
       >
         <div className="flex items-center gap-3">
           <div className="text-2xl">{missionTypeIcons[mission.type]}</div>
@@ -80,9 +92,9 @@ export function MissionCard({
 
   return (
     <Card
-      hover={!isCompleted && !isPending}
-      onClick={!isCompleted && !isPending ? onClick : undefined}
-      className={isCompleted ? 'opacity-70' : ''}
+      hover={!isBlocked}
+      onClick={!isBlocked ? onClick : undefined}
+      className={isBlocked ? 'opacity-70' : ''}
     >
       {/* Header */}
       <div className="flex items-start justify-between mb-3">
@@ -131,7 +143,7 @@ export function MissionCard({
           <span className="text-dark-400 text-sm">XP</span>
         </div>
 
-        {!isCompleted && !isPending && (
+        {!isBlocked && (
           <Button size="sm" onClick={onClick}>
             Wykonaj misję
           </Button>
@@ -147,6 +159,13 @@ export function MissionCard({
         {isPending && (
           <span className="text-sm text-yellow-400">
             Czeka na weryfikację
+          </span>
+        )}
+
+        {isFailed && (
+          <span className="text-sm text-red-400 flex items-center gap-1">
+            <Ban className="w-4 h-4" />
+            Zablokowane
           </span>
         )}
       </div>

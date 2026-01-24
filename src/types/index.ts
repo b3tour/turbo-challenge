@@ -79,7 +79,12 @@ export interface QuizAnswer {
 }
 
 // Zgłoszenie wykonania misji
-export type SubmissionStatus = 'pending' | 'approved' | 'rejected' | 'revoked';
+// pending - oczekuje na weryfikację
+// approved - zatwierdzone (ukończone)
+// rejected - odrzucone (można spróbować ponownie)
+// revoked - wycofane przez admina (można spróbować ponownie)
+// failed - nieukończone (NIE można spróbować ponownie, chyba że admin zmieni status)
+export type SubmissionStatus = 'pending' | 'approved' | 'rejected' | 'revoked' | 'failed';
 
 export interface Submission {
   id: string;
