@@ -7,14 +7,8 @@ import { useMissions } from '@/hooks/useMissions';
 import { useLeaderboard } from '@/hooks/useLeaderboard';
 import { Card, Badge, Button, Avatar, ProgressBar, Modal, Input, AvatarEditor } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
-import {
-  calculateLevel,
-  calculateLevelProgress,
-  xpToNextLevel,
-  formatNumber,
-  formatDate,
-  LEVELS,
-} from '@/lib/utils';
+import { formatNumber, formatDate } from '@/lib/utils';
+import { useLevels } from '@/hooks/useLevels';
 import {
   Settings,
   LogOut,
@@ -42,6 +36,7 @@ export default function ProfilePage() {
   const { getUserRank } = useLeaderboard();
   const { getCollectionStats, userCards } = useCards({ userId: profile?.id });
   const { success, error: showError } = useToast();
+  const { levels, calculateLevel, calculateLevelProgress, xpToNextLevel, getNextLevel } = useLevels();
 
   const [showEditModal, setShowEditModal] = useState(false);
   const [editNick, setEditNick] = useState('');
@@ -81,7 +76,7 @@ export default function ProfilePage() {
   const level = calculateLevel(profile.total_xp);
   const progress = calculateLevelProgress(profile.total_xp);
   const xpNeeded = xpToNextLevel(profile.total_xp);
-  const nextLevel = LEVELS.find(l => l.id === level.id + 1);
+  const nextLevel = getNextLevel(level.id);
 
   const completedMissions = userSubmissions.filter(s => s.status === 'approved').length;
   const pendingMissions = userSubmissions.filter(s => s.status === 'pending').length;
@@ -434,7 +429,7 @@ export default function ProfilePage() {
         <h2 className="text-lg font-semibold text-white mb-4">Postęp poziomów</h2>
 
         <div className="space-y-3">
-          {LEVELS.slice(0, 5).map(lvl => {
+          {levels.slice(0, 5).map(lvl => {
             const isCurrentLevel = lvl.id === level.id;
             const isCompleted = profile.total_xp >= lvl.max_xp;
             const isLocked = lvl.min_xp > profile.total_xp;
@@ -476,9 +471,9 @@ export default function ProfilePage() {
             );
           })}
 
-          {LEVELS.length > 5 && (
+          {levels.length > 5 && (
             <p className="text-center text-dark-400 text-sm">
-              + {LEVELS.length - 5} więcej poziomów do odblokowania
+              + {levels.length - 5} więcej poziomów do odblokowania
             </p>
           )}
         </div>

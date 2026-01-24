@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { LeaderboardEntry, DonationLeaderboardEntry } from '@/types';
-import { LEVELS } from '@/lib/utils';
+import { DEFAULT_LEVELS } from '@/hooks/useLevels';
 
 interface UseLeaderboardOptions {
   limit?: number;
@@ -85,9 +85,17 @@ export function useLeaderboard(options: UseLeaderboardOptions = {}) {
         missionCounts[s.user_id] = (missionCounts[s.user_id] || 0) + 1;
       });
 
+      // Pobierz poziomy z bazy danych
+      const { data: dbLevels } = await supabase
+        .from('levels')
+        .select('*')
+        .order('id', { ascending: true });
+
+      const levelsToUse = dbLevels && dbLevels.length > 0 ? dbLevels : DEFAULT_LEVELS;
+
       // Zbuduj leaderboard
       const leaderboardData: LeaderboardEntry[] = (users || []).map((user, index) => {
-        const level = LEVELS.find(l => l.id === user.level) || LEVELS[0];
+        const level = levelsToUse.find(l => l.id === user.level) || levelsToUse[0];
         return {
           rank: index + 1,
           user_id: user.id,

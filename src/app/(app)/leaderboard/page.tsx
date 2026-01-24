@@ -5,7 +5,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { useLeaderboard } from '@/hooks/useLeaderboard';
 import { useMissions } from '@/hooks/useMissions';
 import { Card, Avatar, Badge } from '@/components/ui';
-import { formatNumber, LEVELS } from '@/lib/utils';
+import { formatNumber } from '@/lib/utils';
+import { useLevels } from '@/hooks/useLevels';
 import { Trophy, Medal, Crown, TrendingUp, Users, Zap, Timer, ChevronDown, ChevronUp, Heart, Layers } from 'lucide-react';
 import { Mission, DonationLeaderboardEntry } from '@/types';
 
@@ -34,6 +35,7 @@ export default function LeaderboardPage() {
   } = useLeaderboard({ limit: 100 });
 
   const { missions } = useMissions({ activeOnly: false });
+  const { levels, calculateLevel } = useLevels();
 
   const [activeTab, setActiveTab] = useState<LeaderboardTab>('xp');
   const [speedrunData, setSpeedrunData] = useState<Record<string, SpeedrunEntry[]>>({});
@@ -295,7 +297,7 @@ export default function LeaderboardPage() {
           <div className="space-y-2">
             {leaderboard.map(entry => {
               const isCurrentUser = entry.user_id === profile?.id;
-              const level = LEVELS.find(l => l.id === entry.level) || LEVELS[0];
+              const level = levels.find(l => l.id === entry.level) || levels[0];
 
               return (
                 <div

@@ -4,13 +4,14 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { User } from '@/types';
 import { Avatar } from '@/components/ui';
-import { calculateLevel, calculateLevelProgress } from '@/lib/utils';
+import { useLevels } from '@/hooks/useLevels';
 
 interface HeaderProps {
   user?: User | null;
 }
 
 export function Header({ user }: HeaderProps) {
+  const { calculateLevel, calculateLevelProgress } = useLevels();
   const level = user ? calculateLevel(user.total_xp) : null;
   const progress = user ? calculateLevelProgress(user.total_xp) : 0;
 

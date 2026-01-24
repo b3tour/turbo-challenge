@@ -7,13 +7,8 @@ import { useMissions } from '@/hooks/useMissions';
 import { useLeaderboard } from '@/hooks/useLeaderboard';
 import { Card, Badge, Button, ProgressBar, Avatar } from '@/components/ui';
 import { MissionCard } from '@/components/missions';
-import {
-  calculateLevel,
-  calculateLevelProgress,
-  xpToNextLevel,
-  formatNumber,
-  LEVELS,
-} from '@/lib/utils';
+import { formatNumber } from '@/lib/utils';
+import { useLevels } from '@/hooks/useLevels';
 import {
   Target,
   Trophy,
@@ -40,6 +35,7 @@ export default function DashboardPage() {
     limit: 5,
   });
   const { getCollectionStats, userCards } = useCards({ userId: profile?.id });
+  const { calculateLevel, calculateLevelProgress, xpToNextLevel, getNextLevel } = useLevels();
 
   if (!profile) return null;
 
@@ -49,7 +45,7 @@ export default function DashboardPage() {
   const level = calculateLevel(profile.total_xp);
   const progress = calculateLevelProgress(profile.total_xp);
   const xpNeeded = xpToNextLevel(profile.total_xp);
-  const nextLevel = LEVELS.find(l => l.id === level.id + 1);
+  const nextLevel = getNextLevel(level.id);
 
   // Misje które są już ukończone, oczekują na weryfikację lub nieukończone (nie pokazujemy ich jako dostępne)
   const busyMissionIds = userSubmissions
