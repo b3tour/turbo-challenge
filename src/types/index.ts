@@ -280,3 +280,30 @@ export interface CardOrder {
   user?: User;
   card?: CollectibleCard;
 }
+
+// Turbo Bitwy
+export type BattleCategory = 'power' | 'torque' | 'speed' | 'total';
+export type BattleRewardType = 'xp' | 'cards';
+export type BattleStatus = 'pending' | 'accepted' | 'completed' | 'expired' | 'declined';
+
+export interface CardBattle {
+  id: string;
+  challenger_id: string;
+  opponent_id: string;
+  category: BattleCategory;
+  reward_type: BattleRewardType;
+  status: BattleStatus;
+  challenger_card_ids: string[];
+  opponent_card_ids?: string[] | null;
+  winner_id?: string | null;
+  challenger_score?: number | null;
+  opponent_score?: number | null;
+  created_at: string;
+  expires_at: string;
+  completed_at?: string | null;
+  // Relacje
+  challenger?: User;
+  opponent?: User;
+  challenger_cards?: CollectibleCard[];
+  opponent_cards?: CollectibleCard[];
+}

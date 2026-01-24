@@ -21,6 +21,7 @@ import {
   Crown,
   Award,
   Layers,
+  Swords,
 } from 'lucide-react';
 import { useCards, RARITY_CONFIG } from '@/hooks/useCards';
 
@@ -258,6 +259,41 @@ export default function DashboardPage() {
             })()}
           </div>
         </Card>
+      </div>
+
+      {/* Turbo Battles */}
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+            <Swords className="w-5 h-5 text-orange-500" />
+            Turbo Bitwy
+          </h2>
+          <Link
+            href="/battles"
+            className="text-sm text-accent-400 flex items-center"
+          >
+            Rozpocznij
+            <ChevronRight className="w-4 h-4" />
+          </Link>
+        </div>
+
+        <Link href="/battles">
+          <Card className="relative overflow-hidden hover:border-orange-500/50 transition-colors">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-orange-500/10 rounded-full blur-3xl" />
+            <div className="relative flex items-center gap-4">
+              <div className="w-14 h-14 rounded-xl bg-orange-500/20 flex items-center justify-center">
+                <Swords className="w-7 h-7 text-orange-500" />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-semibold text-white">Wyzwij gracza!</h3>
+                <p className="text-sm text-dark-400">
+                  Postaw swoje karty i walcz o XP lub karty przeciwnika
+                </p>
+              </div>
+              <ChevronRight className="w-5 h-5 text-dark-400" />
+            </div>
+          </Card>
+        </Link>
       </div>
 
       {/* Leaderboard Preview */}
