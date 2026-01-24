@@ -206,6 +206,64 @@ export default function DashboardPage() {
         )}
       </div>
 
+      {/* Cards Collection Preview */}
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+            <Layers className="w-5 h-5 text-purple-500" />
+            Kolekcja kart
+          </h2>
+          <Link
+            href="/cards"
+            className="text-sm text-accent-400 flex items-center"
+          >
+            Zobacz wszystkie
+            <ChevronRight className="w-4 h-4" />
+          </Link>
+        </div>
+
+        <Card className="relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/10 rounded-full blur-3xl" />
+          <div className="relative">
+            {(() => {
+              const stats = getCollectionStats();
+              const progress = stats.total > 0 ? Math.round((stats.collected / stats.total) * 100) : 0;
+
+              return (
+                <>
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-dark-400">Postęp kolekcji</span>
+                    <span className="text-purple-400 font-bold">{stats.collected}/{stats.total}</span>
+                  </div>
+
+                  <div className="h-2 bg-dark-700 rounded-full overflow-hidden mb-4">
+                    <div
+                      className="h-full bg-gradient-to-r from-purple-500 to-pink-500 rounded-full transition-all"
+                      style={{ width: `${progress}%` }}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-4 gap-2">
+                    {(['common', 'rare', 'epic', 'legendary'] as const).map(rarity => {
+                      const config = RARITY_CONFIG[rarity];
+                      const rarityStats = stats.byRarity[rarity];
+                      return (
+                        <div key={rarity} className={`text-center p-2 rounded-lg ${config.bgColor}`}>
+                          <div className="text-xl">{config.icon}</div>
+                          <div className={`text-xs font-medium ${config.color}`}>
+                            {rarityStats.collected}/{rarityStats.total}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              );
+            })()}
+          </div>
+        </Card>
+      </div>
+
       {/* Leaderboard Preview */}
       <div>
         <div className="flex items-center justify-between mb-3">
@@ -324,64 +382,6 @@ export default function DashboardPage() {
             <p className="text-center text-dark-300 text-sm pb-2">
               Zdobądź TOP 3 i wygraj nagrody!
             </p>
-          </div>
-        </Card>
-      </div>
-
-      {/* Cards Collection Preview */}
-      <div>
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-            <Layers className="w-5 h-5 text-purple-500" />
-            Kolekcja kart
-          </h2>
-          <Link
-            href="/cards"
-            className="text-sm text-accent-400 flex items-center"
-          >
-            Zobacz wszystkie
-            <ChevronRight className="w-4 h-4" />
-          </Link>
-        </div>
-
-        <Card className="relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/10 rounded-full blur-3xl" />
-          <div className="relative">
-            {(() => {
-              const stats = getCollectionStats();
-              const progress = stats.total > 0 ? Math.round((stats.collected / stats.total) * 100) : 0;
-
-              return (
-                <>
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-dark-400">Postęp kolekcji</span>
-                    <span className="text-purple-400 font-bold">{stats.collected}/{stats.total}</span>
-                  </div>
-
-                  <div className="h-2 bg-dark-700 rounded-full overflow-hidden mb-4">
-                    <div
-                      className="h-full bg-gradient-to-r from-purple-500 to-pink-500 rounded-full transition-all"
-                      style={{ width: `${progress}%` }}
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-4 gap-2">
-                    {(['common', 'rare', 'epic', 'legendary'] as const).map(rarity => {
-                      const config = RARITY_CONFIG[rarity];
-                      const rarityStats = stats.byRarity[rarity];
-                      return (
-                        <div key={rarity} className={`text-center p-2 rounded-lg ${config.bgColor}`}>
-                          <div className="text-xl">{config.icon}</div>
-                          <div className={`text-xs font-medium ${config.color}`}>
-                            {rarityStats.collected}/{rarityStats.total}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </>
-              );
-            })()}
           </div>
         </Card>
       </div>
