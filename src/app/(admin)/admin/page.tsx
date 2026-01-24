@@ -117,6 +117,11 @@ export default function AdminPage() {
   const [xpNote, setXpNote] = useState('');
   const [xpOperation, setXpOperation] = useState<'add' | 'subtract'>('add');
 
+  // Card assignment
+  const [showGrantCardModal, setShowGrantCardModal] = useState(false);
+  const [grantingCard, setGrantingCard] = useState(false);
+  const [userCardsForUser, setUserCardsForUser] = useState<string[]>([]);
+
   // Photo preview
   const [showPhotoModal, setShowPhotoModal] = useState(false);
   const [selectedPhotoUrl, setSelectedPhotoUrl] = useState<string | null>(null);
@@ -606,6 +611,7 @@ export default function AdminPage() {
     setShowUserModal(true);
     setLoadingUserDetails(true);
 
+    // Pobierz zgłoszenia użytkownika
     const { data, error } = await supabase
       .from('submissions')
       .select('*, mission:missions(*)')
@@ -615,6 +621,19 @@ export default function AdminPage() {
     if (!error && data) {
       setUserSubmissions(data as Submission[]);
     }
+
+    // Pobierz karty użytkownika
+    const { data: userCardsData } = await supabase
+      .from('user_cards')
+      .select('card_id')
+      .eq('user_id', user.id);
+
+    if (userCardsData) {
+      setUserCardsForUser(userCardsData.map(uc => uc.card_id));
+    } else {
+      setUserCardsForUser([]);
+    }
+
     setLoadingUserDetails(false);
   };
 
@@ -627,6 +646,44 @@ export default function AdminPage() {
       .filter(s => s.status === 'approved')
       .reduce((sum, s) => sum + (s.xp_awarded || 0), 0);
     return { approved, pending, rejected, revoked, totalXpEarned };
+  };
+
+  // === CARD ASSIGNMENT ===
+  const handleGrantCard = async (card: CollectibleCard) => {
+    if (!selectedUser) return;
+
+    setGrantingCard(true);
+
+    try {
+      // Sprawdź czy użytkownik już ma tę kartę
+      if (userCardsForUser.includes(card.id)) {
+        showError('Błąd', 'Użytkownik już posiada tę kartę');
+        setGrantingCard(false);
+        return;
+      }
+
+      // Dodaj kartę do kolekcji użytkownika
+      const { error: cardError } = await supabase
+        .from('user_cards')
+        .insert({
+          user_id: selectedUser.id,
+          card_id: card.id,
+          obtained_from: 'admin',
+        });
+
+      if (cardError) throw cardError;
+
+      // Aktualizuj lokalną listę kart użytkownika
+      setUserCardsForUser(prev => [...prev, card.id]);
+
+      success('Przyznano!', `Karta "${card.name}" została przyznana graczowi ${selectedUser.nick}`);
+      setShowGrantCardModal(false);
+    } catch (e: unknown) {
+      const errorMessage = e instanceof Error ? e.message : 'Nieznany błąd';
+      showError('Błąd', errorMessage);
+    } finally {
+      setGrantingCard(false);
+    }
   };
 
   // === XP MANAGEMENT ===
@@ -2756,6 +2813,30 @@ export default function AdminPage() {
               </p>
             </Card>
 
+            {/* Card Assignment Section */}
+            <Card variant="outlined" className="border-purple-500/30 bg-purple-500/5">
+              <h4 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
+                <Layers className="w-4 h-4 text-purple-500" />
+                Karty kolekcjonerskie
+              </h4>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-dark-300">
+                    Posiada: <span className="text-purple-400 font-bold">{userCardsForUser.length}</span> kart
+                  </p>
+                </div>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => setShowGrantCardModal(true)}
+                  className="border-purple-500/50"
+                >
+                  <Plus className="w-4 h-4 mr-1" />
+                  Przyznaj kartę
+                </Button>
+              </div>
+            </Card>
+
             {loadingUserDetails ? (
               <div className="text-center py-4 text-dark-400">Ładowanie...</div>
             ) : (
@@ -3041,6 +3122,89 @@ export default function AdminPage() {
               )}
             </Button>
           </div>
+        </div>
+      </Modal>
+
+      {/* Grant Card Modal */}
+      <Modal
+        isOpen={showGrantCardModal}
+        onClose={() => setShowGrantCardModal(false)}
+        title="Przyznaj kartę"
+        size="lg"
+      >
+        <div className="space-y-4">
+          <div className="text-center py-2">
+            <p className="text-dark-400">Wybierz kartę dla:</p>
+            <p className="text-xl font-bold text-white">{selectedUser?.nick}</p>
+          </div>
+
+          {cards.length === 0 ? (
+            <Card className="text-center py-8">
+              <Layers className="w-12 h-12 text-dark-600 mx-auto mb-3" />
+              <p className="text-dark-400">Brak kart do przyznania</p>
+              <p className="text-sm text-dark-500">Najpierw dodaj karty w zakładce "Karty"</p>
+            </Card>
+          ) : (
+            <div className="max-h-96 overflow-y-auto space-y-2">
+              {cards.filter(c => c.is_active).map(card => {
+                const alreadyOwned = userCardsForUser.includes(card.id);
+                const rarityOpt = RARITY_OPTIONS.find(r => r.value === card.rarity);
+
+                return (
+                  <Card
+                    key={card.id}
+                    className={`p-3 ${alreadyOwned ? 'opacity-50' : 'hover:border-purple-500/50 cursor-pointer'}`}
+                    onClick={() => !alreadyOwned && !grantingCard && handleGrantCard(card)}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${
+                        card.rarity === 'legendary' ? 'bg-yellow-500/20' :
+                        card.rarity === 'epic' ? 'bg-purple-500/20' :
+                        card.rarity === 'rare' ? 'bg-blue-500/20' :
+                        'bg-gray-500/20'
+                      }`}>
+                        {card.image_url ? (
+                          <img src={card.image_url} alt={card.name} className="w-full h-full object-cover rounded-lg" />
+                        ) : (
+                          <Sparkles className={`w-5 h-5 ${rarityOpt?.color || 'text-gray-400'}`} />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm">{card.card_type === 'car' ? '🚗' : '🏆'}</span>
+                          <p className="font-medium text-white truncate">{card.name}</p>
+                          <Badge variant={
+                            card.rarity === 'legendary' ? 'warning' :
+                            card.rarity === 'epic' ? 'turbo' :
+                            card.rarity === 'rare' ? 'info' :
+                            'default'
+                          } size="sm">
+                            {rarityOpt?.label}
+                          </Badge>
+                        </div>
+                        <p className="text-xs text-dark-400">{card.category}</p>
+                      </div>
+                      {alreadyOwned ? (
+                        <Badge variant="success" size="sm">Ma kartę</Badge>
+                      ) : (
+                        <Button size="sm" variant="secondary" disabled={grantingCard}>
+                          <Plus className="w-4 h-4" />
+                        </Button>
+                      )}
+                    </div>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+
+          <Button
+            variant="secondary"
+            fullWidth
+            onClick={() => setShowGrantCardModal(false)}
+          >
+            Zamknij
+          </Button>
         </div>
       </Modal>
 

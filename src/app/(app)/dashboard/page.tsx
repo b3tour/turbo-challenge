@@ -116,29 +116,29 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Donation Progress */}
-        {(profile.donation_total || 0) > 0 && (
-          <div className="pt-3 border-t border-dark-700">
-            <div className="flex justify-between text-sm mb-1">
-              <span className="text-dark-400 flex items-center gap-1">
-                <Heart className="w-4 h-4 text-red-500" />
-                Wsparcie Turbo Pomoc
-              </span>
-              <span className="text-red-400 font-medium">
-                {(profile.donation_total || 0).toFixed(2)} zł
-              </span>
-            </div>
-            <div className="h-2 bg-dark-700 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-gradient-to-r from-red-500 to-pink-500 rounded-full transition-all"
-                style={{ width: `${Math.min(100, ((profile.donation_total || 0) / 100) * 100)}%` }}
-              />
-            </div>
-            <div className="text-xs text-dark-500 mt-1">
-              Dziękujemy za Twój wkład! ❤️
-            </div>
+        {/* Donation Progress - zawsze widoczny */}
+        <div className="pt-3 border-t border-dark-700">
+          <div className="flex justify-between text-sm mb-1">
+            <span className="text-dark-400 flex items-center gap-1">
+              <Heart className="w-4 h-4 text-red-500" />
+              Wsparcie Turbo Pomoc
+            </span>
+            <span className="text-red-400 font-medium">
+              {(profile.donation_total || 0).toFixed(2)} zł
+            </span>
           </div>
-        )}
+          <div className="h-2 bg-dark-700 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-gradient-to-r from-red-500 to-pink-500 rounded-full transition-all"
+              style={{ width: `${Math.min(100, ((profile.donation_total || 0) / 100) * 100)}%` }}
+            />
+          </div>
+          <div className="text-xs text-dark-500 mt-1">
+            {(profile.donation_total || 0) > 0
+              ? 'Dziękujemy za Twój wkład! ❤️'
+              : 'Kup kartę i wesprzyj fundację! ❤️'}
+          </div>
+        </div>
       </Card>
 
       {/* Quick Stats */}
