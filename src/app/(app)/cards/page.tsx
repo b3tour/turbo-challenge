@@ -319,7 +319,7 @@ export default function CardsPage() {
             </h3>
             <div className="flex items-center justify-between mt-1">
               <span className="text-xs text-dark-500">{card.category}</span>
-              <span className={`text-xs font-medium ${config.color}`}>+{card.points} pkt</span>
+              <span className="text-xs font-medium text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-500">+{card.points} XP</span>
             </div>
           </div>
         </div>
@@ -357,13 +357,16 @@ export default function CardsPage() {
       <Link href="/mystery">
         <Card className="mb-6 border-emerald-500/50 hover:border-emerald-400 transition-colors">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
-              <Package className="w-6 h-6 text-emerald-400" />
+            <div className="w-14 h-14 rounded-xl bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
+              <span className="text-3xl animate-bounce">🎁</span>
             </div>
             <div className="flex-1 min-w-0">
-              <h3 className="font-bold text-white">Mystery Garage</h3>
-              <p className="text-sm text-dark-400">
-                Kup pakiet losowych kart • od 15 zł • 3-10 kart
+              <h3 className="font-bold text-white text-lg">Mystery Garage</h3>
+              <p className="text-sm text-dark-300">
+                Kup pakiet losowych kart
+              </p>
+              <p className="text-xs text-emerald-400 mt-1">
+                od 15 zł • 3-10 kart
               </p>
             </div>
             <ChevronRight className="w-5 h-5 text-emerald-400 flex-shrink-0" />
@@ -623,9 +626,8 @@ export default function CardsPage() {
                         <p className="text-dark-400 text-sm mt-4">{selectedCard.description}</p>
                       )}
 
-                      <div className="flex items-center justify-between mt-4">
-                        <span className="text-dark-500">{selectedCard.category}</span>
-                        <span className={`font-bold ${config.color}`}>+{selectedCard.points} pkt</span>
+                      <div className="flex items-center justify-end mt-4">
+                        <span className="font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-500">+{selectedCard.points} XP</span>
                       </div>
 
                       {selectedCard.is_purchasable && selectedCard.price && !owned && !isDemoMode && (
@@ -686,7 +688,7 @@ export default function CardsPage() {
 
                     <div className="flex items-center justify-between">
                       <span className="text-dark-500">{selectedCard.category}</span>
-                      <span className={`font-bold ${config.color}`}>+{selectedCard.points} pkt</span>
+                      <span className="font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-500">+{selectedCard.points} XP</span>
                     </div>
 
                     {selectedCard.total_supply && (
