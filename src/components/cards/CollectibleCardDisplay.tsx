@@ -147,11 +147,6 @@ export function CollectibleCardDisplay({
               </div>
             </div>
 
-            {/* Rarity badge */}
-            <div className={`absolute top-3 right-3 px-3 py-1.5 rounded-full font-bold text-sm ${config.bgColor} ${config.color} border-2 ${effects.frameClass}`}>
-              {config.icon} {config.name}
-            </div>
-
             {/* Gradient overlay na dole */}
             <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-dark-900 via-dark-900/80 to-transparent" />
 
@@ -253,11 +248,6 @@ export function CollectibleCardDisplay({
               x{count}
             </div>
           )}
-
-          {/* Badge rzadkości z ikoną */}
-          <div className={`absolute top-2 right-2 px-2 py-1 rounded-lg flex items-center gap-1 text-xs font-bold ${config.bgColor} ${config.color}`}>
-            <span>{config.icon}</span>
-          </div>
 
           {/* Cena (jeśli do kupienia) */}
           {card.is_purchasable && card.price && !owned && (
