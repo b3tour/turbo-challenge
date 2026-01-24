@@ -40,13 +40,40 @@ export default function MissionsPage() {
     { value: 'gps', label: 'GPS', icon: missionTypeIcons.gps },
   ];
 
-  const filteredMissions = missions.filter(
-    m => filter === 'all' || m.type === filter
-  );
-
   const getUserSubmission = (missionId: string) => {
     return userSubmissions.find(s => s.mission_id === missionId) || null;
   };
+
+  // Funkcja do określenia priorytetu statusu (niższy = wyżej w liście)
+  const getStatusPriority = (missionId: string): number => {
+    const submission = getUserSubmission(missionId);
+    if (!submission || submission.status === 'rejected' || submission.status === 'revoked') {
+      return 0; // Do zrobienia - najwyższy priorytet
+    }
+    if (submission.status === 'pending') {
+      return 1; // Oczekuje na weryfikację
+    }
+    if (submission.status === 'approved') {
+      return 2; // Ukończone - najniższy priorytet
+    }
+    return 3;
+  };
+
+  // Filtruj i sortuj misje: najpierw do zrobienia (najnowsze), potem oczekujące, potem ukończone
+  const filteredMissions = missions
+    .filter(m => filter === 'all' || m.type === filter)
+    .sort((a, b) => {
+      const priorityA = getStatusPriority(a.id);
+      const priorityB = getStatusPriority(b.id);
+
+      // Najpierw sortuj według priorytetu statusu
+      if (priorityA !== priorityB) {
+        return priorityA - priorityB;
+      }
+
+      // W ramach tego samego statusu sortuj od najnowszych
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    });
 
   const handleMissionClick = (mission: Mission) => {
     const submission = getUserSubmission(mission.id);

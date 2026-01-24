@@ -51,14 +51,20 @@ export default function DashboardPage() {
   const xpNeeded = xpToNextLevel(profile.total_xp);
   const nextLevel = LEVELS.find(l => l.id === level.id + 1);
 
-  // Dostępne misje (nie ukończone)
+  // Misje które są już ukończone lub oczekują na weryfikację (nie pokazujemy ich jako dostępne)
+  const busyMissionIds = userSubmissions
+    .filter(s => s.status === 'approved' || s.status === 'pending')
+    .map(s => s.mission_id);
+
+  // Dostępne misje - tylko te bez zgłoszenia lub odrzucone/wycofane, posortowane od najnowszych
+  const availableMissions = missions
+    .filter(m => !busyMissionIds.includes(m.id))
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+  // Liczba ukończonych misji
   const completedMissionIds = userSubmissions
     .filter(s => s.status === 'approved')
     .map(s => s.mission_id);
-
-  const availableMissions = missions.filter(
-    m => !completedMissionIds.includes(m.id)
-  );
 
   const completedCount = completedMissionIds.length;
   const totalXpEarned = userSubmissions
