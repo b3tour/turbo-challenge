@@ -135,8 +135,8 @@ export default function DashboardPage() {
           </div>
           <div className="text-xs text-dark-500 mt-1">
             {(profile.donation_total || 0) > 0
-              ? 'Dziękujemy za Twój wkład! ❤️'
-              : 'Kup kartę i wesprzyj fundację! ❤️'}
+              ? 'Dziękujemy za Twój wkład!'
+              : 'Kup kartę i wesprzyj fundację!'}
           </div>
         </div>
       </Card>

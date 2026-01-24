@@ -327,8 +327,8 @@ export default function ProfilePage() {
           </div>
           <p className="text-xs text-dark-500 mt-2 text-center">
             {(profile.donation_total || 0) > 0
-              ? 'Dziękujemy za Twój wkład! ❤️'
-              : 'Kup kartę i wesprzyj fundację! ❤️'}
+              ? 'Dziękujemy za Twój wkład!'
+              : 'Kup kartę i wesprzyj fundację!'}
           </p>
         </div>
       </Card>
