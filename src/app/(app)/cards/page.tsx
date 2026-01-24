@@ -359,21 +359,17 @@ export default function CardsPage() {
         <div className="flex justify-around items-center">
           <div className="text-center">
             <div className="w-16 h-16 rounded-xl bg-emerald-500/20 flex items-center justify-center mx-auto mb-2">
-              <span className="text-4xl animate-bounce">🎁</span>
-            </div>
-            <p className="text-xs text-dark-300">BOUNCE</p>
-          </div>
-          <div className="text-center">
-            <div className="w-16 h-16 rounded-xl bg-emerald-500/20 flex items-center justify-center mx-auto mb-2">
-              <span className="text-4xl animate-shake">🎁</span>
+              <span className="text-4xl animate-shake-soft">🎁</span>
             </div>
             <p className="text-xs text-dark-300">SHAKE</p>
+            <p className="text-xs text-dark-500">(delikatny)</p>
           </div>
           <div className="text-center">
             <div className="w-16 h-16 rounded-xl bg-emerald-500/20 flex items-center justify-center mx-auto mb-2">
-              <span className="text-4xl animate-wiggle">🎁</span>
+              <span className="text-4xl animate-wiggle-intense">🎁</span>
             </div>
             <p className="text-xs text-dark-300">WIGGLE</p>
+            <p className="text-xs text-dark-500">(intensywny)</p>
           </div>
         </div>
       </Card>

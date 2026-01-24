@@ -64,7 +64,9 @@ module.exports = {
         'fade-in': 'fade-in 0.3s ease-out',
         'shimmer': 'shimmer 2s infinite',
         'shake': 'shake 0.5s ease-in-out infinite',
+        'shake-soft': 'shake-soft 0.6s ease-in-out infinite',
         'wiggle': 'wiggle 1s ease-in-out infinite',
+        'wiggle-intense': 'wiggle-intense 0.8s ease-in-out infinite',
       },
       keyframes: {
         'pulse-glow': {
@@ -88,9 +90,18 @@ module.exports = {
           '25%': { transform: 'translateX(-4px) rotate(-5deg)' },
           '75%': { transform: 'translateX(4px) rotate(5deg)' },
         },
+        'shake-soft': {
+          '0%, 100%': { transform: 'translateX(0) rotate(0)' },
+          '25%': { transform: 'translateX(-2px) rotate(-2deg)' },
+          '75%': { transform: 'translateX(2px) rotate(2deg)' },
+        },
         'wiggle': {
           '0%, 100%': { transform: 'rotate(-3deg)' },
           '50%': { transform: 'rotate(3deg)' },
+        },
+        'wiggle-intense': {
+          '0%, 100%': { transform: 'rotate(-8deg)' },
+          '50%': { transform: 'rotate(8deg)' },
         },
       },
     },
