@@ -353,52 +353,22 @@ export default function CardsPage() {
         </div>
       </Card>
 
-      {/* Mystery Garage Link - Prominent Banner */}
+      {/* Mystery Garage Link */}
       <Link href="/mystery">
-        <div className="mb-6 relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-600 via-emerald-500 to-teal-500 p-1 shadow-lg shadow-emerald-500/30 hover:shadow-emerald-500/50 transition-all hover:scale-[1.02]">
-          {/* Animated background effect */}
-          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12 animate-shimmer" />
-
-          <div className="relative bg-gradient-to-br from-dark-900/95 to-dark-800/95 rounded-xl p-5">
-            {/* Sparkle decorations */}
-            <div className="absolute top-2 right-3 text-2xl animate-pulse">✨</div>
-            <div className="absolute bottom-2 left-3 text-xl animate-pulse delay-300">⭐</div>
-
-            <div className="flex items-center gap-4">
-              {/* Pack visual - stacked cards effect */}
-              <div className="relative w-20 h-20 flex-shrink-0">
-                {/* Back cards */}
-                <div className="absolute top-1 left-1 w-14 h-18 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-lg transform -rotate-6 shadow-md" />
-                <div className="absolute top-0.5 left-2 w-14 h-18 bg-gradient-to-br from-teal-400 to-emerald-500 rounded-lg transform rotate-3 shadow-md" />
-                {/* Front card with question mark */}
-                <div className="absolute top-0 left-3 w-14 h-18 bg-gradient-to-br from-emerald-300 to-emerald-500 rounded-lg shadow-lg flex items-center justify-center transform rotate-6">
-                  <span className="text-3xl font-bold text-white drop-shadow-lg">?</span>
-                </div>
-              </div>
-
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-2xl">🎁</span>
-                  <h3 className="text-xl font-bold text-white">Mystery Garage</h3>
-                </div>
-                <p className="text-emerald-300 font-medium mb-2">
-                  Losowe pakiety kart samochodów!
-                </p>
-                <div className="flex items-center gap-3 text-sm">
-                  <span className="px-2 py-1 bg-emerald-500/30 rounded-full text-emerald-300">3-10 kart</span>
-                  <span className="px-2 py-1 bg-yellow-500/30 rounded-full text-yellow-300">od 15 zł</span>
-                </div>
-              </div>
-
-              <div className="flex flex-col items-center gap-1">
-                <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
-                  <ChevronRight className="w-6 h-6 text-white" />
-                </div>
-                <span className="text-xs text-emerald-300">Otwórz</span>
-              </div>
+        <Card className="mb-6 border-emerald-500/50 hover:border-emerald-400 transition-colors">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
+              <Package className="w-6 h-6 text-emerald-400" />
             </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="font-bold text-white">Mystery Garage</h3>
+              <p className="text-sm text-dark-400">
+                Kup pakiet losowych kart • od 15 zł • 3-10 kart
+              </p>
+            </div>
+            <ChevronRight className="w-5 h-5 text-emerald-400 flex-shrink-0" />
           </div>
-        </div>
+        </Card>
       </Link>
 
       {/* Demo mode notice */}
