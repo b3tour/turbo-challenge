@@ -52,6 +52,7 @@ import {
   ShoppingCart,
   Heart,
   CreditCard,
+  Crown,
 } from 'lucide-react';
 import { LEVELS } from '@/lib/utils';
 import { Level } from '@/types';
@@ -181,6 +182,10 @@ export default function AdminPage() {
     car_torque: '',
     car_max_speed: '',
     car_year: '',
+    // Pola dla Heroes
+    is_hero: false,
+    hero_name: '',
+    hero_title: '',
   });
 
   // Zamówienia kart
@@ -979,6 +984,9 @@ export default function AdminPage() {
         car_torque: card.car_torque?.toString() || '',
         car_max_speed: card.car_max_speed?.toString() || '',
         car_year: card.car_year?.toString() || '',
+        is_hero: card.is_hero || false,
+        hero_name: card.hero_name || '',
+        hero_title: card.hero_title || '',
       });
     } else {
       setEditingCard(null);
@@ -1000,6 +1008,9 @@ export default function AdminPage() {
         car_torque: '',
         car_max_speed: '',
         car_year: '',
+        is_hero: false,
+        hero_name: '',
+        hero_title: '',
       });
     }
     setShowCardModal(true);
@@ -1038,6 +1049,10 @@ export default function AdminPage() {
       car_torque: cardForm.card_type === 'car' && cardForm.car_torque ? parseInt(cardForm.car_torque) : null,
       car_max_speed: cardForm.card_type === 'car' && cardForm.car_max_speed ? parseInt(cardForm.car_max_speed) : null,
       car_year: cardForm.card_type === 'car' && cardForm.car_year ? parseInt(cardForm.car_year) : null,
+      // Pola dla Heroes
+      is_hero: cardForm.card_type === 'car' && cardForm.is_hero,
+      hero_name: cardForm.is_hero ? cardForm.hero_name.trim() || null : null,
+      hero_title: cardForm.is_hero ? cardForm.hero_title.trim() || null : null,
     };
 
     if (editingCard) {
@@ -3553,6 +3568,58 @@ export default function AdminPage() {
                     className="w-full bg-dark-800 border border-dark-600 rounded-xl px-4 py-2.5 text-white"
                   />
                 </div>
+              </div>
+
+              {/* Sekcja Turbo Hero */}
+              <div className="border-t border-dark-700 pt-4 mt-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="text-sm font-medium text-yellow-400 flex items-center gap-2">
+                    <Crown className="w-4 h-4" />
+                    Turbo Hero
+                  </h4>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <span className="text-sm text-dark-300">Karta Hero</span>
+                    <div
+                      className={`relative w-10 h-5 rounded-full transition-colors ${
+                        cardForm.is_hero ? 'bg-yellow-500' : 'bg-dark-600'
+                      }`}
+                      onClick={() => setCardForm(prev => ({ ...prev, is_hero: !prev.is_hero }))}
+                    >
+                      <div
+                        className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${
+                          cardForm.is_hero ? 'translate-x-5' : 'translate-x-0.5'
+                        }`}
+                      />
+                    </div>
+                  </label>
+                </div>
+                <p className="text-xs text-dark-400 mb-3">
+                  Karty Hero to specjalne karty przedstawiające kierowców z ich samochodami z eventów Turbo Pomoc.
+                </p>
+                {cardForm.is_hero && (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-dark-200 mb-1.5">Imię kierowcy</label>
+                      <input
+                        type="text"
+                        value={cardForm.hero_name}
+                        onChange={e => setCardForm(prev => ({ ...prev, hero_name: e.target.value }))}
+                        placeholder="np. Jan Kowalski"
+                        className="w-full bg-dark-800 border border-dark-600 rounded-xl px-4 py-2.5 text-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-dark-200 mb-1.5">Tytuł / Rola</label>
+                      <input
+                        type="text"
+                        value={cardForm.hero_title}
+                        onChange={e => setCardForm(prev => ({ ...prev, hero_title: e.target.value }))}
+                        placeholder="np. Ambasador Turbo Pomoc 2024"
+                        className="w-full bg-dark-800 border border-dark-600 rounded-xl px-4 py-2.5 text-white"
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
             </>
           )}

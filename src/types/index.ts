@@ -231,6 +231,10 @@ export interface CollectibleCard {
   car_torque?: number | null; // Moment obrotowy w Nm
   car_max_speed?: number | null; // Prędkość max w km/h
   car_year?: number | null; // Rok produkcji
+  // Pola dla Turbo Heroes
+  is_hero?: boolean; // Czy to karta Hero (kierowca + auto)
+  hero_name?: string | null; // Imię kierowcy np. "Jan Kowalski"
+  hero_title?: string | null; // Tytuł np. "Ambasador Turbo Pomoc 2024"
 }
 
 export interface UserCard {
