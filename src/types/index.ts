@@ -206,7 +206,7 @@ export interface Reward {
 export type CardRarity = 'common' | 'rare' | 'epic' | 'legendary';
 export type CardType = 'achievement' | 'car';
 
-// Karta osiągnięć (pionowa)
+// Karta osiągnięć (pionowa) lub samochodu (pozioma)
 export interface CollectibleCard {
   id: string;
   name: string;
@@ -219,6 +219,11 @@ export interface CollectibleCard {
   total_supply?: number | null; // ile kart istnieje (null = nieograniczone)
   is_active: boolean;
   created_at: string;
+  // Pola do zakupu karty
+  price?: number | null; // cena w PLN (null = nie do kupienia)
+  xp_reward?: number | null; // XP za zakup karty
+  is_purchasable?: boolean; // czy karta jest dostępna do kupienia
+  sold_count?: number; // ile sztuk sprzedano
   // Pola tylko dla kart samochodów (card_type = 'car')
   car_brand?: string | null; // Marka np. "Porsche"
   car_model?: string | null; // Model np. "911 Turbo S"
@@ -233,6 +238,26 @@ export interface UserCard {
   user_id: string;
   card_id: string;
   obtained_at: string;
-  obtained_from: 'mission' | 'achievement' | 'daily_spin' | 'trade' | 'admin';
+  obtained_from: 'mission' | 'achievement' | 'daily_spin' | 'trade' | 'admin' | 'purchase';
+  card?: CollectibleCard;
+}
+
+// Zamówienia kart
+export type CardOrderStatus = 'pending' | 'paid' | 'cancelled' | 'refunded';
+
+export interface CardOrder {
+  id: string;
+  user_id: string;
+  card_id: string;
+  order_code: string; // unikalny kod zamówienia do tytułu przelewu
+  amount: number; // kwota w PLN
+  xp_reward: number; // XP do przyznania
+  status: CardOrderStatus;
+  created_at: string;
+  paid_at?: string | null;
+  reviewed_by?: string | null;
+  admin_notes?: string | null;
+  // Relacje
+  user?: User;
   card?: CollectibleCard;
 }

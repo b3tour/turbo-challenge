@@ -7,7 +7,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 import { Card, Button, Badge, Input, Modal, AlertDialog } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
-import { Mission, MissionStatus, Submission, User, QuizData, QuizQuestion, QuizMode, Reward, CollectibleCard, CardRarity, CardType } from '@/types';
+import { Mission, MissionStatus, Submission, User, QuizData, QuizQuestion, QuizMode, Reward, CollectibleCard, CardRarity, CardType, CardOrder, CardOrderStatus } from '@/types';
 import {
   formatNumber,
   formatDateTime,
@@ -49,11 +49,14 @@ import {
   Layers,
   Sparkles,
   Ban,
+  ShoppingCart,
+  Heart,
+  CreditCard,
 } from 'lucide-react';
 import { LEVELS } from '@/lib/utils';
 import { Level } from '@/types';
 
-type AdminTab = 'overview' | 'submissions' | 'missions' | 'users' | 'levels' | 'rewards' | 'cards';
+type AdminTab = 'overview' | 'submissions' | 'missions' | 'users' | 'levels' | 'rewards' | 'cards' | 'orders';
 
 const tabs: { id: AdminTab; label: string; icon: React.ElementType; description: string }[] = [
   { id: 'overview', label: 'Przeglad', icon: BarChart3, description: 'Statystyki i podsumowanie' },
@@ -62,6 +65,7 @@ const tabs: { id: AdminTab; label: string; icon: React.ElementType; description:
   { id: 'users', label: 'Gracze', icon: Users, description: 'Lista wszystkich graczy' },
   { id: 'rewards', label: 'Nagrody', icon: Gift, description: 'Nagrody dla TOP graczy' },
   { id: 'cards', label: 'Karty', icon: Layers, description: 'Karty kolekcjonerskie' },
+  { id: 'orders', label: 'Zamówienia', icon: ShoppingCart, description: 'Zamówienia kart' },
   { id: 'levels', label: 'Poziomy', icon: Trophy, description: 'Progi XP i nazwy poziomow' },
 ];
 
@@ -166,6 +170,10 @@ export default function AdminPage() {
     points: 10,
     total_supply: '',
     image_url: '',
+    // Pola do zakupu
+    is_purchasable: false,
+    price: '',
+    xp_reward: '',
     // Pola dla samochodów
     car_brand: '',
     car_model: '',
@@ -174,6 +182,11 @@ export default function AdminPage() {
     car_max_speed: '',
     car_year: '',
   });
+
+  // Zamówienia kart
+  const [orders, setOrders] = useState<CardOrder[]>([]);
+  const [ordersLoaded, setOrdersLoaded] = useState(false);
+  const [processingOrder, setProcessingOrder] = useState<string | null>(null);
 
   const [missionForm, setMissionForm] = useState({
     title: '',
@@ -957,6 +970,9 @@ export default function AdminPage() {
         points: card.points,
         total_supply: card.total_supply?.toString() || '',
         image_url: card.image_url || '',
+        is_purchasable: card.is_purchasable || false,
+        price: card.price?.toString() || '',
+        xp_reward: card.xp_reward?.toString() || '',
         car_brand: card.car_brand || '',
         car_model: card.car_model || '',
         car_horsepower: card.car_horsepower?.toString() || '',
@@ -975,6 +991,9 @@ export default function AdminPage() {
         points: 10,
         total_supply: '',
         image_url: '',
+        is_purchasable: false,
+        price: '',
+        xp_reward: '',
         car_brand: '',
         car_model: '',
         car_horsepower: '',
@@ -1008,6 +1027,10 @@ export default function AdminPage() {
       total_supply: cardForm.total_supply ? parseInt(cardForm.total_supply) : null,
       image_url: cardForm.image_url.trim() || null,
       is_active: true,
+      // Pola do zakupu
+      is_purchasable: cardForm.is_purchasable,
+      price: cardForm.price ? parseFloat(cardForm.price) : null,
+      xp_reward: cardForm.xp_reward ? parseInt(cardForm.xp_reward) : null,
       // Pola dla samochodów
       car_brand: cardForm.card_type === 'car' ? cardForm.car_brand.trim() || null : null,
       car_model: cardForm.card_type === 'car' ? cardForm.car_model.trim() || null : null,
@@ -1088,6 +1111,115 @@ export default function AdminPage() {
 
     setCards(prev => prev.map(c => c.id === card.id ? { ...c, is_active: !c.is_active } : c));
     success('Zmieniono!', card.is_active ? 'Karta ukryta' : 'Karta aktywna');
+  };
+
+  // === ORDERS MANAGEMENT ===
+  useEffect(() => {
+    if (activeTab === 'orders' && !ordersLoaded) {
+      loadOrders();
+    }
+  }, [activeTab, ordersLoaded]);
+
+  const loadOrders = async () => {
+    const { data, error } = await supabase
+      .from('card_orders')
+      .select('*, user:profiles(*), card:cards(*)')
+      .order('created_at', { ascending: false });
+
+    if (!error && data) {
+      setOrders(data as CardOrder[]);
+    } else {
+      setOrders([]);
+    }
+    setOrdersLoaded(true);
+  };
+
+  const handleApproveOrder = async (order: CardOrder) => {
+    if (!profile?.id) return;
+    setProcessingOrder(order.id);
+
+    try {
+      // 1. Zmień status zamówienia na 'paid'
+      const { error: orderError } = await supabase
+        .from('card_orders')
+        .update({
+          status: 'paid',
+          paid_at: new Date().toISOString(),
+          reviewed_by: profile.id,
+        })
+        .eq('id', order.id);
+
+      if (orderError) throw orderError;
+
+      // 2. Dodaj kartę do kolekcji użytkownika
+      const { error: cardError } = await supabase
+        .from('user_cards')
+        .insert({
+          user_id: order.user_id,
+          card_id: order.card_id,
+          obtained_from: 'purchase',
+        });
+
+      if (cardError) throw cardError;
+
+      // 3. Dodaj XP użytkownikowi
+      if (order.xp_reward > 0) {
+        const { data: userData } = await supabase
+          .from('profiles')
+          .select('total_xp')
+          .eq('id', order.user_id)
+          .single();
+
+        if (userData) {
+          await supabase
+            .from('profiles')
+            .update({ total_xp: (userData.total_xp || 0) + order.xp_reward })
+            .eq('id', order.user_id);
+        }
+      }
+
+      // 4. Zwiększ licznik sprzedanych kart
+      await supabase.rpc('increment_sold_count', { card_id: order.card_id });
+
+      // Aktualizuj lokalny stan
+      setOrders(prev => prev.map(o =>
+        o.id === order.id
+          ? { ...o, status: 'paid' as CardOrderStatus, paid_at: new Date().toISOString() }
+          : o
+      ));
+
+      success('Zatwierdzone!', `Karta przyznana, +${order.xp_reward} XP dodane`);
+    } catch (e: unknown) {
+      const errorMessage = e instanceof Error ? e.message : 'Nieznany błąd';
+      showError('Błąd', errorMessage);
+    } finally {
+      setProcessingOrder(null);
+    }
+  };
+
+  const handleCancelOrder = async (order: CardOrder) => {
+    setProcessingOrder(order.id);
+
+    const { error } = await supabase
+      .from('card_orders')
+      .update({
+        status: 'cancelled',
+        reviewed_by: profile?.id,
+      })
+      .eq('id', order.id);
+
+    if (error) {
+      showError('Błąd', error.message);
+    } else {
+      setOrders(prev => prev.map(o =>
+        o.id === order.id
+          ? { ...o, status: 'cancelled' as CardOrderStatus }
+          : o
+      ));
+      success('Anulowane!', 'Zamówienie zostało anulowane');
+    }
+
+    setProcessingOrder(null);
   };
 
   // === LEVELS MANAGEMENT ===
@@ -1850,6 +1982,145 @@ export default function AdminPage() {
                         <p className="text-sm text-dark-300 mt-1">
                           Karty można przyznawać graczom ręcznie z poziomu szczegółów gracza lub automatycznie
                           jako nagrody za misje i osiągnięcia.
+                        </p>
+                      </div>
+                    </div>
+                  </Card>
+                </div>
+              )}
+
+              {/* Orders Tab */}
+              {activeTab === 'orders' && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-lg font-semibold text-white">Zamówienia kart</h3>
+                      <p className="text-sm text-dark-400">Weryfikuj płatności i przyznawaj karty</p>
+                    </div>
+                    <Button variant="secondary" onClick={loadOrders}>
+                      <RotateCcw className="w-4 h-4 mr-1" />
+                      Odśwież
+                    </Button>
+                  </div>
+
+                  {/* Statystyki zamówień */}
+                  <div className="grid grid-cols-3 gap-3">
+                    <Card className="text-center">
+                      <div className="text-2xl font-bold text-yellow-500">
+                        {orders.filter(o => o.status === 'pending').length}
+                      </div>
+                      <div className="text-xs text-dark-400">Oczekujące</div>
+                    </Card>
+                    <Card className="text-center">
+                      <div className="text-2xl font-bold text-green-500">
+                        {orders.filter(o => o.status === 'paid').length}
+                      </div>
+                      <div className="text-xs text-dark-400">Opłacone</div>
+                    </Card>
+                    <Card className="text-center">
+                      <div className="text-2xl font-bold text-turbo-400">
+                        {orders.filter(o => o.status === 'paid').reduce((sum, o) => sum + o.amount, 0)} zł
+                      </div>
+                      <div className="text-xs text-dark-400">Zebrano</div>
+                    </Card>
+                  </div>
+
+                  {!ordersLoaded ? (
+                    <div className="text-center py-8 text-dark-400">Ładowanie zamówień...</div>
+                  ) : orders.length === 0 ? (
+                    <Card className="text-center py-12">
+                      <ShoppingCart className="w-16 h-16 text-dark-600 mx-auto mb-4" />
+                      <p className="text-dark-400">Brak zamówień</p>
+                      <p className="text-sm text-dark-500">Gdy użytkownicy zaczną kupować karty, zamówienia pojawią się tutaj</p>
+                    </Card>
+                  ) : (
+                    <div className="space-y-3">
+                      {orders.map(order => (
+                        <Card key={order.id} className={`p-4 ${order.status !== 'pending' ? 'opacity-60' : ''}`}>
+                          <div className="flex items-center gap-4">
+                            {/* Ikona statusu */}
+                            <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+                              order.status === 'pending' ? 'bg-yellow-500/20' :
+                              order.status === 'paid' ? 'bg-green-500/20' :
+                              'bg-dark-700'
+                            }`}>
+                              {order.status === 'pending' ? (
+                                <Clock className="w-6 h-6 text-yellow-500" />
+                              ) : order.status === 'paid' ? (
+                                <CheckCircle className="w-6 h-6 text-green-500" />
+                              ) : (
+                                <XCircle className="w-6 h-6 text-dark-400" />
+                              )}
+                            </div>
+
+                            {/* Dane zamówienia */}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <p className="font-medium text-white">{order.user?.nick || 'Nieznany'}</p>
+                                <span className="text-xs text-dark-500">•</span>
+                                <span className="font-mono text-turbo-400 text-sm">{order.order_code}</span>
+                              </div>
+                              <p className="text-sm text-dark-400">
+                                {order.card?.name || 'Nieznana karta'} • {order.amount} zł • +{order.xp_reward} XP
+                              </p>
+                              <p className="text-xs text-dark-500">
+                                {new Date(order.created_at).toLocaleDateString('pl-PL', {
+                                  day: 'numeric',
+                                  month: 'short',
+                                  year: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                })}
+                              </p>
+                            </div>
+
+                            {/* Akcje */}
+                            {order.status === 'pending' && (
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  size="sm"
+                                  onClick={() => handleApproveOrder(order)}
+                                  loading={processingOrder === order.id}
+                                >
+                                  <CheckCircle className="w-4 h-4 mr-1" />
+                                  Zatwierdź
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="danger"
+                                  onClick={() => handleCancelOrder(order)}
+                                  loading={processingOrder === order.id}
+                                >
+                                  <XCircle className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            )}
+
+                            {order.status === 'paid' && (
+                              <span className="text-green-400 text-sm flex items-center gap-1">
+                                <CheckCircle className="w-4 h-4" />
+                                Opłacone
+                              </span>
+                            )}
+
+                            {order.status === 'cancelled' && (
+                              <span className="text-dark-400 text-sm">Anulowane</span>
+                            )}
+                          </div>
+                        </Card>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Info */}
+                  <Card variant="outlined" className="border-red-500/30 bg-red-500/5">
+                    <div className="flex items-start gap-3 p-4">
+                      <Heart className="w-5 h-5 text-red-500 mt-0.5" />
+                      <div>
+                        <p className="text-red-400 font-medium">Wpłaty na Turbo Pomoc</p>
+                        <p className="text-sm text-dark-300 mt-1">
+                          Przed zatwierdzeniem zamówienia sprawdź, czy wpłata z kodem zamówienia wpłynęła na konto Fundacji.
+                          Po zatwierdzeniu karta zostanie automatycznie przypisana do gracza.
                         </p>
                       </div>
                     </div>
@@ -3153,6 +3424,55 @@ export default function AdminPage() {
                 className="w-full bg-dark-800 border border-dark-600 rounded-xl px-4 py-2.5 text-white"
               />
             </div>
+          </div>
+
+          {/* Opcje zakupu */}
+          <div className="border-t border-dark-700 pt-4 mt-4">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Heart className="w-4 h-4 text-red-500" />
+                <h4 className="text-sm font-medium text-red-400">Sprzedaż charytatywna</h4>
+              </div>
+              <button
+                type="button"
+                onClick={() => setCardForm(prev => ({ ...prev, is_purchasable: !prev.is_purchasable }))}
+                className={`relative w-12 h-6 rounded-full transition-colors ${
+                  cardForm.is_purchasable ? 'bg-turbo-500' : 'bg-dark-600'
+                }`}
+              >
+                <span className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${
+                  cardForm.is_purchasable ? 'left-7' : 'left-1'
+                }`} />
+              </button>
+            </div>
+
+            {cardForm.is_purchasable && (
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-dark-200 mb-1.5">Cena (PLN) *</label>
+                  <input
+                    type="number"
+                    value={cardForm.price}
+                    onChange={e => setCardForm(prev => ({ ...prev, price: e.target.value }))}
+                    placeholder="np. 5"
+                    min={1}
+                    step="0.01"
+                    className="w-full bg-dark-800 border border-dark-600 rounded-xl px-4 py-2.5 text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-dark-200 mb-1.5">XP za zakup</label>
+                  <input
+                    type="number"
+                    value={cardForm.xp_reward}
+                    onChange={e => setCardForm(prev => ({ ...prev, xp_reward: e.target.value }))}
+                    placeholder="np. 5"
+                    min={0}
+                    className="w-full bg-dark-800 border border-dark-600 rounded-xl px-4 py-2.5 text-white"
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Pola specyficzne dla samochodów */}
