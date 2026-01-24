@@ -24,8 +24,6 @@ import {
   Copy,
   CreditCard,
   Crown,
-  ChevronDown,
-  ChevronUp,
   User,
 } from 'lucide-react';
 
@@ -50,26 +48,6 @@ const DEMO_HERO_CARDS: CollectibleCard[] = [
     car_torque: 470,
     car_max_speed: 318,
     car_year: 2022,
-    is_active: true,
-    created_at: new Date().toISOString(),
-  },
-  {
-    id: 'demo-hero-2',
-    name: 'Anna Nowak',
-    description: 'Sponsor główny eventu Turbo Pomoc 2024.',
-    rarity: 'epic',
-    card_type: 'car',
-    category: 'Turbo Heroes',
-    points: 150,
-    is_hero: true,
-    hero_name: 'Anna Nowak',
-    hero_title: 'Sponsor 2024',
-    car_brand: 'Lamborghini',
-    car_model: 'Huracán EVO',
-    car_horsepower: 640,
-    car_torque: 600,
-    car_max_speed: 325,
-    car_year: 2023,
     is_active: true,
     created_at: new Date().toISOString(),
   },
@@ -99,26 +77,6 @@ const DEMO_CAR_CARDS: CollectibleCard[] = [
   },
   {
     id: 'demo-c2',
-    name: 'Porsche Taycan Turbo S',
-    description: 'Elektryczna rewolucja',
-    rarity: 'epic',
-    card_type: 'car',
-    category: 'Porsche',
-    points: 75,
-    car_brand: 'Porsche',
-    car_model: 'Taycan Turbo S',
-    car_horsepower: 761,
-    car_torque: 1050,
-    car_max_speed: 260,
-    car_year: 2024,
-    price: 5,
-    xp_reward: 5,
-    is_purchasable: true,
-    is_active: true,
-    created_at: new Date().toISOString(),
-  },
-  {
-    id: 'demo-c3',
     name: 'BMW M3 Competition',
     description: 'Sportowy sedan o legendarnych osiągach',
     rarity: 'epic',
@@ -133,46 +91,6 @@ const DEMO_CAR_CARDS: CollectibleCard[] = [
     car_year: 2024,
     price: 5,
     xp_reward: 5,
-    is_purchasable: true,
-    is_active: true,
-    created_at: new Date().toISOString(),
-  },
-  {
-    id: 'demo-c4',
-    name: 'Ferrari 458 Italia',
-    description: 'Włoska perfekcja',
-    rarity: 'legendary',
-    card_type: 'car',
-    category: 'Ferrari',
-    points: 100,
-    car_brand: 'Ferrari',
-    car_model: '458 Italia',
-    car_horsepower: 570,
-    car_torque: 540,
-    car_max_speed: 325,
-    car_year: 2015,
-    price: 10,
-    xp_reward: 10,
-    is_purchasable: true,
-    is_active: true,
-    created_at: new Date().toISOString(),
-  },
-  {
-    id: 'demo-c5',
-    name: 'Ford Mustang GT',
-    description: 'Amerykański muscle car',
-    rarity: 'rare',
-    card_type: 'car',
-    category: 'Ford',
-    points: 50,
-    car_brand: 'Ford',
-    car_model: 'Mustang GT',
-    car_horsepower: 450,
-    car_torque: 570,
-    car_max_speed: 250,
-    car_year: 2024,
-    price: 1,
-    xp_reward: 1,
     is_purchasable: true,
     is_active: true,
     created_at: new Date().toISOString(),
@@ -205,11 +123,10 @@ const DEMO_ACHIEVEMENT_CARDS: CollectibleCard[] = [
   },
 ];
 
-interface BrandStats {
+interface BrandGroup {
   brand: string;
-  total: number;
-  collected: number;
   cards: CollectibleCard[];
+  collected: number;
 }
 
 export default function CardsPage() {
@@ -217,7 +134,7 @@ export default function CardsPage() {
   const { allCards, loading, hasCard, getUserCardCount, getCollectionStats, getCardsByType } = useCards({
     userId: profile?.id,
   });
-  const { orders, createOrder, getUserOrderForCard, hasUserPurchasedCard } = useCardOrders({
+  const { createOrder, getUserOrderForCard } = useCardOrders({
     userId: profile?.id,
   });
 
@@ -228,7 +145,6 @@ export default function CardsPage() {
   const [createdOrder, setCreatedOrder] = useState<CardOrder | null>(null);
   const [purchasing, setPurchasing] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [expandedBrands, setExpandedBrands] = useState<Set<string>>(new Set());
 
   // Pobierz karty według typu
   const achievementCards = getCardsByType('achievement');
@@ -244,50 +160,35 @@ export default function CardsPage() {
   const regularCarCards = allCarCards.filter(c => !c.is_hero);
 
   // Grupuj samochody po markach
-  const brandStats = useMemo(() => {
-    const brands = new Map<string, BrandStats>();
+  const brandGroups = useMemo(() => {
+    const brands = new Map<string, BrandGroup>();
 
     regularCarCards.forEach(card => {
       const brand = card.car_brand || card.category || 'Inne';
       if (!brands.has(brand)) {
-        brands.set(brand, { brand, total: 0, collected: 0, cards: [] });
+        brands.set(brand, { brand, cards: [], collected: 0 });
       }
-      const stats = brands.get(brand)!;
-      stats.total++;
-      stats.cards.push(card);
+      const group = brands.get(brand)!;
+      group.cards.push(card);
       if (!isDemoMode && hasCard(card.id)) {
-        stats.collected++;
+        group.collected++;
       }
     });
 
-    return Array.from(brands.values()).sort((a, b) => b.total - a.total);
+    return Array.from(brands.values()).sort((a, b) => b.cards.length - a.cards.length);
   }, [regularCarCards, isDemoMode, hasCard]);
 
-  // Statystyki Heroes
+  // Statystyki
   const heroStats = useMemo(() => {
     const collected = isDemoMode ? 0 : heroCards.filter(c => hasCard(c.id)).length;
     return { total: heroCards.length, collected };
   }, [heroCards, isDemoMode, hasCard]);
 
-  // Statystyki całkowite dla samochodów
-  const totalCarStats = useMemo(() => {
-    const total = allCarCards.length;
-    const collected = isDemoMode ? 0 : allCarCards.filter(c => hasCard(c.id)).length;
+  const carStats = useMemo(() => {
+    const total = regularCarCards.length;
+    const collected = isDemoMode ? 0 : regularCarCards.filter(c => hasCard(c.id)).length;
     return { total, collected };
-  }, [allCarCards, isDemoMode, hasCard]);
-
-  // Toggle rozwinięcia marki
-  const toggleBrand = (brand: string) => {
-    setExpandedBrands(prev => {
-      const next = new Set(prev);
-      if (next.has(brand)) {
-        next.delete(brand);
-      } else {
-        next.add(brand);
-      }
-      return next;
-    });
-  };
+  }, [regularCarCards, isDemoMode, hasCard]);
 
   // Rozpocznij proces zakupu
   const handleBuyClick = (card: CollectibleCard) => {
@@ -328,7 +229,7 @@ export default function CardsPage() {
     }
   };
 
-  // Render karty Hero
+  // === RENDER: Karta Hero (pełna szerokość, 16:9) ===
   const renderHeroCard = (card: CollectibleCard) => {
     const owned = !isDemoMode && hasCard(card.id);
     const config = RARITY_CONFIG[card.rarity];
@@ -337,54 +238,58 @@ export default function CardsPage() {
       <button
         key={card.id}
         onClick={() => setSelectedCard(card)}
-        className={`relative text-left transition-all duration-300 ${
-          owned ? 'hover:scale-[1.02]' : 'opacity-70 hover:opacity-90'
+        className={`relative w-full text-left transition-all duration-300 ${
+          owned ? 'hover:scale-[1.01]' : 'opacity-80 hover:opacity-100'
         }`}
       >
-        <div className={`relative rounded-xl border-2 overflow-hidden ${config.borderColor} ${
-          owned ? `shadow-lg ${config.glowColor}` : ''
+        <div className={`relative rounded-2xl border-2 overflow-hidden ${config.borderColor} ${
+          owned ? `shadow-xl ${config.glowColor}` : ''
         }`}>
-          <div className="flex h-36">
-            {/* Zdjęcie */}
-            <div className={`w-32 h-full ${config.bgColor} flex items-center justify-center relative flex-shrink-0`}>
-              {card.image_url ? (
-                <img src={card.image_url} alt={card.name} className="w-full h-full object-cover" />
-              ) : (
+          {/* Zdjęcie 16:9 */}
+          <div className="aspect-video relative">
+            {card.image_url ? (
+              <img
+                src={card.image_url}
+                alt={card.name}
+                className={`w-full h-full object-cover ${!owned && !isDemoMode ? 'grayscale' : ''}`}
+              />
+            ) : (
+              <div className={`w-full h-full ${config.bgColor} flex items-center justify-center`}>
                 <div className="text-center">
-                  <User className={`w-10 h-10 ${config.color} mx-auto`} />
-                  <Car className={`w-6 h-6 ${config.color} mx-auto mt-1`} />
+                  <User className={`w-16 h-16 ${config.color} mx-auto`} />
+                  <Car className={`w-10 h-10 ${config.color} mx-auto mt-2`} />
                 </div>
-              )}
+              </div>
+            )}
 
-              {!owned && !isDemoMode && (
-                <div className="absolute inset-0 bg-dark-900/60 flex items-center justify-center">
-                  <Lock className="w-8 h-8 text-dark-400" />
-                </div>
-              )}
+            {/* Overlay dla nieposiadanych */}
+            {!owned && !isDemoMode && (
+              <div className="absolute inset-0 bg-dark-900/50 flex items-center justify-center">
+                <Lock className="w-12 h-12 text-dark-400" />
+              </div>
+            )}
 
-              <div className="absolute top-2 left-2">
-                <Crown className={`w-5 h-5 ${config.color}`} />
+            {/* Badge HERO */}
+            <div className="absolute top-3 left-3 flex items-center gap-2">
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-yellow-500 to-orange-500 text-white text-sm font-bold shadow-lg">
+                <Crown className="w-4 h-4" />
+                TURBO HERO
               </div>
             </div>
 
-            {/* Dane */}
-            <div className="flex-1 bg-dark-800 p-3 flex flex-col justify-between">
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <span className={`text-xs px-1.5 py-0.5 rounded ${config.bgColor} ${config.color} font-medium`}>
-                    HERO
-                  </span>
-                  <span className={`text-xs ${config.color}`}>{config.name}</span>
-                </div>
-                <h3 className="font-bold text-white">{card.hero_name || card.name}</h3>
-                <p className="text-xs text-dark-400">{card.hero_title}</p>
-              </div>
-              <div className="flex items-center justify-between">
-                <p className="text-xs text-dark-500">
-                  {card.car_brand} {card.car_model}
-                </p>
-                <span className={`text-xs font-medium ${config.color}`}>+{card.points} pkt</span>
-              </div>
+            {/* Badge rzadkości */}
+            <div className={`absolute top-3 right-3 px-3 py-1 rounded-full font-bold text-sm ${config.bgColor} ${config.color}`}>
+              {config.name}
+            </div>
+
+            {/* Gradient overlay na dole */}
+            <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-dark-900 to-transparent" />
+
+            {/* Info na dole zdjęcia */}
+            <div className="absolute bottom-3 left-3 right-3">
+              <p className="text-yellow-400 text-sm font-medium">{card.hero_title}</p>
+              <h3 className="text-xl font-bold text-white">{card.hero_name || card.name}</h3>
+              <p className="text-dark-300 text-sm">{card.car_brand} {card.car_model}</p>
             </div>
           </div>
         </div>
@@ -392,8 +297,8 @@ export default function CardsPage() {
     );
   };
 
-  // Render mini karty w liście marki
-  const renderMiniCard = (card: CollectibleCard) => {
+  // === RENDER: Karta samochodu (miniaturka w siatce) ===
+  const renderCarCard = (card: CollectibleCard) => {
     const owned = !isDemoMode && hasCard(card.id);
     const pendingOrder = !isDemoMode ? getUserOrderForCard(card.id) : undefined;
     const config = RARITY_CONFIG[card.rarity];
@@ -402,87 +307,78 @@ export default function CardsPage() {
       <button
         key={card.id}
         onClick={() => setSelectedCard(card)}
-        className={`flex items-center gap-3 p-2 rounded-lg transition-all ${
-          owned ? 'bg-dark-700' : 'bg-dark-800/50'
-        } hover:bg-dark-600`}
+        className={`relative text-left transition-all duration-300 ${
+          owned ? 'hover:scale-[1.02]' : 'opacity-75 hover:opacity-100'
+        }`}
       >
-        <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${config.bgColor}`}>
-          {owned ? (
-            <CheckCircle className="w-4 h-4 text-green-500" />
-          ) : pendingOrder?.status === 'pending' ? (
-            <Clock className="w-4 h-4 text-yellow-500" />
-          ) : (
-            <Car className={`w-4 h-4 ${config.color}`} />
-          )}
-        </div>
-        <div className="flex-1 min-w-0 text-left">
-          <p className={`text-sm truncate ${owned ? 'text-white' : 'text-dark-400'}`}>
-            {card.car_model || card.name}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-xs">{config.icon}</span>
-          {card.is_purchasable && card.price && !owned && (
-            <span className="text-xs text-turbo-400">{card.price} zł</span>
-          )}
+        <div className={`relative rounded-xl border-2 overflow-hidden ${config.borderColor} ${
+          owned ? `shadow-lg ${config.glowColor}` : ''
+        }`}>
+          {/* Zdjęcie - proporcje 4:3 */}
+          <div className="aspect-[4/3] relative">
+            {card.image_url ? (
+              <img
+                src={card.image_url}
+                alt={card.name}
+                className={`w-full h-full object-cover ${!owned && !isDemoMode ? 'grayscale' : ''}`}
+              />
+            ) : (
+              <div className={`w-full h-full ${config.bgColor} flex items-center justify-center`}>
+                <Car className={`w-12 h-12 ${config.color}`} />
+              </div>
+            )}
+
+            {/* Overlay dla nieposiadanych */}
+            {!owned && !isDemoMode && (
+              <div className="absolute inset-0 bg-dark-900/50 flex items-center justify-center">
+                <Lock className="w-8 h-8 text-dark-400" />
+              </div>
+            )}
+
+            {/* Oczekuje na płatność */}
+            {pendingOrder?.status === 'pending' && (
+              <div className="absolute top-2 left-2 flex items-center gap-1 px-2 py-1 rounded-full bg-yellow-500/90 text-xs font-medium text-dark-900">
+                <Clock className="w-3 h-3" />
+                Oczekuje
+              </div>
+            )}
+
+            {/* Posiadana */}
+            {owned && (
+              <div className="absolute top-2 left-2">
+                <CheckCircle className="w-6 h-6 text-green-500 drop-shadow-lg" />
+              </div>
+            )}
+
+            {/* Badge rzadkości */}
+            <div className={`absolute top-2 right-2 w-6 h-6 rounded-full flex items-center justify-center text-sm ${config.bgColor}`}>
+              {config.icon}
+            </div>
+
+            {/* Cena (jeśli do kupienia) */}
+            {card.is_purchasable && card.price && !owned && (
+              <div className="absolute bottom-2 right-2 px-2 py-1 rounded-lg bg-turbo-500 text-white text-xs font-bold shadow-lg">
+                {card.price} zł
+              </div>
+            )}
+          </div>
+
+          {/* Info pod zdjęciem */}
+          <div className="p-2.5 bg-dark-800">
+            <h3 className={`font-semibold text-sm truncate ${owned ? 'text-white' : 'text-dark-300'}`}>
+              {card.car_model || card.name}
+            </h3>
+            <div className="flex items-center justify-between mt-1">
+              <span className="text-xs text-dark-500">{card.car_brand}</span>
+              <span className={`text-xs font-medium ${config.color}`}>+{card.points} pkt</span>
+            </div>
+          </div>
         </div>
       </button>
     );
   };
 
-  // Render sekcji marki
-  const renderBrandSection = (stats: BrandStats) => {
-    const isExpanded = expandedBrands.has(stats.brand);
-    const percentage = stats.total > 0 ? Math.round((stats.collected / stats.total) * 100) : 0;
-
-    return (
-      <Card key={stats.brand} className="overflow-hidden">
-        <button
-          onClick={() => toggleBrand(stats.brand)}
-          className="w-full flex items-center justify-between p-4 hover:bg-dark-700/50 transition-colors"
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-dark-700 flex items-center justify-center">
-              <Car className="w-5 h-5 text-turbo-400" />
-            </div>
-            <div className="text-left">
-              <h3 className="font-semibold text-white">{stats.brand}</h3>
-              <p className="text-xs text-dark-400">
-                {stats.collected}/{stats.total} zebrano
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <div className="w-24">
-              <div className="flex justify-between text-xs mb-1">
-                <span className="text-dark-400">{percentage}%</span>
-              </div>
-              <div className="h-2 bg-dark-700 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-turbo-500 rounded-full transition-all"
-                  style={{ width: `${percentage}%` }}
-                />
-              </div>
-            </div>
-            {isExpanded ? (
-              <ChevronUp className="w-5 h-5 text-dark-400" />
-            ) : (
-              <ChevronDown className="w-5 h-5 text-dark-400" />
-            )}
-          </div>
-        </button>
-
-        {isExpanded && (
-          <div className="px-4 pb-4 space-y-2 border-t border-dark-700 pt-3">
-            {stats.cards.map(renderMiniCard)}
-          </div>
-        )}
-      </Card>
-    );
-  };
-
-  // Render karty osiągnięcia
+  // === RENDER: Karta osiągnięcia ===
   const renderAchievementCard = (card: CollectibleCard) => {
     const owned = !isDemoMode && hasCard(card.id);
     const count = !isDemoMode ? getUserCardCount(card.id) : 0;
@@ -560,7 +456,7 @@ export default function CardsPage() {
           <div>
             <p className="text-red-400 font-medium">Kupując karty wspierasz Turbo Pomoc</p>
             <p className="text-sm text-red-400/70">
-              100% wpłat trafia na cel charytatywny. Za każdą kartę otrzymujesz XP do rankingu!
+              100% wpłat trafia na cel charytatywny. Za każdą kartę otrzymujesz punkty do rankingu!
             </p>
           </div>
         </div>
@@ -582,7 +478,7 @@ export default function CardsPage() {
       )}
 
       {/* Tabs */}
-      <div className="flex gap-2 mb-4">
+      <div className="flex gap-2 mb-6">
         <button
           onClick={() => setActiveTab('car')}
           className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-medium transition-colors ${
@@ -610,61 +506,78 @@ export default function CardsPage() {
       {loading ? (
         <div className="space-y-4">
           {[1, 2, 3].map(i => (
-            <div key={i} className="h-24 bg-dark-700 rounded-xl animate-pulse" />
+            <div key={i} className="h-32 bg-dark-700 rounded-xl animate-pulse" />
           ))}
         </div>
       ) : activeTab === 'car' ? (
-        <div className="space-y-6">
-          {/* Turbo Heroes Section */}
+        <div className="space-y-8">
+          {/* === TURBO HEROES === */}
           {heroCards.length > 0 && (
             <div>
-              <div className="flex items-center gap-2 mb-3">
-                <Crown className="w-5 h-5 text-yellow-500" />
-                <h2 className="text-lg font-bold text-white">Turbo Heroes</h2>
-                <span className="text-sm text-dark-400">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <Crown className="w-6 h-6 text-yellow-500" />
+                  <h2 className="text-xl font-bold text-white">Turbo Heroes</h2>
+                </div>
+                <span className="text-sm text-dark-400 bg-dark-700 px-3 py-1 rounded-full">
                   {heroStats.collected}/{heroStats.total}
                 </span>
               </div>
               <p className="text-sm text-dark-400 mb-4">
                 Legendarne karty kierowców z eventów Turbo Pomoc
               </p>
-              <div className="grid grid-cols-1 gap-3">
+              <div className="space-y-4">
                 {heroCards.map(renderHeroCard)}
               </div>
             </div>
           )}
 
-          {/* Turbo Cars Section */}
+          {/* === TURBO CARS === */}
           <div>
-            <div className="flex items-center gap-2 mb-3">
-              <Car className="w-5 h-5 text-turbo-400" />
-              <h2 className="text-lg font-bold text-white">Turbo Cars</h2>
-              <span className="text-sm text-dark-400">
-                {totalCarStats.collected - heroStats.collected}/{totalCarStats.total - heroStats.total}
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Car className="w-6 h-6 text-turbo-400" />
+                <h2 className="text-xl font-bold text-white">Turbo Cars</h2>
+              </div>
+              <span className="text-sm text-dark-400 bg-dark-700 px-3 py-1 rounded-full">
+                {carStats.collected}/{carStats.total}
               </span>
             </div>
 
-            {/* Ogólny progress */}
-            <Card className="mb-4">
+            {/* Progress bar */}
+            <Card className="mb-6">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm text-dark-400">Postęp kolekcji</span>
                 <span className="text-turbo-400 font-bold">
-                  {Math.round(((totalCarStats.collected - heroStats.collected) / Math.max(1, totalCarStats.total - heroStats.total)) * 100)}%
+                  {carStats.total > 0 ? Math.round((carStats.collected / carStats.total) * 100) : 0}%
                 </span>
               </div>
               <ProgressBar
-                value={Math.round(((totalCarStats.collected - heroStats.collected) / Math.max(1, totalCarStats.total - heroStats.total)) * 100)}
+                value={carStats.total > 0 ? Math.round((carStats.collected / carStats.total) * 100) : 0}
               />
             </Card>
 
-            {/* Marki */}
-            <div className="space-y-3">
-              {brandStats.map(renderBrandSection)}
-            </div>
+            {/* Karty pogrupowane po markach */}
+            {brandGroups.map(group => (
+              <div key={group.brand} className="mb-6">
+                {/* Nagłówek marki */}
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-lg font-semibold text-white">{group.brand}</h3>
+                  <span className="text-xs text-dark-500">
+                    {group.collected}/{group.cards.length}
+                  </span>
+                </div>
+
+                {/* Siatka kart */}
+                <div className="grid grid-cols-2 gap-3">
+                  {group.cards.map(renderCarCard)}
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       ) : (
-        /* Osiągnięcia */
+        /* === OSIĄGNIĘCIA === */
         <div className="space-y-6">
           <Card className="mb-4">
             <div className="flex items-center justify-between mb-3">
@@ -711,13 +624,13 @@ export default function CardsPage() {
         </div>
       )}
 
-      {/* Card Detail Modal */}
+      {/* === MODAL: Szczegóły karty === */}
       {selectedCard && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80" onClick={() => setSelectedCard(null)}>
-          <div className="relative w-full max-w-md" onClick={e => e.stopPropagation()}>
+          <div className="relative w-full max-w-md max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <button
               onClick={() => setSelectedCard(null)}
-              className="absolute -top-10 right-0 text-white/60 hover:text-white"
+              className="absolute -top-10 right-0 text-white/60 hover:text-white z-10"
             >
               <X className="w-6 h-6" />
             </button>
@@ -882,7 +795,7 @@ export default function CardsPage() {
         </div>
       )}
 
-      {/* Purchase Modal */}
+      {/* === MODAL: Zakup === */}
       <Modal
         isOpen={showPurchaseModal}
         onClose={() => {
@@ -918,7 +831,7 @@ export default function CardsPage() {
                   </div>
                   <p className="text-sm text-red-400/80">
                     Cała kwota {purchaseCard.price} zł zostanie przekazana na Turbo Pomoc.
-                    W zamian otrzymasz tę kartę i <strong>+{purchaseCard.xp_reward || 1} XP</strong> do rankingu!
+                    W zamian otrzymasz tę kartę!
                   </p>
                 </div>
 
@@ -926,10 +839,6 @@ export default function CardsPage() {
                   <div className="flex justify-between mb-2">
                     <span className="text-dark-400">Wpłata:</span>
                     <span className="font-bold text-white">{purchaseCard.price} zł</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-dark-400">Bonus XP:</span>
-                    <span className="font-bold text-turbo-400">+{purchaseCard.xp_reward || 1} XP</span>
                   </div>
                 </div>
 
