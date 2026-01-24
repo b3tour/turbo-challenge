@@ -1,0 +1,18 @@
+ Gotowe! Stworzyłem plik C:\Users\WORK\Desktop\Aplikacja Turbo\SESJA_2026-01-20.md
+
+  Jak wrócić do projektu:
+
+  1. Kod jest bezpieczny - wszystko jest w git na GitHub
+  2. Gdy wrócisz, otwórz CMD i wpisz:
+  cd "C:\Users\WORK\Desktop\Aplikacja Turbo\turbo-challenge"
+  claude
+  3. Powiedz mi:
+  "Przeczytaj plik SESJA_2026-01-20.md i kontynuujmy pracę nad Turbo Challenge"
+
+  Plik zawiera:
+  - Listę wszystkich zmian z tej sesji
+  - Strukturę projektu
+  - Komendy SQL dla Supabase (jeśli będą problemy z rejestracją)
+  - Ważne linki
+
+  Do zobaczenia!

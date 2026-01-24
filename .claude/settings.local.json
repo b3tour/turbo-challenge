@@ -22,7 +22,10 @@
       "Bash(dir \"C:\\\\Users\\\\WORK\\\\Desktop\\\\Aplikacja Turbo\\\\turbo-challenge\\\\public\\\\*.png\")",
       "WebSearch",
       "Bash(npm audit:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(git reset:*)",
+      "Bash(git restore:*)",
+      "Bash(dir \"C:\\\\Users\\\\WORK\\\\Desktop\\\\Aplikacja Turbo\\\\turbo-challenge\\\\src\\\\app\\\\\\(app\\)\\\\admin\")"
     ]
   }
 }

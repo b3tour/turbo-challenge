@@ -143,8 +143,25 @@ export default function AdminPage() {
   const [savingLevels, setSavingLevels] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState<number | null>(null);
 
-  // Common emojis for levels
-  const commonEmojis = ['🌱', '🏎️', '⚡', '🚀', '👹', '🏆', '💎', '👑', '🌟', '🔥', '💪', '🎯', '🎮', '🏅', '⭐', '💫', '🎖️', '🏁', '🎪', '🎭'];
+  // Common emojis for levels - expanded list
+  const commonEmojis = [
+    // Transport / Speed
+    '🏎️', '🚗', '🚀', '🏁', '⚡', '💨', '🔥', '✈️', '🛞', '🏍️',
+    // Achievements / Trophies
+    '🏆', '🥇', '🥈', '🥉', '🎖️', '🏅', '👑', '💎', '⭐', '🌟',
+    // Nature / Growth
+    '🌱', '🌿', '🌳', '🌲', '🍀', '🌸', '🌺', '🌻', '🌈', '☀️',
+    // Power / Strength
+    '💪', '🦾', '🛡️', '⚔️', '🗡️', '🔱', '👊', '✊', '🤘', '💥',
+    // Animals
+    '🦁', '🐯', '🦅', '🐉', '🦈', '🐺', '🦊', '🐻', '🦄', '🐲',
+    // Gaming / Fun
+    '🎯', '🎮', '🕹️', '🎲', '🎪', '🎭', '🎨', '🎸', '🎺', '🥁',
+    // Symbols
+    '💫', '✨', '💠', '🔶', '🔷', '❤️', '🧡', '💛', '💚', '💙',
+    // Misc
+    '👹', '👺', '🤖', '👽', '👻', '💀', '🎃', '😎', '🥷', '🧙'
+  ];
 
   // Rewards management
   const [rewards, setRewards] = useState<Reward[]>([]);
@@ -2376,22 +2393,6 @@ export default function AdminPage() {
                               >
                                 {level.badge_icon}
                               </button>
-                              {showEmojiPicker === index && (
-                                <div className="absolute top-full left-0 mt-2 p-2 bg-dark-800 border border-dark-600 rounded-xl shadow-xl z-50 grid grid-cols-5 gap-1">
-                                  {commonEmojis.map(emoji => (
-                                    <button
-                                      key={emoji}
-                                      onClick={() => {
-                                        handleLevelChange(index, 'badge_icon', emoji);
-                                        setShowEmojiPicker(null);
-                                      }}
-                                      className="w-8 h-8 rounded hover:bg-dark-600 flex items-center justify-center text-lg"
-                                    >
-                                      {emoji}
-                                    </button>
-                                  ))}
-                                </div>
-                              )}
                             </div>
 
                             {/* Name */}
@@ -4036,6 +4037,43 @@ export default function AdminPage() {
           </div>
         </div>
       </Modal>
+
+      {/* Emoji Picker Modal */}
+      {showEmojiPicker !== null && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50"
+          onClick={() => setShowEmojiPicker(null)}
+        >
+          <div
+            className="bg-dark-800 border border-dark-600 rounded-2xl shadow-2xl p-4 max-w-sm mx-4"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-white font-semibold">Wybierz ikonę poziomu</h3>
+              <button
+                onClick={() => setShowEmojiPicker(null)}
+                className="p-1 rounded-lg hover:bg-dark-700 text-dark-400 hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="grid grid-cols-10 gap-1 max-h-64 overflow-y-auto">
+              {commonEmojis.map(emoji => (
+                <button
+                  key={emoji}
+                  onClick={() => {
+                    handleLevelChange(showEmojiPicker, 'badge_icon', emoji);
+                    setShowEmojiPicker(null);
+                  }}
+                  className="w-9 h-9 rounded-lg hover:bg-dark-600 flex items-center justify-center text-xl transition-colors"
+                >
+                  {emoji}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
