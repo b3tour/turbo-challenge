@@ -62,6 +62,7 @@ module.exports = {
         'pulse-glow': 'pulse-glow 2s ease-in-out infinite',
         'slide-up': 'slide-up 0.3s ease-out',
         'fade-in': 'fade-in 0.3s ease-out',
+        'shimmer': 'shimmer 2s infinite',
       },
       keyframes: {
         'pulse-glow': {
@@ -75,6 +76,10 @@ module.exports = {
         'fade-in': {
           '0%': { opacity: '0' },
           '100%': { opacity: '1' },
+        },
+        'shimmer': {
+          '0%': { transform: 'translateX(-100%) skewX(-12deg)' },
+          '100%': { transform: 'translateX(200%) skewX(-12deg)' },
         },
       },
     },
