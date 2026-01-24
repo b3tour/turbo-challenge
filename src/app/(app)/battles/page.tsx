@@ -15,8 +15,11 @@ import {
   X,
   Zap,
   AlertCircle,
-  Target
+  Target,
+  Package,
+  Gift,
 } from 'lucide-react';
+import Link from 'next/link';
 import { CollectibleCard, BattleCategory, BattleRewardType, User } from '@/types';
 
 type Tab = 'challenges' | 'my_battles' | 'new';
@@ -379,6 +382,24 @@ export default function BattlesPage() {
         </div>
       )}
 
+      {/* Mystery Garage Promo */}
+      <Link href="/mystery">
+        <Card className="border-emerald-500/30 bg-gradient-to-r from-emerald-500/10 to-teal-500/10 hover:from-emerald-500/20 hover:to-teal-500/20 transition-all">
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 rounded-xl bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
+              <Gift className="w-7 h-7 text-emerald-400" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-bold text-white">Nie masz kart?</p>
+              <p className="text-sm text-emerald-400">
+                Otwórz pakiet w Mystery Garage i zdobądź losowe karty!
+              </p>
+            </div>
+            <ChevronRight className="w-5 h-5 text-emerald-400 flex-shrink-0" />
+          </div>
+        </Card>
+      </Link>
+
       {/* New Challenge Modal */}
       <Modal
         isOpen={showNewChallengeModal}
@@ -436,7 +457,15 @@ export default function BattlesPage() {
                 {myCars.length < 2 ? (
                   <div className="text-center py-4">
                     <AlertCircle className="w-8 h-8 text-yellow-500 mx-auto mb-2" />
-                    <p className="text-dark-400">Potrzebujesz minimum 2 kart samochodów</p>
+                    <p className="text-dark-400 mb-3">Potrzebujesz minimum 2 kart samochodów</p>
+                    <Link
+                      href="/mystery"
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white font-medium rounded-xl transition-colors"
+                      onClick={() => setShowNewChallengeModal(false)}
+                    >
+                      <Package className="w-5 h-5" />
+                      Zdobądź karty w Mystery Garage
+                    </Link>
                   </div>
                 ) : (
                   myCars.map(card => (
