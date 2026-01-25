@@ -208,6 +208,32 @@ export default function CardsPage() {
     return { total, collected };
   }, [regularCarCards, isDemoMode, hasCard]);
 
+  // Statystyki wszystkich samochodów (heroes + regular) z podziałem na rzadkości
+  const allCarStats = useMemo(() => {
+    const allCars = [...heroCards, ...regularCarCards];
+    const total = allCars.length;
+    const collected = isDemoMode ? 0 : allCars.filter(c => hasCard(c.id)).length;
+
+    const byRarity = {
+      common: { total: 0, collected: 0 },
+      rare: { total: 0, collected: 0 },
+      epic: { total: 0, collected: 0 },
+      legendary: { total: 0, collected: 0 },
+    };
+
+    allCars.forEach(card => {
+      const rarity = card.rarity as CardRarity;
+      if (byRarity[rarity]) {
+        byRarity[rarity].total++;
+        if (!isDemoMode && hasCard(card.id)) {
+          byRarity[rarity].collected++;
+        }
+      }
+    });
+
+    return { total, collected, byRarity };
+  }, [heroCards, regularCarCards, isDemoMode, hasCard]);
+
   // Rozpocznij proces zakupu
   const handleBuyClick = (card: CollectibleCard) => {
     if (isDemoMode) return;
@@ -472,6 +498,35 @@ export default function CardsPage() {
         </div>
       ) : activeTab === 'car' ? (
         <div className="space-y-8">
+          {/* === STATYSTYKI SAMOCHODÓW === */}
+          <Card>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Car className="w-5 h-5 text-turbo-400" />
+                <span className="font-semibold text-white">Karty samochodów</span>
+              </div>
+              <span className="text-turbo-400 font-bold">
+                {allCarStats.collected}/{allCarStats.total}
+              </span>
+            </div>
+            <ProgressBar value={allCarStats.total > 0 ? Math.round((allCarStats.collected / allCarStats.total) * 100) : 0} />
+
+            <div className="grid grid-cols-4 gap-2 mt-4">
+              {(Object.keys(RARITY_CONFIG) as CardRarity[]).map(rarity => {
+                const config = RARITY_CONFIG[rarity];
+                const rarityStats = allCarStats.byRarity[rarity];
+                return (
+                  <div key={rarity} className={`text-center p-2 rounded-lg ${config.bgColor}`}>
+                    <div className="text-lg">{config.icon}</div>
+                    <div className={`text-xs font-medium ${config.color}`}>
+                      {rarityStats.collected}/{rarityStats.total}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </Card>
+
           {/* === TURBO HEROES === */}
           {heroCards.length > 0 && (
             <div>
@@ -504,19 +559,6 @@ export default function CardsPage() {
                 {carStats.collected}/{carStats.total}
               </span>
             </div>
-
-            {/* Progress bar */}
-            <Card className="mb-6">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm text-dark-400">Postęp kolekcji</span>
-                <span className="text-turbo-400 font-bold">
-                  {carStats.total > 0 ? Math.round((carStats.collected / carStats.total) * 100) : 0}%
-                </span>
-              </div>
-              <ProgressBar
-                value={carStats.total > 0 ? Math.round((carStats.collected / carStats.total) * 100) : 0}
-              />
-            </Card>
 
             {/* Karty pogrupowane po markach */}
             {brandGroups.map(group => (
