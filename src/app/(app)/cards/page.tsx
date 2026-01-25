@@ -529,6 +529,9 @@ export default function CardsPage() {
                 return (
                   <div key={rarity} className={`text-center p-2 rounded-lg ${config.bgColor}`}>
                     <div className="text-lg">{config.icon}</div>
+                    <div className={`text-[10px] ${config.color} opacity-70`}>
+                      {config.name}
+                    </div>
                     <div className={`text-xs font-medium ${config.color}`}>
                       {rarityStats.collected}/{rarityStats.total}
                     </div>
@@ -612,6 +615,9 @@ export default function CardsPage() {
                 return (
                   <div key={rarity} className={`text-center p-2 rounded-lg ${config.bgColor}`}>
                     <div className="text-lg">{config.icon}</div>
+                    <div className={`text-[10px] ${config.color} opacity-70`}>
+                      {config.name}
+                    </div>
                     <div className={`text-xs font-medium ${config.color}`}>
                       {rarityStats.collected}/{rarityStats.total}
                     </div>
