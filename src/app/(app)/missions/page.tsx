@@ -273,13 +273,16 @@ export default function MissionsPage() {
   return (
     <div className="py-4">
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+      <div className="flex items-center gap-4 mb-6">
+        <div className="w-14 h-14 rounded-xl bg-turbo-500/20 flex items-center justify-center flex-shrink-0">
           <Target className="w-7 h-7 text-turbo-500" />
-          Misje
-        </h1>
+        </div>
+        <div className="flex-1">
+          <h1 className="text-2xl font-bold text-white">Misje</h1>
+          <p className="text-dark-400">Realizuj zadania i graj o nagrody!</p>
+        </div>
         <Badge variant="default">
-          {filteredMissions.length} dostępnych
+          {filteredMissions.length}
         </Badge>
       </div>
 
