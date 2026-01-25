@@ -6,7 +6,6 @@ import Image from 'next/image';
 import { HelpCircle } from 'lucide-react';
 import { User } from '@/types';
 import { Avatar, AppInfoModal } from '@/components/ui';
-import { useLevels } from '@/hooks/useLevels';
 import NotificationBell from './NotificationBell';
 
 interface HeaderProps {
@@ -14,9 +13,6 @@ interface HeaderProps {
 }
 
 export function Header({ user }: HeaderProps) {
-  const { calculateLevel, calculateLevelProgress } = useLevels();
-  const level = user ? calculateLevel(user.total_xp) : null;
-  const progress = user ? calculateLevelProgress(user.total_xp) : 0;
   const [showAppInfo, setShowAppInfo] = useState(false);
 
   return (
@@ -39,25 +35,9 @@ export function Header({ user }: HeaderProps) {
             </div>
           </Link>
 
-          {/* User info */}
+          {/* User actions */}
           {user && (
             <div className="flex items-center gap-2">
-              {/* XP i Level */}
-              <div className="text-right mr-1">
-                <div className="flex items-center gap-1">
-                  <span className="text-xs">{level?.badge_icon}</span>
-                  <span className="text-sm font-medium text-white">
-                    Lvl {level?.id}
-                  </span>
-                </div>
-                <div className="w-16 h-1.5 bg-dark-700 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-turbo-500"
-                    style={{ width: `${progress}%` }}
-                  />
-                </div>
-              </div>
-
               {/* Notifications */}
               <NotificationBell userId={user.id} />
 
