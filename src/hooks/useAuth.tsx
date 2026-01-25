@@ -452,12 +452,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  // Odśwież profil
-  const refreshProfile = async () => {
+  // Odśwież profil (memoized)
+  const refreshProfile = useCallback(async () => {
     if (!state.user) return;
     const profile = await fetchProfile(state.user.id, true);
     setState(prev => ({ ...prev, profile }));
-  };
+  }, [state.user, fetchProfile]);
 
   const value: AuthContextType = {
     ...state,
