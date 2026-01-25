@@ -250,6 +250,22 @@ export interface CollectibleCard {
   is_hero?: boolean; // Czy to karta Hero (kierowca + auto)
   hero_name?: string | null; // Imię kierowcy np. "Jan Kowalski"
   hero_title?: string | null; // Tytuł np. "Ambasador Turbo Pomoc 2024"
+  // Dodatkowe info o aucie (widoczne po odblokowaniu)
+  car_engine?: string | null; // np. "4.0L Boxer 6"
+  car_cylinders?: number | null; // np. 6
+  car_acceleration?: number | null; // 0-100 km/h, np. 3.4
+  car_weight?: number | null; // masa w kg
+  car_drivetrain?: string | null; // "RWD" / "AWD" / "FWD"
+  car_fun_fact?: string | null; // ciekawostka o aucie
+}
+
+// Galeria zdjęć karty
+export interface CardImage {
+  id: string;
+  card_id: string;
+  image_url: string;
+  display_order: number;
+  created_at: string;
 }
 
 export interface UserCard {

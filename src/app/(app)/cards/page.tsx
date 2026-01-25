@@ -5,7 +5,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useCards, RARITY_CONFIG } from '@/hooks/useCards';
 import { useCardOrders } from '@/hooks/useCardOrders';
 import { Card, Badge, ProgressBar, Button, Modal } from '@/components/ui';
-import { CardRarity, CollectibleCard, CardOrder } from '@/types';
+import { CardRarity, CollectibleCard, CardOrder, CardImage } from '@/types';
 import {
   Layers,
   Star,
@@ -27,6 +27,14 @@ import {
   User,
   Package,
   ChevronRight,
+  Download,
+  ChevronLeft,
+  Image as ImageIcon,
+  Info,
+  Fuel,
+  Weight,
+  Activity,
+  Cog,
 } from 'lucide-react';
 import Link from 'next/link';
 import { CollectibleCardDisplay } from '@/components/cards';
@@ -135,7 +143,7 @@ interface BrandGroup {
 
 export default function CardsPage() {
   const { profile } = useAuth();
-  const { allCards, loading, hasCard, getUserCardCount, getCollectionStats, getCardsByType } = useCards({
+  const { allCards, loading, hasCard, getUserCardCount, getCollectionStats, getCardsByType, fetchCardImages } = useCards({
     userId: profile?.id,
   });
   const { createOrder, getUserOrderForCard } = useCardOrders({
@@ -149,6 +157,12 @@ export default function CardsPage() {
   const [createdOrder, setCreatedOrder] = useState<CardOrder | null>(null);
   const [purchasing, setPurchasing] = useState(false);
   const [copied, setCopied] = useState(false);
+
+  // Gallery state
+  const [cardImages, setCardImages] = useState<CardImage[]>([]);
+  const [loadingImages, setLoadingImages] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [showGallery, setShowGallery] = useState(false);
 
   // Pobierz karty według typu
   const achievementCards = getCardsByType('achievement');
@@ -233,6 +247,41 @@ export default function CardsPage() {
     }
   };
 
+  // Otwórz szczegóły karty i załaduj galerię
+  const openCardDetails = async (card: CollectibleCard) => {
+    setSelectedCard(card);
+    setCardImages([]);
+    setCurrentImageIndex(0);
+    setShowGallery(false);
+
+    // Załaduj galerię tylko dla posiadanych kart
+    const owned = !isDemoMode && hasCard(card.id);
+    if (owned && card.card_type === 'car') {
+      setLoadingImages(true);
+      const images = await fetchCardImages(card.id);
+      setCardImages(images);
+      setLoadingImages(false);
+    }
+  };
+
+  // Pobierz obraz jako tapetę
+  const downloadImage = async (imageUrl: string, fileName: string) => {
+    try {
+      const response = await fetch(imageUrl);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Download error:', error);
+    }
+  };
+
   // === RENDER: Karta Hero (pełna szerokość, 16:9) ===
   const renderHeroCard = (card: CollectibleCard) => {
     const owned = !isDemoMode && hasCard(card.id);
@@ -243,7 +292,7 @@ export default function CardsPage() {
         card={card}
         owned={owned}
         variant="hero"
-        onClick={() => setSelectedCard(card)}
+        onClick={() => openCardDetails(card)}
         isDemoMode={isDemoMode}
       />
     );
@@ -263,7 +312,7 @@ export default function CardsPage() {
         pendingOrder={pendingOrder?.status === 'pending'}
         count={count}
         variant="grid"
-        onClick={() => setSelectedCard(card)}
+        onClick={() => openCardDetails(card)}
         isDemoMode={isDemoMode}
       />
     );
@@ -278,7 +327,7 @@ export default function CardsPage() {
     return (
       <button
         key={card.id}
-        onClick={() => setSelectedCard(card)}
+        onClick={() => openCardDetails(card)}
         className={`relative group text-left transition-all duration-300 ${
           owned ? 'hover:scale-105' : 'opacity-60 hover:opacity-80'
         }`}
@@ -630,6 +679,135 @@ export default function CardsPage() {
                         <span className="font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-500">+{selectedCard.points} XP</span>
                       </div>
 
+                      {/* === ROZSZERZONE INFO (tylko dla posiadanych kart) === */}
+                      {owned && (selectedCard.car_engine || selectedCard.car_acceleration || selectedCard.car_weight || selectedCard.car_drivetrain || selectedCard.car_cylinders) && (
+                        <div className="mt-4 pt-4 border-t border-dark-700">
+                          <div className="flex items-center gap-2 mb-3">
+                            <Info className="w-4 h-4 text-turbo-400" />
+                            <span className="text-sm font-semibold text-turbo-400">Szczegóły techniczne</span>
+                          </div>
+                          <div className="grid grid-cols-2 gap-3 text-sm">
+                            {selectedCard.car_engine && (
+                              <div className="flex items-center gap-2">
+                                <Fuel className="w-4 h-4 text-orange-400" />
+                                <div>
+                                  <p className="text-dark-500 text-xs">Silnik</p>
+                                  <p className="text-white font-medium">{selectedCard.car_engine}</p>
+                                </div>
+                              </div>
+                            )}
+                            {selectedCard.car_cylinders && (
+                              <div className="flex items-center gap-2">
+                                <Cog className="w-4 h-4 text-slate-400" />
+                                <div>
+                                  <p className="text-dark-500 text-xs">Cylindry</p>
+                                  <p className="text-white font-medium">{selectedCard.car_cylinders}</p>
+                                </div>
+                              </div>
+                            )}
+                            {selectedCard.car_acceleration && (
+                              <div className="flex items-center gap-2">
+                                <Activity className="w-4 h-4 text-green-400" />
+                                <div>
+                                  <p className="text-dark-500 text-xs">0-100 km/h</p>
+                                  <p className="text-white font-medium">{selectedCard.car_acceleration}s</p>
+                                </div>
+                              </div>
+                            )}
+                            {selectedCard.car_weight && (
+                              <div className="flex items-center gap-2">
+                                <Weight className="w-4 h-4 text-purple-400" />
+                                <div>
+                                  <p className="text-dark-500 text-xs">Masa</p>
+                                  <p className="text-white font-medium">{selectedCard.car_weight} kg</p>
+                                </div>
+                              </div>
+                            )}
+                            {selectedCard.car_drivetrain && (
+                              <div className="col-span-2 flex items-center gap-2">
+                                <Car className="w-4 h-4 text-cyan-400" />
+                                <div>
+                                  <p className="text-dark-500 text-xs">Napęd</p>
+                                  <p className="text-white font-medium">{selectedCard.car_drivetrain}</p>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* === CIEKAWOSTKA (tylko dla posiadanych kart) === */}
+                      {owned && selectedCard.car_fun_fact && (
+                        <div className="mt-4 p-3 rounded-xl bg-gradient-to-r from-purple-500/10 to-pink-500/10 border border-purple-500/20">
+                          <p className="text-xs text-purple-400 font-medium mb-1">💡 Ciekawostka</p>
+                          <p className="text-sm text-dark-300">{selectedCard.car_fun_fact}</p>
+                        </div>
+                      )}
+
+                      {/* === GALERIA ZDJĘĆ (tylko dla posiadanych kart) === */}
+                      {owned && (cardImages.length > 0 || loadingImages) && (
+                        <div className="mt-4 pt-4 border-t border-dark-700">
+                          <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-center gap-2">
+                              <ImageIcon className="w-4 h-4 text-emerald-400" />
+                              <span className="text-sm font-semibold text-emerald-400">Galeria ({cardImages.length})</span>
+                            </div>
+                            {cardImages.length > 0 && (
+                              <button
+                                onClick={() => setShowGallery(true)}
+                                className="text-xs text-turbo-400 hover:text-turbo-300"
+                              >
+                                Zobacz wszystkie
+                              </button>
+                            )}
+                          </div>
+
+                          {loadingImages ? (
+                            <div className="flex items-center justify-center py-4">
+                              <div className="w-6 h-6 border-2 border-turbo-500 border-t-transparent rounded-full animate-spin" />
+                            </div>
+                          ) : (
+                            <div className="grid grid-cols-3 gap-2">
+                              {cardImages.slice(0, 3).map((img, idx) => (
+                                <button
+                                  key={img.id}
+                                  onClick={() => {
+                                    setCurrentImageIndex(idx);
+                                    setShowGallery(true);
+                                  }}
+                                  className="aspect-video rounded-lg overflow-hidden bg-dark-700 hover:ring-2 hover:ring-turbo-500 transition-all"
+                                >
+                                  <img
+                                    src={img.image_url}
+                                    alt={`Zdjęcie ${idx + 1}`}
+                                    className="w-full h-full object-cover"
+                                  />
+                                </button>
+                              ))}
+                              {cardImages.length > 3 && (
+                                <button
+                                  onClick={() => setShowGallery(true)}
+                                  className="aspect-video rounded-lg bg-dark-700 flex items-center justify-center text-dark-400 hover:bg-dark-600 transition-colors"
+                                >
+                                  +{cardImages.length - 3}
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* === DOWNLOAD GŁÓWNEGO ZDJĘCIA (tylko dla posiadanych kart) === */}
+                      {owned && selectedCard.image_url && (
+                        <button
+                          onClick={() => downloadImage(selectedCard.image_url!, `${selectedCard.car_brand}-${selectedCard.car_model}-wallpaper.jpg`)}
+                          className="mt-4 w-full flex items-center justify-center gap-2 py-2 px-4 rounded-xl bg-dark-700 hover:bg-dark-600 text-dark-300 hover:text-white transition-colors"
+                        >
+                          <Download className="w-4 h-4" />
+                          <span className="text-sm">Pobierz jako tapetę</span>
+                        </button>
+                      )}
+
                       {selectedCard.is_purchasable && selectedCard.price && !owned && !isDemoMode && (
                         <Button
                           onClick={() => {
@@ -821,6 +999,85 @@ export default function CardsPage() {
           </div>
         )}
       </Modal>
+
+      {/* === MODAL: Galeria pełnoekranowa === */}
+      {showGallery && cardImages.length > 0 && (
+        <div className="fixed inset-0 z-[60] bg-black flex flex-col">
+          {/* Header */}
+          <div className="flex items-center justify-between p-4 bg-dark-900/50">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setShowGallery(false)}
+                className="p-2 hover:bg-dark-700 rounded-lg transition-colors"
+              >
+                <X className="w-6 h-6 text-white" />
+              </button>
+              <span className="text-white font-medium">
+                {selectedCard?.car_brand} {selectedCard?.car_model}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-dark-400 text-sm">
+                {currentImageIndex + 1} / {cardImages.length}
+              </span>
+              <button
+                onClick={() => downloadImage(cardImages[currentImageIndex].image_url, `${selectedCard?.car_brand}-${selectedCard?.car_model}-${currentImageIndex + 1}.jpg`)}
+                className="p-2 hover:bg-dark-700 rounded-lg transition-colors"
+              >
+                <Download className="w-5 h-5 text-white" />
+              </button>
+            </div>
+          </div>
+
+          {/* Image */}
+          <div className="flex-1 flex items-center justify-center p-4 relative">
+            <img
+              src={cardImages[currentImageIndex].image_url}
+              alt={`Zdjęcie ${currentImageIndex + 1}`}
+              className="max-w-full max-h-full object-contain"
+            />
+
+            {/* Navigation arrows */}
+            {cardImages.length > 1 && (
+              <>
+                <button
+                  onClick={() => setCurrentImageIndex(prev => prev > 0 ? prev - 1 : cardImages.length - 1)}
+                  className="absolute left-4 p-3 bg-dark-800/80 hover:bg-dark-700 rounded-full transition-colors"
+                >
+                  <ChevronLeft className="w-6 h-6 text-white" />
+                </button>
+                <button
+                  onClick={() => setCurrentImageIndex(prev => prev < cardImages.length - 1 ? prev + 1 : 0)}
+                  className="absolute right-4 p-3 bg-dark-800/80 hover:bg-dark-700 rounded-full transition-colors"
+                >
+                  <ChevronRight className="w-6 h-6 text-white" />
+                </button>
+              </>
+            )}
+          </div>
+
+          {/* Thumbnails */}
+          <div className="p-4 bg-dark-900/50">
+            <div className="flex gap-2 justify-center overflow-x-auto pb-2">
+              {cardImages.map((img, idx) => (
+                <button
+                  key={img.id}
+                  onClick={() => setCurrentImageIndex(idx)}
+                  className={`w-16 h-12 rounded-lg overflow-hidden flex-shrink-0 transition-all ${
+                    idx === currentImageIndex ? 'ring-2 ring-turbo-500 scale-105' : 'opacity-60 hover:opacity-100'
+                  }`}
+                >
+                  <img
+                    src={img.image_url}
+                    alt={`Miniatura ${idx + 1}`}
+                    className="w-full h-full object-cover"
+                  />
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

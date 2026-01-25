@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
-import { CollectibleCard, UserCard, CardRarity, CardType } from '@/types';
+import { CollectibleCard, UserCard, CardRarity, CardType, CardImage } from '@/types';
 
 interface UseCardsOptions {
   userId?: string;
@@ -25,6 +25,7 @@ interface UseCardsReturn {
     byRarity: Record<CardRarity, { total: number; collected: number }>;
   };
   refreshCards: () => Promise<void>;
+  fetchCardImages: (cardId: string) => Promise<CardImage[]>;
 }
 
 // Konfiguracja rzadkości kart
@@ -181,6 +182,27 @@ export function useCards({ userId }: UseCardsOptions = {}): UseCardsReturn {
     };
   }, [allCards, userCards]);
 
+  // Pobierz galerię zdjęć karty
+  const fetchCardImages = useCallback(async (cardId: string): Promise<CardImage[]> => {
+    try {
+      const { data, error: fetchError } = await supabase
+        .from('card_images')
+        .select('*')
+        .eq('card_id', cardId)
+        .order('display_order', { ascending: true });
+
+      if (fetchError) {
+        console.error('Error fetching card images:', fetchError);
+        return [];
+      }
+
+      return data as CardImage[];
+    } catch (e) {
+      console.error('Error in fetchCardImages:', e);
+      return [];
+    }
+  }, []);
+
   return {
     allCards,
     userCards,
@@ -194,5 +216,6 @@ export function useCards({ userId }: UseCardsOptions = {}): UseCardsReturn {
     getCardsByType,
     getCollectionStats,
     refreshCards: fetchCards,
+    fetchCardImages,
   };
 }

@@ -206,6 +206,13 @@ export default function AdminPage() {
     car_torque: '',
     car_max_speed: '',
     car_year: '',
+    // Dodatkowe info o aucie (widoczne po odblokowaniu)
+    car_engine: '',
+    car_cylinders: '',
+    car_acceleration: '',
+    car_weight: '',
+    car_drivetrain: '',
+    car_fun_fact: '',
     // Pola dla Heroes
     is_hero: false,
     hero_name: '',
@@ -216,6 +223,10 @@ export default function AdminPage() {
   const [cardImageFile, setCardImageFile] = useState<File | null>(null);
   const [cardImagePreview, setCardImagePreview] = useState<string | null>(null);
   const [uploadingCardImage, setUploadingCardImage] = useState(false);
+
+  // Galeria zdjęć karty
+  const [cardGalleryImages, setCardGalleryImages] = useState<{ id?: string; url: string; file?: File }[]>([]);
+  const [uploadingGalleryImage, setUploadingGalleryImage] = useState(false);
 
   // Zamówienia kart
   const [orders, setOrders] = useState<CardOrder[]>([]);
@@ -1093,6 +1104,12 @@ export default function AdminPage() {
         car_torque: card.car_torque?.toString() || '',
         car_max_speed: card.car_max_speed?.toString() || '',
         car_year: card.car_year?.toString() || '',
+        car_engine: card.car_engine || '',
+        car_cylinders: card.car_cylinders?.toString() || '',
+        car_acceleration: card.car_acceleration?.toString() || '',
+        car_weight: card.car_weight?.toString() || '',
+        car_drivetrain: card.car_drivetrain || '',
+        car_fun_fact: card.car_fun_fact || '',
         is_hero: card.is_hero || false,
         hero_name: card.hero_name || '',
         hero_title: card.hero_title || '',
@@ -1117,6 +1134,12 @@ export default function AdminPage() {
         car_torque: '',
         car_max_speed: '',
         car_year: '',
+        car_engine: '',
+        car_cylinders: '',
+        car_acceleration: '',
+        car_weight: '',
+        car_drivetrain: '',
+        car_fun_fact: '',
         is_hero: false,
         hero_name: '',
         hero_title: '',
@@ -1125,7 +1148,29 @@ export default function AdminPage() {
     // Reset image states
     setCardImageFile(null);
     setCardImagePreview(null);
+    setCardGalleryImages([]);
     setShowCardModal(true);
+
+    // Load gallery images when editing
+    if (card) {
+      loadCardGalleryImages(card.id);
+    }
+  };
+
+  // Load gallery images for a card
+  const loadCardGalleryImages = async (cardId: string) => {
+    const { data, error: fetchError } = await supabase
+      .from('card_images')
+      .select('*')
+      .eq('card_id', cardId)
+      .order('display_order', { ascending: true });
+
+    if (!fetchError && data) {
+      setCardGalleryImages(data.map((img: { id: string; image_url: string }) => ({
+        id: img.id,
+        url: img.image_url,
+      })));
+    }
   };
 
   // Obsługa wyboru pliku obrazka karty
@@ -1161,6 +1206,83 @@ export default function AdminPage() {
     setCardImageFile(null);
     setCardImagePreview(null);
     setCardForm(prev => ({ ...prev, image_url: '' }));
+  };
+
+  // Obsługa wyboru zdjęcia do galerii
+  const handleGalleryImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Walidacja formatu
+    const validTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!validTypes.includes(file.type)) {
+      showError('Nieprawidłowy format', 'Dozwolone formaty: JPG, PNG, WebP');
+      return;
+    }
+
+    // Walidacja rozmiaru (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      showError('Za duży plik', 'Maksymalny rozmiar pliku to 5MB');
+      return;
+    }
+
+    // Limit 6 zdjęć
+    if (cardGalleryImages.length >= 6) {
+      showError('Limit zdjęć', 'Maksymalnie 6 zdjęć w galerii');
+      return;
+    }
+
+    // Tworzenie podglądu i dodanie do listy
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setCardGalleryImages(prev => [
+        ...prev,
+        { url: reader.result as string, file }
+      ]);
+    };
+    reader.readAsDataURL(file);
+
+    // Reset inputa
+    e.target.value = '';
+  };
+
+  // Usuwanie zdjęcia z galerii
+  const handleRemoveGalleryImage = async (index: number) => {
+    const image = cardGalleryImages[index];
+
+    // Jeśli zdjęcie jest zapisane w bazie, usuń je
+    if (image.id) {
+      await supabase.from('card_images').delete().eq('id', image.id);
+    }
+
+    setCardGalleryImages(prev => prev.filter((_, i) => i !== index));
+  };
+
+  // Upload zdjęcia galerii do storage
+  const uploadGalleryImage = async (file: File): Promise<string | null> => {
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `gallery-${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+      const filePath = `cards/gallery/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('card-images')
+        .upload(filePath, file);
+
+      if (uploadError) {
+        console.error('Gallery upload error:', uploadError);
+        return null;
+      }
+
+      const { data: urlData } = supabase.storage
+        .from('card-images')
+        .getPublicUrl(filePath);
+
+      return urlData.publicUrl;
+    } catch (err) {
+      console.error('Gallery upload failed:', err);
+      return null;
+    }
   };
 
   // Upload obrazka do Supabase Storage
@@ -1241,11 +1363,20 @@ export default function AdminPage() {
       car_torque: cardForm.card_type === 'car' && cardForm.car_torque ? parseInt(cardForm.car_torque) : null,
       car_max_speed: cardForm.card_type === 'car' && cardForm.car_max_speed ? parseInt(cardForm.car_max_speed) : null,
       car_year: cardForm.card_type === 'car' && cardForm.car_year ? parseInt(cardForm.car_year) : null,
+      // Dodatkowe info o aucie
+      car_engine: cardForm.card_type === 'car' ? cardForm.car_engine.trim() || null : null,
+      car_cylinders: cardForm.card_type === 'car' && cardForm.car_cylinders ? parseInt(cardForm.car_cylinders) : null,
+      car_acceleration: cardForm.card_type === 'car' && cardForm.car_acceleration ? parseFloat(cardForm.car_acceleration) : null,
+      car_weight: cardForm.card_type === 'car' && cardForm.car_weight ? parseInt(cardForm.car_weight) : null,
+      car_drivetrain: cardForm.card_type === 'car' ? cardForm.car_drivetrain.trim() || null : null,
+      car_fun_fact: cardForm.card_type === 'car' ? cardForm.car_fun_fact.trim() || null : null,
       // Pola dla Heroes
       is_hero: cardForm.card_type === 'car' && cardForm.is_hero,
       hero_name: cardForm.is_hero ? cardForm.hero_name.trim() || null : null,
       hero_title: cardForm.is_hero ? cardForm.hero_title.trim() || null : null,
     };
+
+    let savedCardId: string;
 
     if (editingCard) {
       const { error } = await supabase
@@ -1263,8 +1394,8 @@ export default function AdminPage() {
         return;
       }
 
+      savedCardId = editingCard.id;
       setCards(prev => prev.map(c => c.id === editingCard.id ? { ...c, ...cardData } as CollectibleCard : c));
-      success('Zapisano!', 'Karta została zaktualizowana');
     } else {
       const { data, error } = await supabase
         .from('cards')
@@ -1282,10 +1413,32 @@ export default function AdminPage() {
         return;
       }
 
+      savedCardId = data.id;
       setCards(prev => [...prev, data as CollectibleCard]);
-      success('Dodano!', 'Nowa karta została dodana');
     }
 
+    // Zapisz nowe zdjęcia galerii
+    if (cardForm.card_type === 'car') {
+      setUploadingGalleryImage(true);
+      const newImages = cardGalleryImages.filter(img => img.file);
+
+      for (let i = 0; i < newImages.length; i++) {
+        const img = newImages[i];
+        if (img.file) {
+          const uploadedUrl = await uploadGalleryImage(img.file);
+          if (uploadedUrl) {
+            await supabase.from('card_images').insert({
+              card_id: savedCardId,
+              image_url: uploadedUrl,
+              display_order: cardGalleryImages.filter(g => !g.file).length + i,
+            });
+          }
+        }
+      }
+      setUploadingGalleryImage(false);
+    }
+
+    success(editingCard ? 'Zapisano!' : 'Dodano!', editingCard ? 'Karta została zaktualizowana' : 'Nowa karta została dodana');
     setShowCardModal(false);
     setSavingCard(false);
   };
@@ -4231,6 +4384,90 @@ export default function AdminPage() {
                 </div>
               </div>
 
+              {/* Dodatkowe info (widoczne po odblokowaniu) */}
+              <div className="border-t border-dark-700 pt-4 mt-4">
+                <h4 className="text-sm font-medium text-emerald-400 mb-3 flex items-center gap-2">
+                  <Sparkles className="w-4 h-4" />
+                  Dodatkowe info (widoczne po odblokowaniu karty)
+                </h4>
+
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <label className="block text-sm font-medium text-dark-200 mb-1.5">Silnik</label>
+                    <input
+                      type="text"
+                      value={cardForm.car_engine}
+                      onChange={e => setCardForm(prev => ({ ...prev, car_engine: e.target.value }))}
+                      placeholder="np. 4.0L Boxer 6"
+                      className="w-full bg-dark-800 border border-dark-600 rounded-xl px-4 py-2.5 text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-dark-200 mb-1.5">Liczba cylindrów</label>
+                    <input
+                      type="number"
+                      value={cardForm.car_cylinders}
+                      onChange={e => setCardForm(prev => ({ ...prev, car_cylinders: e.target.value }))}
+                      placeholder="np. 6"
+                      min={1}
+                      max={16}
+                      className="w-full bg-dark-800 border border-dark-600 rounded-xl px-4 py-2.5 text-white"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <label className="block text-sm font-medium text-dark-200 mb-1.5">0-100 km/h (s)</label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      value={cardForm.car_acceleration}
+                      onChange={e => setCardForm(prev => ({ ...prev, car_acceleration: e.target.value }))}
+                      placeholder="np. 3.4"
+                      min={0}
+                      className="w-full bg-dark-800 border border-dark-600 rounded-xl px-4 py-2.5 text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-dark-200 mb-1.5">Masa (kg)</label>
+                    <input
+                      type="number"
+                      value={cardForm.car_weight}
+                      onChange={e => setCardForm(prev => ({ ...prev, car_weight: e.target.value }))}
+                      placeholder="np. 1418"
+                      min={0}
+                      className="w-full bg-dark-800 border border-dark-600 rounded-xl px-4 py-2.5 text-white"
+                    />
+                  </div>
+                </div>
+
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-dark-200 mb-1.5">Napęd</label>
+                  <select
+                    value={cardForm.car_drivetrain}
+                    onChange={e => setCardForm(prev => ({ ...prev, car_drivetrain: e.target.value }))}
+                    className="w-full bg-dark-800 border border-dark-600 rounded-xl px-4 py-2.5 text-white"
+                  >
+                    <option value="">Wybierz napęd</option>
+                    <option value="RWD">RWD (tylny)</option>
+                    <option value="FWD">FWD (przedni)</option>
+                    <option value="AWD">AWD (4x4)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-dark-200 mb-1.5">Ciekawostka</label>
+                  <textarea
+                    value={cardForm.car_fun_fact}
+                    onChange={e => setCardForm(prev => ({ ...prev, car_fun_fact: e.target.value }))}
+                    placeholder="Ciekawostka o tym samochodzie..."
+                    rows={2}
+                    className="w-full bg-dark-800 border border-dark-600 rounded-xl px-4 py-2.5 text-white resize-none"
+                  />
+                </div>
+              </div>
+
               {/* Sekcja Turbo Hero */}
               <div className="border-t border-dark-700 pt-4 mt-4">
                 <div className="flex items-center justify-between mb-3">
@@ -4370,6 +4607,63 @@ export default function AdminPage() {
             )}
           </div>
 
+          {/* Galeria zdjęć (tylko dla samochodów) */}
+          {cardForm.card_type === 'car' && (
+            <div className="border-t border-dark-700 pt-4 mt-4">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="text-sm font-medium text-emerald-400 flex items-center gap-2">
+                  <ImageIcon className="w-4 h-4" />
+                  Galeria zdjęć (widoczna po odblokowaniu)
+                </h4>
+                <span className="text-xs text-dark-500">{cardGalleryImages.length}/6</span>
+              </div>
+              <p className="text-xs text-dark-400 mb-3">
+                Dodaj dodatkowe zdjęcia auta do galerii. Użytkownik będzie mógł je przeglądać i pobierać jako tapety.
+              </p>
+
+              {/* Istniejące zdjęcia galerii */}
+              {cardGalleryImages.length > 0 && (
+                <div className="grid grid-cols-3 gap-2 mb-3">
+                  {cardGalleryImages.map((img, idx) => (
+                    <div key={idx} className="relative group aspect-video rounded-lg overflow-hidden bg-dark-700">
+                      <img
+                        src={img.url}
+                        alt={`Galeria ${idx + 1}`}
+                        className="w-full h-full object-cover"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveGalleryImage(idx)}
+                        className="absolute top-1 right-1 p-1 bg-red-500/80 hover:bg-red-500 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <X className="w-3 h-3 text-white" />
+                      </button>
+                      <span className="absolute bottom-1 left-1 px-1.5 py-0.5 bg-dark-900/80 rounded text-xs text-white">
+                        {idx + 1}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Dodaj zdjęcie do galerii */}
+              {cardGalleryImages.length < 6 && (
+                <label className="cursor-pointer block">
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    onChange={handleGalleryImageSelect}
+                    className="hidden"
+                  />
+                  <div className="border-2 border-dashed border-dark-600 hover:border-emerald-500 rounded-xl p-4 text-center transition-colors">
+                    <Plus className="w-6 h-6 text-dark-400 mx-auto mb-1" />
+                    <p className="text-xs text-dark-300">Dodaj zdjęcie do galerii</p>
+                  </div>
+                </label>
+              )}
+            </div>
+          )}
+
           <div className="flex gap-3 pt-4">
             <Button
               variant="secondary"
@@ -4383,11 +4677,11 @@ export default function AdminPage() {
             </Button>
             <Button
               onClick={handleSaveCard}
-              loading={savingCard || uploadingCardImage}
+              loading={savingCard || uploadingCardImage || uploadingGalleryImage}
               className="flex-1"
             >
               <Save className="w-4 h-4 mr-1" />
-              {uploadingCardImage ? 'Wgrywanie zdjęcia...' : editingCard ? 'Zapisz zmiany' : 'Dodaj kartę'}
+              {uploadingCardImage ? 'Wgrywanie zdjęcia...' : uploadingGalleryImage ? 'Wgrywanie galerii...' : editingCard ? 'Zapisz zmiany' : 'Dodaj kartę'}
             </Button>
           </div>
         </div>

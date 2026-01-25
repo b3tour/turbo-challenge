@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { useMissions } from '@/hooks/useMissions';
 import { useLeaderboard } from '@/hooks/useLeaderboard';
-import { Card, Badge, Button, Avatar, ProgressBar, Modal, Input, AvatarEditor } from '@/components/ui';
+import { Card, Badge, Button, Avatar, ProgressBar, Modal, Input, AvatarEditor, AppInfoModal } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
 import { formatNumber, formatDate } from '@/lib/utils';
 import { useLevels } from '@/hooks/useLevels';
@@ -24,6 +24,7 @@ import {
   Camera,
   Loader2,
   Layers,
+  HelpCircle,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useCards, RARITY_CONFIG } from '@/hooks/useCards';
@@ -46,6 +47,7 @@ export default function ProfilePage() {
   const [showAvatarEditor, setShowAvatarEditor] = useState(false);
   const [avatarImageSrc, setAvatarImageSrc] = useState<string | null>(null);
   const [nickChangesCount, setNickChangesCount] = useState(0);
+  const [showAppInfo, setShowAppInfo] = useState(false);
 
   // Synchronicznie pobierz ranking użytkownika z cache
   const userRank = profile?.id ? getUserRank(profile.id) : null;
@@ -391,6 +393,26 @@ export default function ProfilePage() {
         </Card>
       </Link>
 
+      {/* App Info */}
+      <Card
+        className="relative overflow-hidden hover:border-turbo-500/50 transition-colors cursor-pointer"
+        onClick={() => setShowAppInfo(true)}
+      >
+        <div className="absolute top-0 right-0 w-24 h-24 bg-turbo-500/10 rounded-full blur-2xl" />
+        <div className="flex items-center gap-4">
+          <div className="w-14 h-14 rounded-xl bg-turbo-500/20 flex items-center justify-center">
+            <HelpCircle className="w-7 h-7 text-turbo-500" />
+          </div>
+          <div className="flex-1">
+            <h3 className="font-semibold text-white">Informacje o aplikacji</h3>
+            <p className="text-sm text-dark-400 mt-1">
+              Jak grać w Turbo Challenge?
+            </p>
+          </div>
+          <ChevronRight className="w-5 h-5 text-dark-400" />
+        </div>
+      </Card>
+
       {/* Account Info */}
       <Card>
         <h2 className="text-lg font-semibold text-white mb-4">Informacje o koncie</h2>
@@ -568,6 +590,9 @@ export default function ProfilePage() {
           isSaving={isUploadingAvatar}
         />
       )}
+
+      {/* App Info Modal */}
+      <AppInfoModal isOpen={showAppInfo} onClose={() => setShowAppInfo(false)} />
     </div>
   );
 }
