@@ -331,7 +331,7 @@ export default function ProfilePage() {
       </Card>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-4">
         <Card className="text-center">
           <Target className="w-8 h-8 text-turbo-500 mx-auto mb-2" />
           <div className="text-2xl font-bold text-white">{completedMissions}</div>
