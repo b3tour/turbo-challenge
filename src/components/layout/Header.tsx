@@ -7,6 +7,7 @@ import { HelpCircle } from 'lucide-react';
 import { User } from '@/types';
 import { Avatar, AppInfoModal } from '@/components/ui';
 import { useLevels } from '@/hooks/useLevels';
+import NotificationBell from './NotificationBell';
 
 interface HeaderProps {
   user?: User | null;
@@ -56,6 +57,9 @@ export function Header({ user }: HeaderProps) {
                   />
                 </div>
               </div>
+
+              {/* Notifications */}
+              <NotificationBell userId={user.id} />
 
               {/* Help icon */}
               <button

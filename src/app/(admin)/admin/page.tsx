@@ -57,8 +57,11 @@ import {
 } from 'lucide-react';
 import { LEVELS } from '@/lib/utils';
 import { Level } from '@/types';
+import AnnouncementsAdmin from '@/components/admin/AnnouncementsAdmin';
+import AppContentAdmin from '@/components/admin/AppContentAdmin';
+import { Bell, FileText } from 'lucide-react';
 
-type AdminTab = 'overview' | 'submissions' | 'missions' | 'users' | 'levels' | 'rewards' | 'cards' | 'orders' | 'mystery';
+type AdminTab = 'overview' | 'submissions' | 'missions' | 'users' | 'levels' | 'rewards' | 'cards' | 'orders' | 'mystery' | 'announcements' | 'content';
 
 const tabs: { id: AdminTab; label: string; icon: React.ElementType; description: string }[] = [
   { id: 'overview', label: 'Przeglad', icon: BarChart3, description: 'Statystyki i podsumowanie' },
@@ -69,6 +72,8 @@ const tabs: { id: AdminTab; label: string; icon: React.ElementType; description:
   { id: 'cards', label: 'Karty', icon: Layers, description: 'Karty kolekcjonerskie' },
   { id: 'orders', label: 'Zamówienia', icon: ShoppingCart, description: 'Zamówienia kart' },
   { id: 'mystery', label: 'Mystery', icon: Package, description: 'Pakiety Mystery Garage' },
+  { id: 'announcements', label: 'Powiadomienia', icon: Bell, description: 'Wysyłaj powiadomienia' },
+  { id: 'content', label: 'Treść', icon: FileText, description: 'Edytuj info o aplikacji' },
   { id: 'levels', label: 'Poziomy', icon: Trophy, description: 'Progi XP i nazwy poziomow' },
 ];
 
@@ -2855,6 +2860,16 @@ export default function AdminPage() {
                     </div>
                   </Card>
                 </div>
+              )}
+
+              {/* Announcements Tab */}
+              {activeTab === 'announcements' && (
+                <AnnouncementsAdmin />
+              )}
+
+              {/* App Content Tab */}
+              {activeTab === 'content' && (
+                <AppContentAdmin />
               )}
 
               {/* Levels Tab */}
