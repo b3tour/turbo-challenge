@@ -125,13 +125,9 @@ export default function LeaderboardPage() {
         <div className="w-14 h-14 rounded-xl bg-yellow-500/20 flex items-center justify-center flex-shrink-0">
           <Trophy className="w-7 h-7 text-yellow-500" />
         </div>
-        <div className="flex-1">
+        <div>
           <h1 className="text-2xl font-bold text-white">Ranking</h1>
           <p className="text-dark-400">Rywalizuj z innymi graczami!</p>
-        </div>
-        <div className="text-right">
-          <div className="text-lg font-bold text-yellow-400">{totalParticipants}</div>
-          <div className="text-xs text-dark-400">graczy</div>
         </div>
       </div>
 
@@ -289,7 +285,7 @@ export default function LeaderboardPage() {
 
       {/* Full Leaderboard */}
       <Card>
-        <h2 className="text-lg font-semibold text-white mb-4">Pełny ranking</h2>
+        <h2 className="text-lg font-semibold text-white mb-4">Pełny ranking ({totalParticipants})</h2>
 
         {loading ? (
           <div className="space-y-3">
