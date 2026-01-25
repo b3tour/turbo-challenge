@@ -105,7 +105,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen">
       <Header user={profile} />
-      <main className="pt-16 pb-20 px-4 max-w-lg mx-auto">{children}</main>
+      <main className="pt-16 pb-20 px-3 sm:px-4 max-w-lg mx-auto">{children}</main>
       <BottomNav />
     </div>
   );

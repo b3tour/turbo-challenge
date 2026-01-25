@@ -17,21 +17,21 @@ export function Header({ user }: HeaderProps) {
 
   return (
     <>
-      <header className="fixed top-0 left-0 right-0 z-40 bg-dark-900/95 backdrop-blur-lg border-b border-dark-800 pt-safe">
-        <div className="flex items-center justify-between h-16 px-4 max-w-lg mx-auto">
+      <header className="fixed top-0 left-0 right-0 z-40 bg-dark-900 backdrop-blur-lg border-b border-dark-800 pt-safe">
+        <div className="flex items-center justify-between h-16 px-3 sm:px-4 max-w-lg mx-auto">
           {/* Logo */}
-          <Link href="/dashboard" className="flex items-center gap-2">
+          <Link href="/dashboard" className="flex items-center gap-1.5 sm:gap-2 min-w-0">
             <Image
               src="/heart-icon.png"
               alt="Turbo Challenge"
-              width={30}
-              height={30}
-              className="object-contain"
+              width={28}
+              height={28}
+              className="object-contain flex-shrink-0"
               priority
             />
-            <div className="flex items-center gap-1.5">
-              <span className="text-2xl font-bold text-white">TURBO</span>
-              <span className="text-2xl font-bold gradient-text">CHALLENGE</span>
+            <div className="flex items-center gap-1 sm:gap-1.5 min-w-0">
+              <span className="text-lg sm:text-2xl font-bold text-white">TURBO</span>
+              <span className="text-lg sm:text-2xl font-bold gradient-text truncate">CHALLENGE</span>
             </div>
           </Link>
 
