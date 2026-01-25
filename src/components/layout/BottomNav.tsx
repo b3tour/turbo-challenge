@@ -8,7 +8,7 @@ import { Home, Target, Trophy, User, Layers } from 'lucide-react';
 const navItems = [
   { href: '/dashboard', label: 'Start', icon: Home },
   { href: '/missions', label: 'Misje', icon: Target },
-  { href: '/cards', label: 'Karty', icon: Layers },
+  { href: '/cards', label: 'Turbo Karty', icon: Layers },
   { href: '/leaderboard', label: 'Ranking', icon: Trophy },
   { href: '/profile', label: 'Profil', icon: User },
 ];
