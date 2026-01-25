@@ -121,14 +121,18 @@ export default function LeaderboardPage() {
   return (
     <div className="py-4">
       {/* Header */}
-      <div className="text-center mb-6">
-        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-yellow-500/20 mb-3">
-          <Trophy className="w-8 h-8 text-yellow-500" />
+      <div className="flex items-center gap-4 mb-6">
+        <div className="w-14 h-14 rounded-xl bg-yellow-500/20 flex items-center justify-center flex-shrink-0">
+          <Trophy className="w-7 h-7 text-yellow-500" />
         </div>
-        <h1 className="text-2xl font-bold text-white">Ranking</h1>
-        <p className="text-dark-400 mt-1">
-          {totalParticipants} uczestników w rywalizacji
-        </p>
+        <div className="flex-1">
+          <h1 className="text-2xl font-bold text-white">Ranking</h1>
+          <p className="text-dark-400">Rywalizuj z innymi graczami!</p>
+        </div>
+        <div className="text-right">
+          <div className="text-lg font-bold text-yellow-400">{totalParticipants}</div>
+          <div className="text-xs text-dark-400">graczy</div>
+        </div>
       </div>
 
       {/* Tabs */}
