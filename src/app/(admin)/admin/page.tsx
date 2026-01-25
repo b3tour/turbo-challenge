@@ -59,6 +59,7 @@ import { LEVELS } from '@/lib/utils';
 import { Level } from '@/types';
 import AnnouncementsAdmin from '@/components/admin/AnnouncementsAdmin';
 import AppContentAdmin from '@/components/admin/AppContentAdmin';
+import { sendUserNotification } from '@/hooks/useAnnouncements';
 import { Bell, FileText } from 'lucide-react';
 
 type AdminTab = 'overview' | 'submissions' | 'missions' | 'users' | 'levels' | 'rewards' | 'cards' | 'orders' | 'mystery' | 'announcements' | 'content';
@@ -333,6 +334,15 @@ export default function AdminPage() {
       p_xp_amount: submission.mission.xp_reward,
     });
 
+    // Wyślij powiadomienie do użytkownika
+    await sendUserNotification(
+      submission.user_id,
+      'Misja zatwierdzona!',
+      `Twoja misja "${submission.mission.title}" została zatwierdzona. Otrzymujesz +${submission.mission.xp_reward} XP!`,
+      'mission_approved',
+      { mission_id: submission.mission.id, xp_awarded: submission.mission.xp_reward }
+    );
+
     success('Zatwierdzone!', `Przyznano ${submission.mission.xp_reward} XP`);
     setPendingSubmissions(prev => prev.filter(s => s.id !== submission.id));
     setShowSubmissionModal(false);
@@ -355,6 +365,16 @@ export default function AdminPage() {
       showError('Blad', 'Nie udalo sie odrzucic zgloszenia');
       return;
     }
+
+    // Wyślij powiadomienie do użytkownika
+    const missionTitle = submission.mission?.title || 'Misja';
+    await sendUserNotification(
+      submission.user_id,
+      'Misja odrzucona',
+      `Twoja misja "${missionTitle}" została odrzucona. Powód: ${reason || 'Zgłoszenie nie spełnia wymagań'}. Możesz spróbować ponownie.`,
+      'mission_rejected',
+      { mission_id: submission.mission?.id, reason: reason || 'Zgloszenie nie spelnia wymagan' }
+    );
 
     success('Odrzucone', 'Zgloszenie zostalo odrzucone');
     setPendingSubmissions(prev => prev.filter(s => s.id !== submission.id));
@@ -721,6 +741,15 @@ export default function AdminPage() {
       // Aktualizuj lokalną listę kart użytkownika
       setUserCardsForUser(prev => [...prev, card.id]);
 
+      // Wyślij powiadomienie do użytkownika
+      await sendUserNotification(
+        selectedUser.id,
+        'Otrzymujesz kartę!',
+        `Otrzymałeś kartę "${card.name}" od administracji. Sprawdź swoją kolekcję!`,
+        'card_received',
+        { card_id: card.id, card_name: card.name }
+      );
+
       success('Przyznano!', `Karta "${card.name}" została przyznana graczowi ${selectedUser.nick}`);
       setShowGrantCardModal(false);
     } catch (e: unknown) {
@@ -748,6 +777,25 @@ export default function AdminPage() {
     if (error) {
       showError('Błąd', 'Nie udało się zaktualizować XP');
       return;
+    }
+
+    // Wyślij powiadomienie do użytkownika
+    if (actualAmount > 0) {
+      await sendUserNotification(
+        selectedUser.id,
+        'Otrzymujesz XP!',
+        `Otrzymałeś +${actualAmount} XP od administracji.${note ? ` Powód: ${note}` : ''}`,
+        'xp_gain',
+        { xp_amount: actualAmount, note }
+      );
+    } else {
+      await sendUserNotification(
+        selectedUser.id,
+        'Korekta XP',
+        `Twoje XP zostało skorygowane o ${actualAmount}.${note ? ` Powód: ${note}` : ''}`,
+        'system',
+        { xp_amount: actualAmount, note }
+      );
     }
 
     // Log the manual XP change (optional - could add to a separate table)

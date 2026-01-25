@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { useAnnouncements, Announcement } from '@/hooks/useAnnouncements';
+import { useAnnouncements, UnifiedNotification } from '@/hooks/useAnnouncements';
 import { useToast } from '@/components/ui/Toast';
 import { formatDateTime } from '@/lib/utils';
 import {
@@ -16,7 +16,7 @@ import {
   ChevronRight,
 } from 'lucide-react';
 
-const typeConfig: Record<Announcement['type'], { icon: React.ElementType; color: string; bgColor: string }> = {
+const typeConfig: Record<UnifiedNotification['type'], { icon: React.ElementType; color: string; bgColor: string }> = {
   info: { icon: Info, color: 'text-blue-400', bgColor: 'bg-blue-500/20' },
   success: { icon: CheckCircle, color: 'text-green-400', bgColor: 'bg-green-500/20' },
   warning: { icon: AlertTriangle, color: 'text-yellow-400', bgColor: 'bg-yellow-500/20' },
@@ -28,16 +28,16 @@ interface NotificationBellProps {
 }
 
 export default function NotificationBell({ userId }: NotificationBellProps) {
-  const { announcements, unreadCount, markAsRead, markAllAsRead } = useAnnouncements(userId);
+  const { notifications, unreadCount, markAsRead, markAllAsRead } = useAnnouncements(userId);
   const { info } = useToast();
   const [isOpen, setIsOpen] = useState(false);
   const [lastSeenCount, setLastSeenCount] = useState(0);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Pokaż toast gdy przychodzi nowe ogłoszenie
+  // Pokaż toast gdy przychodzi nowe powiadomienie
   useEffect(() => {
     if (unreadCount > lastSeenCount && lastSeenCount > 0) {
-      const newest = announcements.find(a => !a.is_read);
+      const newest = notifications.find(n => !n.is_read);
       if (newest) {
         info(newest.title, newest.message);
       }
@@ -58,9 +58,9 @@ export default function NotificationBell({ userId }: NotificationBellProps) {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const handleAnnouncementClick = (announcement: Announcement) => {
-    if (!announcement.is_read) {
-      markAsRead(announcement.id);
+  const handleNotificationClick = (notification: UnifiedNotification) => {
+    if (!notification.is_read) {
+      markAsRead(notification.id, notification.source);
     }
   };
 
@@ -104,24 +104,24 @@ export default function NotificationBell({ userId }: NotificationBellProps) {
             </div>
           </div>
 
-          {/* Announcements list */}
+          {/* Notifications list */}
           <div className="overflow-y-auto max-h-64">
-            {announcements.length === 0 ? (
+            {notifications.length === 0 ? (
               <div className="text-center py-8 text-dark-400">
                 <Bell className="w-8 h-8 mx-auto mb-2 opacity-50" />
                 <p className="text-sm">Brak powiadomień</p>
               </div>
             ) : (
-              announcements.slice(0, 5).map(announcement => {
-                const config = typeConfig[announcement.type];
+              notifications.slice(0, 5).map(notification => {
+                const config = typeConfig[notification.type];
                 const Icon = config.icon;
 
                 return (
                   <div
-                    key={announcement.id}
-                    onClick={() => handleAnnouncementClick(announcement)}
+                    key={`${notification.source}-${notification.id}`}
+                    onClick={() => handleNotificationClick(notification)}
                     className={`px-4 py-3 border-b border-dark-700/50 cursor-pointer transition-colors hover:bg-dark-700/50 ${
-                      !announcement.is_read ? 'bg-dark-750' : ''
+                      !notification.is_read ? 'bg-dark-750' : ''
                     }`}
                   >
                     <div className="flex items-start gap-3">
@@ -130,18 +130,18 @@ export default function NotificationBell({ userId }: NotificationBellProps) {
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                          <h4 className={`text-sm font-medium truncate ${!announcement.is_read ? 'text-white' : 'text-dark-300'}`}>
-                            {announcement.title}
+                          <h4 className={`text-sm font-medium truncate ${!notification.is_read ? 'text-white' : 'text-dark-300'}`}>
+                            {notification.title}
                           </h4>
-                          {!announcement.is_read && (
+                          {!notification.is_read && (
                             <span className="w-2 h-2 bg-turbo-500 rounded-full flex-shrink-0" />
                           )}
                         </div>
                         <p className="text-xs text-dark-400 line-clamp-2 mt-0.5">
-                          {announcement.message}
+                          {notification.message}
                         </p>
                         <p className="text-xs text-dark-500 mt-1">
-                          {formatDateTime(announcement.created_at)}
+                          {formatDateTime(notification.created_at)}
                         </p>
                       </div>
                     </div>
@@ -151,8 +151,8 @@ export default function NotificationBell({ userId }: NotificationBellProps) {
             )}
           </div>
 
-          {/* Footer - link to all announcements */}
-          {announcements.length > 0 && (
+          {/* Footer - link to all notifications */}
+          {notifications.length > 0 && (
             <Link
               href="/announcements"
               onClick={() => setIsOpen(false)}

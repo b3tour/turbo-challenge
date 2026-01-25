@@ -113,5 +113,22 @@ GRANT SELECT ON public.app_content TO authenticated;
 -- Włącz "announcements" w tabeli replication
 
 -- =====================================================
+-- AKTUALIZACJA: notifications - dodaj typ card_received
+-- =====================================================
+-- Usuń stary constraint i dodaj nowy z card_received
+ALTER TABLE public.notifications DROP CONSTRAINT IF EXISTS notifications_type_check;
+ALTER TABLE public.notifications ADD CONSTRAINT notifications_type_check
+    CHECK (type IN ('xp_gain', 'level_up', 'achievement', 'mission_approved', 'mission_rejected', 'card_received', 'system'));
+
+-- Polityka INSERT dla notifications (pozwól zalogowanym użytkownikom wstawiać powiadomienia)
+DROP POLICY IF EXISTS "Authenticated can insert notifications" ON public.notifications;
+CREATE POLICY "Authenticated can insert notifications" ON public.notifications
+    FOR INSERT WITH CHECK (true);
+
+-- Włącz REALTIME dla notifications
+-- W Supabase Dashboard > Database > Replication
+-- Włącz "notifications" w tabeli replication
+
+-- =====================================================
 -- GOTOWE!
 -- =====================================================

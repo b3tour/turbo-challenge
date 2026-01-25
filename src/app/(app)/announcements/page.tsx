@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { useAnnouncements, Announcement } from '@/hooks/useAnnouncements';
+import { useAnnouncements, UnifiedNotification } from '@/hooks/useAnnouncements';
 import { Card, Badge } from '@/components/ui';
 import { formatDateTime } from '@/lib/utils';
 import {
@@ -16,7 +16,7 @@ import {
   Megaphone,
 } from 'lucide-react';
 
-const typeConfig: Record<Announcement['type'], { icon: React.ElementType; color: string; bgColor: string; label: string }> = {
+const typeConfig: Record<UnifiedNotification['type'], { icon: React.ElementType; color: string; bgColor: string; label: string }> = {
   info: { icon: Info, color: 'text-blue-400', bgColor: 'bg-blue-500/20', label: 'Informacja' },
   success: { icon: CheckCircle, color: 'text-green-400', bgColor: 'bg-green-500/20', label: 'Sukces' },
   warning: { icon: AlertTriangle, color: 'text-yellow-400', bgColor: 'bg-yellow-500/20', label: 'Ostrzeżenie' },
@@ -27,7 +27,7 @@ type FilterType = 'all' | 'unread' | 'read';
 
 export default function AnnouncementsPage() {
   const { profile } = useAuth();
-  const { announcements, unreadCount, loading, markAsRead, markAllAsRead } = useAnnouncements(profile?.id);
+  const { notifications, unreadCount, loading, markAsRead, markAllAsRead } = useAnnouncements(profile?.id);
   const [filter, setFilter] = useState<FilterType>('all');
 
   if (!profile) return null;
@@ -38,15 +38,15 @@ export default function AnnouncementsPage() {
     { value: 'read', label: 'Przeczytane', icon: CheckCheck },
   ];
 
-  const filteredAnnouncements = announcements.filter(a => {
-    if (filter === 'unread') return !a.is_read;
-    if (filter === 'read') return a.is_read;
+  const filteredNotifications = notifications.filter(n => {
+    if (filter === 'unread') return !n.is_read;
+    if (filter === 'read') return n.is_read;
     return true;
   });
 
-  const handleAnnouncementClick = (announcement: Announcement) => {
-    if (!announcement.is_read) {
-      markAsRead(announcement.id);
+  const handleNotificationClick = (notification: UnifiedNotification) => {
+    if (!notification.is_read) {
+      markAsRead(notification.id, notification.source);
     }
   };
 
@@ -70,10 +70,10 @@ export default function AnnouncementsPage() {
         {filters.map(f => {
           const Icon = f.icon;
           const count = f.value === 'all'
-            ? announcements.length
+            ? notifications.length
             : f.value === 'unread'
               ? unreadCount
-              : announcements.length - unreadCount;
+              : notifications.length - unreadCount;
 
           return (
             <button
@@ -115,19 +115,19 @@ export default function AnnouncementsPage() {
             <Card key={i} className="h-24 animate-pulse bg-dark-700" />
           ))}
         </div>
-      ) : filteredAnnouncements.length > 0 ? (
+      ) : filteredNotifications.length > 0 ? (
         <div className="space-y-3">
-          {filteredAnnouncements.map(announcement => {
-            const config = typeConfig[announcement.type];
+          {filteredNotifications.map(notification => {
+            const config = typeConfig[notification.type];
             const Icon = config.icon;
 
             return (
               <Card
-                key={announcement.id}
+                key={`${notification.source}-${notification.id}`}
                 className={`cursor-pointer transition-all hover:border-dark-600 ${
-                  !announcement.is_read ? 'border-turbo-500/30 bg-turbo-500/5' : ''
+                  !notification.is_read ? 'border-turbo-500/30 bg-turbo-500/5' : ''
                 }`}
-                onClick={() => handleAnnouncementClick(announcement)}
+                onClick={() => handleNotificationClick(notification)}
               >
                 <div className="flex items-start gap-4">
                   {/* Icon */}
@@ -138,22 +138,22 @@ export default function AnnouncementsPage() {
                   {/* Content */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                      <h3 className={`font-semibold ${!announcement.is_read ? 'text-white' : 'text-dark-200'}`}>
-                        {announcement.title}
+                      <h3 className={`font-semibold ${!notification.is_read ? 'text-white' : 'text-dark-200'}`}>
+                        {notification.title}
                       </h3>
-                      {!announcement.is_read && (
+                      {!notification.is_read && (
                         <span className="w-2 h-2 bg-turbo-500 rounded-full flex-shrink-0" />
                       )}
                     </div>
 
-                    <p className={`text-sm mb-2 ${!announcement.is_read ? 'text-dark-300' : 'text-dark-400'}`}>
-                      {announcement.message}
+                    <p className={`text-sm mb-2 ${!notification.is_read ? 'text-dark-300' : 'text-dark-400'}`}>
+                      {notification.message}
                     </p>
 
                     <div className="flex items-center gap-3 text-xs text-dark-500">
                       <span className="flex items-center gap-1">
                         <Clock className="w-3 h-3" />
-                        {formatDateTime(announcement.created_at)}
+                        {formatDateTime(notification.created_at)}
                       </span>
                       <Badge
                         variant="default"
