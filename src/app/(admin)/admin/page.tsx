@@ -129,6 +129,14 @@ export default function AdminPage() {
   const [showGrantCardModal, setShowGrantCardModal] = useState(false);
   const [grantingCard, setGrantingCard] = useState(false);
   const [userCardsForUser, setUserCardsForUser] = useState<string[]>([]);
+  const [userCardsDetails, setUserCardsDetails] = useState<(CollectibleCard & { user_card_id: string; obtained_from: string; obtained_at: string })[]>([]);
+
+  // Card owners modal
+  const [showCardOwnersModal, setShowCardOwnersModal] = useState(false);
+  const [selectedCardForOwners, setSelectedCardForOwners] = useState<CollectibleCard | null>(null);
+  const [cardOwners, setCardOwners] = useState<{ user: User; user_card_id: string; obtained_from: string; obtained_at: string }[]>([]);
+  const [loadingCardOwners, setLoadingCardOwners] = useState(false);
+  const [removingCard, setRemovingCard] = useState<string | null>(null);
 
   // Photo preview
   const [showPhotoModal, setShowPhotoModal] = useState(false);
@@ -675,6 +683,7 @@ export default function AdminPage() {
     setSelectedUser(user);
     setShowUserModal(true);
     setLoadingUserDetails(true);
+    setUserCardsDetails([]);
 
     // Pobierz zgłoszenia użytkownika
     const { data, error } = await supabase
@@ -687,16 +696,24 @@ export default function AdminPage() {
       setUserSubmissions(data as Submission[]);
     }
 
-    // Pobierz karty użytkownika
+    // Pobierz karty użytkownika z pełnymi danymi
     const { data: userCardsData } = await supabase
       .from('user_cards')
-      .select('card_id')
-      .eq('user_id', user.id);
+      .select('id, card_id, obtained_from, obtained_at, card:cards(*)')
+      .eq('user_id', user.id)
+      .order('obtained_at', { ascending: false });
 
     if (userCardsData) {
       setUserCardsForUser(userCardsData.map(uc => uc.card_id));
+      setUserCardsDetails(userCardsData.map(uc => ({
+        ...(uc.card as unknown as CollectibleCard),
+        user_card_id: uc.id,
+        obtained_from: uc.obtained_from,
+        obtained_at: uc.obtained_at,
+      })));
     } else {
       setUserCardsForUser([]);
+      setUserCardsDetails([]);
     }
 
     setLoadingUserDetails(false);
@@ -752,11 +769,99 @@ export default function AdminPage() {
 
       success('Przyznano!', `Karta "${card.name}" została przyznana graczowi ${selectedUser.nick}`);
       setShowGrantCardModal(false);
+
+      // Odśwież listę kart użytkownika
+      const { data: refreshedCards } = await supabase
+        .from('user_cards')
+        .select('id, card_id, obtained_from, obtained_at, card:cards(*)')
+        .eq('user_id', selectedUser.id)
+        .order('obtained_at', { ascending: false });
+
+      if (refreshedCards) {
+        setUserCardsDetails(refreshedCards.map(uc => ({
+          ...(uc.card as unknown as CollectibleCard),
+          user_card_id: uc.id,
+          obtained_from: uc.obtained_from,
+          obtained_at: uc.obtained_at,
+        })));
+      }
     } catch (e: unknown) {
       const errorMessage = e instanceof Error ? e.message : 'Nieznany błąd';
       showError('Błąd', errorMessage);
     } finally {
       setGrantingCard(false);
+    }
+  };
+
+  // === CARD OWNERS ===
+  const openCardOwners = async (card: CollectibleCard) => {
+    setSelectedCardForOwners(card);
+    setShowCardOwnersModal(true);
+    setLoadingCardOwners(true);
+    setCardOwners([]);
+
+    const { data, error } = await supabase
+      .from('user_cards')
+      .select('id, obtained_from, obtained_at, user:users(*)')
+      .eq('card_id', card.id)
+      .order('obtained_at', { ascending: false });
+
+    if (!error && data) {
+      setCardOwners(data.map(uc => ({
+        user: uc.user as unknown as User,
+        user_card_id: uc.id,
+        obtained_from: uc.obtained_from,
+        obtained_at: uc.obtained_at,
+      })));
+    }
+
+    setLoadingCardOwners(false);
+  };
+
+  // === REMOVE CARD FROM USER ===
+  const handleRemoveCardFromUser = async (userCardId: string, userId: string, cardId: string, cardName: string) => {
+    if (!confirm(`Czy na pewno chcesz usunąć kartę "${cardName}" od tego gracza?`)) return;
+
+    setRemovingCard(userCardId);
+
+    try {
+      const { error } = await supabase
+        .from('user_cards')
+        .delete()
+        .eq('id', userCardId);
+
+      if (error) throw error;
+
+      // Wyślij powiadomienie do użytkownika
+      await sendUserNotification(
+        userId,
+        'Karta usunięta',
+        `Karta "${cardName}" została usunięta z Twojej kolekcji przez administrację.`,
+        'system',
+        { card_id: cardId, card_name: cardName }
+      );
+
+      success('Usunięto!', `Karta "${cardName}" została usunięta`);
+
+      // Odśwież dane w zależności od kontekstu
+      if (showCardOwnersModal && selectedCardForOwners) {
+        // Odśwież listę właścicieli karty
+        setCardOwners(prev => prev.filter(o => o.user_card_id !== userCardId));
+      }
+
+      if (showUserModal && selectedUser) {
+        // Odśwież listę kart użytkownika
+        setUserCardsForUser(prev => prev.filter(id => {
+          const cardDetail = userCardsDetails.find(c => c.user_card_id === userCardId);
+          return cardDetail ? id !== cardDetail.id : true;
+        }));
+        setUserCardsDetails(prev => prev.filter(c => c.user_card_id !== userCardId));
+      }
+    } catch (e: unknown) {
+      const errorMessage = e instanceof Error ? e.message : 'Nieznany błąd';
+      showError('Błąd', errorMessage);
+    } finally {
+      setRemovingCard(null);
     }
   };
 
@@ -2593,6 +2698,14 @@ export default function AdminPage() {
                                 <Button
                                   size="sm"
                                   variant="ghost"
+                                  onClick={() => openCardOwners(card)}
+                                  title="Zobacz właścicieli"
+                                >
+                                  <Users className="w-4 h-4 text-purple-400" />
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
                                   onClick={() => handleToggleCard(card)}
                                   title={card.is_active ? 'Ukryj kartę' : 'Aktywuj kartę'}
                                 >
@@ -3500,14 +3613,12 @@ export default function AdminPage() {
             <Card variant="outlined" className="border-purple-500/30 bg-purple-500/5">
               <h4 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
                 <Layers className="w-4 h-4 text-purple-500" />
-                Karty kolekcjonerskie
+                Karty kolekcjonerskie ({userCardsForUser.length})
               </h4>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-dark-300">
-                    Posiada: <span className="text-purple-400 font-bold">{userCardsForUser.length}</span> kart
-                  </p>
-                </div>
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-sm text-dark-300">
+                  Posiada: <span className="text-purple-400 font-bold">{userCardsForUser.length}</span> kart
+                </p>
                 <Button
                   size="sm"
                   variant="secondary"
@@ -3518,6 +3629,61 @@ export default function AdminPage() {
                   Przyznaj kartę
                 </Button>
               </div>
+
+              {/* Lista kart użytkownika */}
+              {userCardsDetails.length > 0 && (
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {userCardsDetails.map(card => {
+                    const rarityOpt = RARITY_OPTIONS.find(r => r.value === card.rarity);
+                    return (
+                      <div
+                        key={card.user_card_id}
+                        className="flex items-center gap-3 p-2 bg-dark-800 rounded-lg"
+                      >
+                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                          card.rarity === 'legendary' ? 'bg-yellow-500/20' :
+                          card.rarity === 'epic' ? 'bg-purple-500/20' :
+                          card.rarity === 'rare' ? 'bg-blue-500/20' :
+                          'bg-gray-500/20'
+                        }`}>
+                          {card.image_url ? (
+                            <img src={card.image_url} alt={card.name} className="w-full h-full object-cover rounded-lg" />
+                          ) : (
+                            <Sparkles className={`w-4 h-4 ${rarityOpt?.color || 'text-gray-400'}`} />
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-white truncate">{card.name}</p>
+                          <p className="text-xs text-dark-400">
+                            {card.obtained_from === 'admin' ? 'Przyznana' :
+                             card.obtained_from === 'purchase' ? 'Kupiona' :
+                             card.obtained_from === 'mission' ? 'Z misji' :
+                             card.obtained_from === 'mystery' ? 'Mystery Garage' :
+                             card.obtained_from} • {formatDateTime(card.obtained_at)}
+                          </p>
+                        </div>
+                        <Badge variant={
+                          card.rarity === 'legendary' ? 'warning' :
+                          card.rarity === 'epic' ? 'turbo' :
+                          card.rarity === 'rare' ? 'info' :
+                          'default'
+                        } size="sm">
+                          {rarityOpt?.label}
+                        </Badge>
+                        <Button
+                          size="sm"
+                          variant="danger"
+                          onClick={() => handleRemoveCardFromUser(card.user_card_id, selectedUser.id, card.id, card.name)}
+                          disabled={removingCard === card.user_card_id}
+                          title="Usuń kartę"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </Button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </Card>
 
             {loadingUserDetails ? (
@@ -4751,6 +4917,113 @@ export default function AdminPage() {
       </Modal>
 
       {/* Emoji Picker Modal */}
+      {/* Card Owners Modal */}
+      <Modal
+        isOpen={showCardOwnersModal}
+        onClose={() => {
+          setShowCardOwnersModal(false);
+          setSelectedCardForOwners(null);
+          setCardOwners([]);
+        }}
+        title={`Właściciele karty: ${selectedCardForOwners?.name || ''}`}
+        size="lg"
+      >
+        <div className="space-y-4">
+          {selectedCardForOwners && (
+            <Card variant="outlined" className="border-purple-500/30">
+              <div className="flex items-center gap-3">
+                <div className={`w-14 h-14 rounded-xl flex items-center justify-center ${
+                  selectedCardForOwners.rarity === 'legendary' ? 'bg-yellow-500/20' :
+                  selectedCardForOwners.rarity === 'epic' ? 'bg-purple-500/20' :
+                  selectedCardForOwners.rarity === 'rare' ? 'bg-blue-500/20' :
+                  'bg-gray-500/20'
+                }`}>
+                  {selectedCardForOwners.image_url ? (
+                    <img src={selectedCardForOwners.image_url} alt={selectedCardForOwners.name} className="w-full h-full object-cover rounded-xl" />
+                  ) : (
+                    <Sparkles className={`w-6 h-6 ${RARITY_OPTIONS.find(r => r.value === selectedCardForOwners.rarity)?.color || 'text-gray-400'}`} />
+                  )}
+                </div>
+                <div>
+                  <p className="font-medium text-white">{selectedCardForOwners.name}</p>
+                  <p className="text-sm text-dark-400">{selectedCardForOwners.category}</p>
+                  {selectedCardForOwners.total_supply && (
+                    <p className="text-xs text-purple-400">
+                      Limit: {selectedCardForOwners.total_supply} szt. | Posiadana: {cardOwners.length} szt.
+                    </p>
+                  )}
+                </div>
+                <Badge variant={
+                  selectedCardForOwners.rarity === 'legendary' ? 'warning' :
+                  selectedCardForOwners.rarity === 'epic' ? 'turbo' :
+                  selectedCardForOwners.rarity === 'rare' ? 'info' :
+                  'default'
+                } className="ml-auto">
+                  {RARITY_OPTIONS.find(r => r.value === selectedCardForOwners.rarity)?.label}
+                </Badge>
+              </div>
+            </Card>
+          )}
+
+          {loadingCardOwners ? (
+            <div className="text-center py-8 text-dark-400">Ładowanie właścicieli...</div>
+          ) : cardOwners.length === 0 ? (
+            <Card className="text-center py-8">
+              <Users className="w-12 h-12 text-dark-600 mx-auto mb-3" />
+              <p className="text-dark-400">Nikt nie posiada tej karty</p>
+            </Card>
+          ) : (
+            <div className="space-y-2 max-h-96 overflow-y-auto">
+              {cardOwners.map(owner => (
+                <Card key={owner.user_card_id} variant="outlined" padding="sm">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-dark-700 flex items-center justify-center text-white font-bold overflow-hidden flex-shrink-0">
+                      {owner.user.avatar_url ? (
+                        <img src={owner.user.avatar_url} alt={owner.user.nick} className="w-full h-full object-cover" />
+                      ) : (
+                        owner.user.nick.charAt(0).toUpperCase()
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-white truncate">{owner.user.nick}</p>
+                      <p className="text-xs text-dark-400">
+                        {owner.obtained_from === 'admin' ? 'Przyznana' :
+                         owner.obtained_from === 'purchase' ? 'Kupiona' :
+                         owner.obtained_from === 'mission' ? 'Z misji' :
+                         owner.obtained_from === 'mystery' ? 'Mystery Garage' :
+                         owner.obtained_from} • {formatDateTime(owner.obtained_at)}
+                      </p>
+                    </div>
+                    <p className="text-xs text-turbo-400">{formatNumber(owner.user.total_xp)} XP</p>
+                    <Button
+                      size="sm"
+                      variant="danger"
+                      onClick={() => handleRemoveCardFromUser(owner.user_card_id, owner.user.id, selectedCardForOwners!.id, selectedCardForOwners!.name)}
+                      disabled={removingCard === owner.user_card_id}
+                      title="Usuń kartę od gracza"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </Button>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          )}
+
+          <Button
+            variant="secondary"
+            fullWidth
+            onClick={() => {
+              setShowCardOwnersModal(false);
+              setSelectedCardForOwners(null);
+              setCardOwners([]);
+            }}
+          >
+            Zamknij
+          </Button>
+        </div>
+      </Modal>
+
       {showEmojiPicker !== null && (
         <div
           className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50"
