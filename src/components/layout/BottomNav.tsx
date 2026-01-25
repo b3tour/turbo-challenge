@@ -8,7 +8,7 @@ import { Home, Target, Trophy, User, Layers } from 'lucide-react';
 const navItems = [
   { href: '/dashboard', label: 'Start', icon: Home },
   { href: '/missions', label: 'Misje', icon: Target },
-  { href: '/cards', label: 'Karty', icon: Layers, highlight: true },
+  { href: '/cards', label: 'Karty', icon: Layers },
   { href: '/leaderboard', label: 'Ranking', icon: Trophy },
   { href: '/profile', label: 'Profil', icon: User },
 ];
@@ -22,20 +22,6 @@ export function BottomNav() {
         {navItems.map(item => {
           const isActive = pathname === item.href;
           const Icon = item.icon;
-
-          if (item.highlight) {
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className="relative -mt-6"
-              >
-                <div className="w-14 h-14 rounded-full gradient-turbo flex items-center justify-center shadow-lg shadow-turbo-500/30">
-                  <Icon className="w-6 h-6 text-white" />
-                </div>
-              </Link>
-            );
-          }
 
           return (
             <Link
