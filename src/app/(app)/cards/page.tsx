@@ -35,6 +35,7 @@ import {
   Weight,
   Activity,
   Cog,
+  Swords,
 } from 'lucide-react';
 import Link from 'next/link';
 import { CollectibleCardDisplay } from '@/components/cards';
@@ -407,26 +408,36 @@ export default function CardsPage() {
   return (
     <div className="py-4 pb-24">
       {/* Header */}
-      <div className="text-center mb-6">
-        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-purple-500/20 mb-3">
-          <Layers className="w-8 h-8 text-purple-500" />
+      <div className="flex items-center gap-4 mb-6">
+        <div className="w-14 h-14 rounded-xl bg-purple-500/20 flex items-center justify-center flex-shrink-0">
+          <Layers className="w-7 h-7 text-purple-500" />
         </div>
-        <h1 className="text-2xl font-bold text-white">Kolekcja Kart</h1>
-        <p className="text-dark-400 mt-1">Zbieraj karty i wspieraj Turbo Pomoc!</p>
+        <div>
+          <h1 className="text-2xl font-bold text-white">Kolekcja Kart</h1>
+          <p className="text-dark-400">Zbieraj karty i wspieraj Turbo Pomoc!</p>
+        </div>
       </div>
 
-      {/* Info o charytatywnym celu */}
-      <Card className="mb-4 border-red-500/30 bg-red-500/10">
-        <div className="flex items-start gap-3">
-          <Heart className="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0" />
-          <div>
-            <p className="text-red-400 font-medium">Kupując karty wspierasz Turbo Pomoc</p>
-            <p className="text-sm text-red-400/70">
-              100% wpłat trafia na cel charytatywny. Za każdą kartę otrzymujesz punkty do rankingu!
-            </p>
+      {/* Turbo Bitwy Link */}
+      <Link href="/battles">
+        <Card className="mb-4 border-orange-500/50 hover:border-orange-400 transition-colors">
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 rounded-xl bg-orange-500/20 flex items-center justify-center flex-shrink-0">
+              <Swords className="w-7 h-7 text-orange-500" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="font-bold text-white text-lg">Turbo Bitwy</h3>
+              <p className="text-sm text-dark-300">
+                Wyzwij gracza i walcz o XP!
+              </p>
+              <p className="text-xs text-orange-400 mt-1">
+                Postaw swoje karty
+              </p>
+            </div>
+            <ChevronRight className="w-5 h-5 text-orange-400 flex-shrink-0" />
           </div>
-        </div>
-      </Card>
+        </Card>
+      </Link>
 
       {/* Mystery Garage Link */}
       <Link href="/mystery">
