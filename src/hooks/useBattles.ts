@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { CardBattle, BattleCategory, BattleRewardType, CollectibleCard, User } from '@/types';
+import { sendUserNotification } from '@/hooks/useAnnouncements';
 
 interface UseBattlesOptions {
   userId?: string;
@@ -209,9 +210,27 @@ export function useBattles(options: UseBattlesOptions = {}) {
       return { success: false, error: insertError.message };
     }
 
+    // Pobierz nick wyzywającego i wyślij powiadomienie do przeciwnika
+    const { data: challengerData } = await supabase
+      .from('users')
+      .select('nick')
+      .eq('id', userId)
+      .single();
+
+    const challengerNick = challengerData?.nick || 'Gracz';
+    const categoryName = getCategoryName(category);
+
+    await sendUserNotification(
+      opponentId,
+      'Nowe wyzwanie!',
+      `${challengerNick} wyzwał Cię na Turbo Bitwę! Kategoria: ${categoryName}. Masz 7 dni na odpowiedź.`,
+      'battle_challenge',
+      { battle_id: data.id, challenger_nick: challengerNick, category }
+    );
+
     await fetchBattles();
     return { success: true, battle: data };
-  }, [userId, getChallengesSentThisWeek, fetchBattles]);
+  }, [userId, getChallengesSentThisWeek, fetchBattles, getCategoryName]);
 
   // Akceptuj wyzwanie i wybierz karty
   const acceptChallenge = useCallback(async (
@@ -321,6 +340,56 @@ export function useBattles(options: UseBattlesOptions = {}) {
       }
     }
 
+    // Wyślij powiadomienia o wyniku do obu graczy
+    const { data: usersData } = await supabase
+      .from('users')
+      .select('id, nick')
+      .in('id', [battle.challenger_id, battle.opponent_id]);
+
+    const challenger = usersData?.find(u => u.id === battle.challenger_id);
+    const opponent = usersData?.find(u => u.id === battle.opponent_id);
+
+    if (winnerId) {
+      const winnerNick = winnerId === battle.challenger_id ? challenger?.nick : opponent?.nick;
+      const loserNick = winnerId === battle.challenger_id ? opponent?.nick : challenger?.nick;
+      const loserId = winnerId === battle.challenger_id ? battle.opponent_id : battle.challenger_id;
+
+      // Powiadomienie dla zwycięzcy
+      await sendUserNotification(
+        winnerId,
+        'Wygrana w Turbo Bitwie!',
+        `Pokonałeś ${loserNick}! Wynik: ${winnerId === battle.challenger_id ? challengerScore : opponentScore} vs ${winnerId === battle.challenger_id ? opponentScore : challengerScore}. +100 XP!`,
+        'battle_result',
+        { battle_id: battleId, result: 'win', xp_gained: 100 }
+      );
+
+      // Powiadomienie dla przegranego
+      await sendUserNotification(
+        loserId,
+        'Przegrana w Turbo Bitwie',
+        `${winnerNick} wygrał bitwę. Wynik: ${loserId === battle.challenger_id ? challengerScore : opponentScore} vs ${loserId === battle.challenger_id ? opponentScore : challengerScore}. +20 XP za udział.`,
+        'battle_result',
+        { battle_id: battleId, result: 'loss', xp_gained: 20 }
+      );
+    } else {
+      // Remis - powiadomienia dla obu
+      await sendUserNotification(
+        battle.challenger_id,
+        'Remis w Turbo Bitwie!',
+        `Bitwa z ${opponent?.nick} zakończyła się remisem! Wynik: ${challengerScore} vs ${opponentScore}.`,
+        'battle_result',
+        { battle_id: battleId, result: 'draw' }
+      );
+
+      await sendUserNotification(
+        battle.opponent_id,
+        'Remis w Turbo Bitwie!',
+        `Bitwa z ${challenger?.nick} zakończyła się remisem! Wynik: ${opponentScore} vs ${challengerScore}.`,
+        'battle_result',
+        { battle_id: battleId, result: 'draw' }
+      );
+    }
+
     await fetchBattles();
     return { success: true, winner: winnerId || undefined };
   }, [userId, fetchBattles]);
@@ -328,6 +397,14 @@ export function useBattles(options: UseBattlesOptions = {}) {
   // Odrzuć wyzwanie
   const declineChallenge = useCallback(async (battleId: string): Promise<{ success: boolean; error?: string }> => {
     if (!userId) return { success: false, error: 'Nie jesteś zalogowany' };
+
+    // Pobierz bitwę żeby znać challenger_id
+    const { data: battle } = await supabase
+      .from('card_battles')
+      .select('challenger_id')
+      .eq('id', battleId)
+      .eq('opponent_id', userId)
+      .single();
 
     const { error: updateError } = await supabase
       .from('card_battles')
@@ -337,6 +414,23 @@ export function useBattles(options: UseBattlesOptions = {}) {
 
     if (updateError) {
       return { success: false, error: updateError.message };
+    }
+
+    // Wyślij powiadomienie do wyzywającego
+    if (battle) {
+      const { data: opponentData } = await supabase
+        .from('users')
+        .select('nick')
+        .eq('id', userId)
+        .single();
+
+      await sendUserNotification(
+        battle.challenger_id,
+        'Wyzwanie odrzucone',
+        `${opponentData?.nick || 'Gracz'} odrzucił Twoje wyzwanie na Turbo Bitwę.`,
+        'battle_result',
+        { battle_id: battleId, result: 'declined' }
+      );
     }
 
     await fetchBattles();

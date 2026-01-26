@@ -23,7 +23,7 @@ export interface UserNotification {
   user_id: string;
   title: string;
   message: string;
-  type: 'xp_gain' | 'level_up' | 'achievement' | 'mission_approved' | 'mission_rejected' | 'card_received' | 'system';
+  type: 'xp_gain' | 'level_up' | 'achievement' | 'mission_approved' | 'mission_rejected' | 'card_received' | 'battle_challenge' | 'battle_result' | 'system';
   read: boolean;
   data?: Record<string, unknown>;
   created_at: string;
@@ -48,6 +48,8 @@ const notificationTypeMap: Record<UserNotification['type'], Announcement['type']
   mission_approved: 'success',
   mission_rejected: 'warning',
   card_received: 'success',
+  battle_challenge: 'urgent',
+  battle_result: 'success',
   system: 'info',
 };
 
