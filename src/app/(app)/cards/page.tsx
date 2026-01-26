@@ -144,7 +144,7 @@ interface BrandGroup {
 
 export default function CardsPage() {
   const { profile } = useAuth();
-  const { allCards, loading, hasCard, getUserCardCount, getCollectionStats, getCardsByType, fetchCardImages } = useCards({
+  const { allCards, userCards, loading, hasCard, getUserCardCount, getCollectionStats, getCardsByType, fetchCardImages } = useCards({
     userId: profile?.id,
   });
   const { createOrder, getUserOrderForCard } = useCardOrders({
@@ -185,7 +185,7 @@ export default function CardsPage() {
       const bOwned = !isDemoMode && hasCard(b.id) ? 0 : 1;
       return aOwned - bOwned;
     });
-  }, [heroCardsRaw, isDemoMode, hasCard]);
+  }, [heroCardsRaw, isDemoMode, hasCard, userCards]);
 
   // Grupuj samochody po markach (z sortowaniem - posiadane pierwsze)
   const brandGroups = useMemo(() => {
@@ -213,19 +213,19 @@ export default function CardsPage() {
     });
 
     return Array.from(brands.values()).sort((a, b) => b.cards.length - a.cards.length);
-  }, [regularCarCards, isDemoMode, hasCard]);
+  }, [regularCarCards, isDemoMode, hasCard, userCards]);
 
   // Statystyki
   const heroStats = useMemo(() => {
     const collected = isDemoMode ? 0 : heroCards.filter(c => hasCard(c.id)).length;
     return { total: heroCards.length, collected };
-  }, [heroCards, isDemoMode, hasCard]);
+  }, [heroCards, isDemoMode, hasCard, userCards]);
 
   const carStats = useMemo(() => {
     const total = regularCarCards.length;
     const collected = isDemoMode ? 0 : regularCarCards.filter(c => hasCard(c.id)).length;
     return { total, collected };
-  }, [regularCarCards, isDemoMode, hasCard]);
+  }, [regularCarCards, isDemoMode, hasCard, userCards]);
 
   // Statystyki wszystkich samochodów (heroes + regular) z podziałem na rzadkości
   const allCarStats = useMemo(() => {
@@ -251,7 +251,7 @@ export default function CardsPage() {
     });
 
     return { total, collected, byRarity };
-  }, [heroCards, regularCarCards, isDemoMode, hasCard]);
+  }, [heroCards, regularCarCards, isDemoMode, hasCard, userCards]);
 
   // Sprawdź czy karta jest wyprzedana (limit wyczerpany)
   const isCardSoldOut = (card: CollectibleCard): boolean => {
