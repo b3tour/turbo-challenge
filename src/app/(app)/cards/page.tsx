@@ -155,7 +155,8 @@ export default function CardsPage() {
 
   const [activeTab, setActiveTab] = useState<ViewTab>('car');
   const [collectionFilter, setCollectionFilter] = useState<'all' | 'owned' | 'to_collect'>('all');
-  const [gridColumns, setGridColumns] = useState<2 | 3>(2);
+  const [heroGridColumns, setHeroGridColumns] = useState<1 | 2>(1);
+  const [carGridColumns, setCarGridColumns] = useState<2 | 3>(2);
   const [selectedCard, setSelectedCard] = useState<CollectibleCard | null>(null);
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
   const [purchaseCard, setPurchaseCard] = useState<CollectibleCard | null>(null);
@@ -633,32 +634,6 @@ export default function CardsPage() {
                 <Lock className="w-5 h-5" />
                 Do zdobycia ({allCarStats.total - allCarStats.collected})
               </button>
-
-              {/* Przełącznik widoku siatki */}
-              <div className="flex bg-dark-700 rounded-xl p-1">
-                <button
-                  onClick={() => setGridColumns(2)}
-                  className={`p-2 rounded-lg transition-colors ${
-                    gridColumns === 2
-                      ? 'bg-dark-600 text-white'
-                      : 'text-dark-400 hover:text-white'
-                  }`}
-                  title="2 kolumny"
-                >
-                  <Grid2X2 className="w-5 h-5" />
-                </button>
-                <button
-                  onClick={() => setGridColumns(3)}
-                  className={`p-2 rounded-lg transition-colors ${
-                    gridColumns === 3
-                      ? 'bg-dark-600 text-white'
-                      : 'text-dark-400 hover:text-white'
-                  }`}
-                  title="3 kolumny"
-                >
-                  <Grid3X3 className="w-5 h-5" />
-                </button>
-              </div>
             </div>
           </Card>
 
@@ -670,14 +645,41 @@ export default function CardsPage() {
                   <Crown className="w-6 h-6 text-yellow-500" />
                   <h2 className="text-xl font-bold text-white">Turbo Heroes</h2>
                 </div>
-                <span className="text-sm text-dark-400 bg-dark-700 px-3 py-1 rounded-full">
-                  {heroStats.collected}/{heroStats.total}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-dark-400 bg-dark-700 px-3 py-1 rounded-full">
+                    {heroStats.collected}/{heroStats.total}
+                  </span>
+                  {/* Przełącznik widoku Heroes */}
+                  <div className="flex bg-dark-700 rounded-lg p-1">
+                    <button
+                      onClick={() => setHeroGridColumns(1)}
+                      className={`p-1.5 rounded transition-colors ${
+                        heroGridColumns === 1
+                          ? 'bg-dark-600 text-yellow-500'
+                          : 'text-dark-400 hover:text-white'
+                      }`}
+                      title="1 kolumna"
+                    >
+                      <Layers className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => setHeroGridColumns(2)}
+                      className={`p-1.5 rounded transition-colors ${
+                        heroGridColumns === 2
+                          ? 'bg-dark-600 text-yellow-500'
+                          : 'text-dark-400 hover:text-white'
+                      }`}
+                      title="2 kolumny"
+                    >
+                      <Grid2X2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
               </div>
               <p className="text-sm text-dark-400 mb-4">
                 Legendarne karty kierowców z eventów Turbo Pomoc
               </p>
-              <div className="space-y-4">
+              <div className={heroGridColumns === 2 ? 'grid grid-cols-2 gap-3' : 'space-y-4'}>
                 {filteredHeroCards.map(renderHeroCard)}
               </div>
             </div>
@@ -690,9 +692,36 @@ export default function CardsPage() {
                 <Car className="w-6 h-6 text-turbo-400" />
                 <h2 className="text-xl font-bold text-white">Turbo Cars</h2>
               </div>
-              <span className="text-sm text-dark-400 bg-dark-700 px-3 py-1 rounded-full">
-                {carStats.collected}/{carStats.total}
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-dark-400 bg-dark-700 px-3 py-1 rounded-full">
+                  {carStats.collected}/{carStats.total}
+                </span>
+                {/* Przełącznik widoku Cars */}
+                <div className="flex bg-dark-700 rounded-lg p-1">
+                  <button
+                    onClick={() => setCarGridColumns(2)}
+                    className={`p-1.5 rounded transition-colors ${
+                      carGridColumns === 2
+                        ? 'bg-dark-600 text-turbo-400'
+                        : 'text-dark-400 hover:text-white'
+                    }`}
+                    title="2 kolumny"
+                  >
+                    <Grid2X2 className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => setCarGridColumns(3)}
+                    className={`p-1.5 rounded transition-colors ${
+                      carGridColumns === 3
+                        ? 'bg-dark-600 text-turbo-400'
+                        : 'text-dark-400 hover:text-white'
+                    }`}
+                    title="3 kolumny"
+                  >
+                    <Grid3X3 className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
             </div>
 
             {/* Karty pogrupowane po markach */}
@@ -708,7 +737,7 @@ export default function CardsPage() {
                   </div>
 
                   {/* Siatka kart */}
-                  <div className={`grid gap-3 ${gridColumns === 3 ? 'grid-cols-3' : 'grid-cols-2'}`}>
+                  <div className={`grid gap-3 ${carGridColumns === 3 ? 'grid-cols-3' : 'grid-cols-2'}`}>
                     {group.cards.map(renderCarCard)}
                   </div>
                 </div>
