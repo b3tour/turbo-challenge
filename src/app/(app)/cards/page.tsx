@@ -212,7 +212,18 @@ export default function CardsPage() {
       });
     });
 
-    return Array.from(brands.values()).sort((a, b) => b.cards.length - a.cards.length);
+    // Sortuj marki - najpierw te z posiadanymi kartami, potem reszta
+    return Array.from(brands.values()).sort((a, b) => {
+      // Najpierw marki z posiadanymi kartami
+      if (a.collected > 0 && b.collected === 0) return -1;
+      if (a.collected === 0 && b.collected > 0) return 1;
+      // Wśród marek z kartami - sortuj po ilości posiadanych
+      if (a.collected > 0 && b.collected > 0) {
+        return b.collected - a.collected;
+      }
+      // Wśród marek bez kart - sortuj po ilości wszystkich kart
+      return b.cards.length - a.cards.length;
+    });
   }, [regularCarCards, isDemoMode, hasCard, userCards]);
 
   // Statystyki
