@@ -30,7 +30,7 @@ const RARITY_EFFECTS: Record<CardRarity, {
   },
   rare: {
     cardClass: 'card-shimmer',
-    frameClass: 'border-green-500',
+    frameClass: 'border-blue-500',
     showSparkles: false,
     statsVisible: true,
   },
