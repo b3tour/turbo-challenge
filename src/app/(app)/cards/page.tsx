@@ -152,6 +152,7 @@ export default function CardsPage() {
   });
 
   const [activeTab, setActiveTab] = useState<ViewTab>('car');
+  const [collectionFilter, setCollectionFilter] = useState<'all' | 'owned' | 'to_collect'>('all');
   const [selectedCard, setSelectedCard] = useState<CollectibleCard | null>(null);
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
   const [purchaseCard, setPurchaseCard] = useState<CollectibleCard | null>(null);
@@ -263,6 +264,31 @@ export default function CardsPage() {
 
     return { total, collected, byRarity };
   }, [heroCards, regularCarCards, isDemoMode, hasCard, userCards]);
+
+  // Filtrowane karty na podstawie wyboru użytkownika
+  const filteredHeroCards = useMemo(() => {
+    if (collectionFilter === 'all') return heroCards;
+    if (collectionFilter === 'owned') {
+      return heroCards.filter(c => !isDemoMode && hasCard(c.id));
+    }
+    return heroCards.filter(c => isDemoMode || !hasCard(c.id));
+  }, [heroCards, collectionFilter, isDemoMode, hasCard]);
+
+  const filteredBrandGroups = useMemo(() => {
+    if (collectionFilter === 'all') return brandGroups;
+
+    return brandGroups
+      .map(group => ({
+        ...group,
+        cards: group.cards.filter(card => {
+          if (collectionFilter === 'owned') {
+            return !isDemoMode && hasCard(card.id);
+          }
+          return isDemoMode || !hasCard(card.id);
+        }),
+      }))
+      .filter(group => group.cards.length > 0); // Ukryj puste grupy
+  }, [brandGroups, collectionFilter, isDemoMode, hasCard]);
 
   // Sprawdź czy karta jest wyprzedana (limit wyczerpany)
   const isCardSoldOut = (card: CollectibleCard): boolean => {
@@ -579,10 +605,36 @@ export default function CardsPage() {
                 );
               })}
             </div>
+
+            {/* Filtry kolekcji */}
+            <div className="flex gap-2 mt-4">
+              <button
+                onClick={() => setCollectionFilter(collectionFilter === 'owned' ? 'all' : 'owned')}
+                className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-medium transition-colors ${
+                  collectionFilter === 'owned'
+                    ? 'bg-green-500 text-white'
+                    : 'bg-dark-700 text-dark-300 hover:bg-dark-600'
+                }`}
+              >
+                <CheckCircle className="w-5 h-5" />
+                Twoja kolekcja
+              </button>
+              <button
+                onClick={() => setCollectionFilter(collectionFilter === 'to_collect' ? 'all' : 'to_collect')}
+                className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-medium transition-colors ${
+                  collectionFilter === 'to_collect'
+                    ? 'bg-turbo-500 text-white'
+                    : 'bg-dark-700 text-dark-300 hover:bg-dark-600'
+                }`}
+              >
+                <Lock className="w-5 h-5" />
+                Do zdobycia
+              </button>
+            </div>
           </Card>
 
           {/* === TURBO HEROES === */}
-          {heroCards.length > 0 && (
+          {filteredHeroCards.length > 0 && (
             <div>
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
@@ -597,7 +649,7 @@ export default function CardsPage() {
                 Legendarne karty kierowców z eventów Turbo Pomoc
               </p>
               <div className="space-y-4">
-                {heroCards.map(renderHeroCard)}
+                {filteredHeroCards.map(renderHeroCard)}
               </div>
             </div>
           )}
@@ -615,22 +667,45 @@ export default function CardsPage() {
             </div>
 
             {/* Karty pogrupowane po markach */}
-            {brandGroups.map(group => (
-              <div key={group.brand} className="mb-6">
-                {/* Nagłówek marki */}
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-lg font-semibold text-white">{group.brand}</h3>
-                  <span className="text-xs text-dark-500">
-                    {group.collected}/{group.cards.length}
-                  </span>
-                </div>
+            {filteredBrandGroups.length > 0 ? (
+              filteredBrandGroups.map(group => (
+                <div key={group.brand} className="mb-6">
+                  {/* Nagłówek marki */}
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-lg font-semibold text-white">{group.brand}</h3>
+                    <span className="text-xs text-dark-500">
+                      {group.collected}/{group.cards.length}
+                    </span>
+                  </div>
 
-                {/* Siatka kart */}
-                <div className="grid grid-cols-2 gap-3">
-                  {group.cards.map(renderCarCard)}
+                  {/* Siatka kart */}
+                  <div className="grid grid-cols-2 gap-3">
+                    {group.cards.map(renderCarCard)}
+                  </div>
                 </div>
+              ))
+            ) : (
+              <div className="text-center py-12">
+                <div className="w-16 h-16 bg-dark-700 rounded-full flex items-center justify-center mx-auto mb-4">
+                  {collectionFilter === 'owned' ? (
+                    <Car className="w-8 h-8 text-dark-500" />
+                  ) : (
+                    <CheckCircle className="w-8 h-8 text-green-500" />
+                  )}
+                </div>
+                <p className="text-dark-400">
+                  {collectionFilter === 'owned'
+                    ? 'Nie masz jeszcze żadnych kart samochodów'
+                    : 'Masz już wszystkie dostępne karty!'}
+                </p>
+                <button
+                  onClick={() => setCollectionFilter('all')}
+                  className="mt-4 text-turbo-400 hover:text-turbo-300 text-sm"
+                >
+                  Pokaż wszystkie karty
+                </button>
               </div>
-            ))}
+            )}
           </div>
         </div>
       ) : (
