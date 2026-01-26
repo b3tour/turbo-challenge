@@ -193,7 +193,7 @@ export function useMysteryPacks(options: UseMysteryPacksOptions = {}) {
 
     // Pobierz dostępne karty samochodów
     const { data: allCards, error: cardsError } = await supabase
-      .from('collectible_cards')
+      .from('cards')
       .select('*')
       .eq('card_type', 'car')
       .eq('is_active', true);
@@ -263,7 +263,7 @@ export function useMysteryPacks(options: UseMysteryPacksOptions = {}) {
 
         // Aktualizuj w bazie
         await supabase
-          .from('collectible_cards')
+          .from('cards')
           .update({ sold_count: newSoldCount })
           .eq('id', selectedCard.id);
 
@@ -349,7 +349,7 @@ export function useMysteryPacks(options: UseMysteryPacksOptions = {}) {
     // Pobierz kartę użytkownika
     const { data: userCard, error: fetchError } = await supabase
       .from('user_cards')
-      .select('*, card:collectible_cards(*)')
+      .select('*, card:cards(*)')
       .eq('id', userCardId)
       .eq('user_id', userId)
       .single();
@@ -392,7 +392,7 @@ export function useMysteryPacks(options: UseMysteryPacksOptions = {}) {
     if (card.total_supply) {
       const newSoldCount = Math.max(0, (card.sold_count || 1) - 1);
       await supabase
-        .from('collectible_cards')
+        .from('cards')
         .update({ sold_count: newSoldCount })
         .eq('id', card.id);
     }
@@ -417,7 +417,7 @@ export function useMysteryPacks(options: UseMysteryPacksOptions = {}) {
 
     const { data: userCards, error } = await supabase
       .from('user_cards')
-      .select('id, card_id, card:collectible_cards(*)')
+      .select('id, card_id, card:cards(*)')
       .eq('user_id', userId);
 
     if (error || !userCards) return [];

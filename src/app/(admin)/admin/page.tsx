@@ -1934,7 +1934,7 @@ export default function AdminPage() {
 
       // 2. Pobierz dostępne karty samochodów
       const { data: availableCards, error: cardsError } = await supabase
-        .from('collectible_cards')
+        .from('cards')
         .select('*')
         .eq('card_type', 'car')
         .eq('is_active', true);

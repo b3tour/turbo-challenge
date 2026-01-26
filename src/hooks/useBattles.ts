@@ -90,7 +90,7 @@ export function useBattles(options: UseBattlesOptions = {}) {
           let challengerCards: CollectibleCard[] = [];
           if (challengerCardIds.length > 0) {
             const { data: cards } = await supabase
-              .from('collectible_cards')
+              .from('cards')
               .select('*')
               .in('id', challengerCardIds);
             challengerCards = cards || [];
@@ -101,7 +101,7 @@ export function useBattles(options: UseBattlesOptions = {}) {
           let opponentCards: CollectibleCard[] = [];
           if (opponentCardIds.length > 0) {
             const { data: cards } = await supabase
-              .from('collectible_cards')
+              .from('cards')
               .select('*')
               .in('id', opponentCardIds);
             opponentCards = cards || [];
@@ -256,12 +256,12 @@ export function useBattles(options: UseBattlesOptions = {}) {
 
     // Pobierz karty obu stron
     const { data: challengerCards } = await supabase
-      .from('collectible_cards')
+      .from('cards')
       .select('*')
       .in('id', battle.challenger_card_ids);
 
     const { data: opponentCards } = await supabase
-      .from('collectible_cards')
+      .from('cards')
       .select('*')
       .in('id', cardIds);
 
@@ -350,7 +350,7 @@ export function useBattles(options: UseBattlesOptions = {}) {
     // Pobierz użytkowników którzy mają min. 2 karty samochodów
     const { data: usersWithCards } = await supabase
       .from('user_cards')
-      .select('user_id, card:collectible_cards!inner(card_type)')
+      .select('user_id, card:cards!inner(card_type)')
       .eq('card.card_type', 'car')
       .neq('user_id', userId);
 
@@ -386,7 +386,7 @@ export function useBattles(options: UseBattlesOptions = {}) {
 
     const { data } = await supabase
       .from('user_cards')
-      .select('card:collectible_cards!inner(*)')
+      .select('card:cards!inner(*)')
       .eq('user_id', userId)
       .eq('card.card_type', 'car');
 
