@@ -617,7 +617,7 @@ export default function CardsPage() {
                 }`}
               >
                 <CheckCircle className="w-5 h-5" />
-                Twoja kolekcja
+                Twoja kolekcja ({allCarStats.collected})
               </button>
               <button
                 onClick={() => setCollectionFilter(collectionFilter === 'to_collect' ? 'all' : 'to_collect')}
@@ -628,7 +628,7 @@ export default function CardsPage() {
                 }`}
               >
                 <Lock className="w-5 h-5" />
-                Do zdobycia
+                Do zdobycia ({allCarStats.total - allCarStats.collected})
               </button>
             </div>
           </Card>
