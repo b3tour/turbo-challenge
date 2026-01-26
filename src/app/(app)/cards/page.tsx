@@ -155,6 +155,7 @@ export default function CardsPage() {
 
   const [activeTab, setActiveTab] = useState<ViewTab>('car');
   const [collectionFilter, setCollectionFilter] = useState<'all' | 'owned' | 'to_collect'>('all');
+  const [rarityFilter, setRarityFilter] = useState<CardRarity | 'all'>('all');
   const [heroGridColumns, setHeroGridColumns] = useState<1 | 2>(1);
   const [carGridColumns, setCarGridColumns] = useState<2 | 3>(2);
   const [selectedCard, setSelectedCard] = useState<CollectibleCard | null>(null);
@@ -271,28 +272,44 @@ export default function CardsPage() {
 
   // Filtrowane karty na podstawie wyboru użytkownika
   const filteredHeroCards = useMemo(() => {
-    if (collectionFilter === 'all') return heroCards;
+    let filtered = heroCards;
+
+    // Filtr kolekcji
     if (collectionFilter === 'owned') {
-      return heroCards.filter(c => !isDemoMode && hasCard(c.id));
+      filtered = filtered.filter(c => !isDemoMode && hasCard(c.id));
+    } else if (collectionFilter === 'to_collect') {
+      filtered = filtered.filter(c => isDemoMode || !hasCard(c.id));
     }
-    return heroCards.filter(c => isDemoMode || !hasCard(c.id));
-  }, [heroCards, collectionFilter, isDemoMode, hasCard]);
+
+    // Filtr rzadkości
+    if (rarityFilter !== 'all') {
+      filtered = filtered.filter(c => c.rarity === rarityFilter);
+    }
+
+    return filtered;
+  }, [heroCards, collectionFilter, rarityFilter, isDemoMode, hasCard]);
 
   const filteredBrandGroups = useMemo(() => {
-    if (collectionFilter === 'all') return brandGroups;
-
     return brandGroups
       .map(group => ({
         ...group,
         cards: group.cards.filter(card => {
-          if (collectionFilter === 'owned') {
-            return !isDemoMode && hasCard(card.id);
+          // Filtr kolekcji
+          if (collectionFilter === 'owned' && !((!isDemoMode && hasCard(card.id)))) {
+            return false;
           }
-          return isDemoMode || !hasCard(card.id);
+          if (collectionFilter === 'to_collect' && !((isDemoMode || !hasCard(card.id)))) {
+            return false;
+          }
+          // Filtr rzadkości
+          if (rarityFilter !== 'all' && card.rarity !== rarityFilter) {
+            return false;
+          }
+          return true;
         }),
       }))
       .filter(group => group.cards.length > 0); // Ukryj puste grupy
-  }, [brandGroups, collectionFilter, isDemoMode, hasCard]);
+  }, [brandGroups, collectionFilter, rarityFilter, isDemoMode, hasCard]);
 
   // Sprawdź czy karta jest wyprzedana (limit wyczerpany)
   const isCardSoldOut = (card: CollectibleCard): boolean => {
@@ -596,8 +613,17 @@ export default function CardsPage() {
               {(Object.keys(RARITY_CONFIG) as CardRarity[]).map(rarity => {
                 const config = RARITY_CONFIG[rarity];
                 const rarityStats = allCarStats.byRarity[rarity];
+                const isActive = rarityFilter === rarity;
                 return (
-                  <div key={rarity} className={`text-center p-2 rounded-lg ${config.bgColor}`}>
+                  <button
+                    key={rarity}
+                    onClick={() => setRarityFilter(rarityFilter === rarity ? 'all' : rarity)}
+                    className={`text-center p-2 rounded-lg transition-all duration-200 ${
+                      isActive
+                        ? `${config.bgColor} ring-2 ring-offset-2 ring-offset-dark-800 ${config.borderColor.replace('border-', 'ring-')}`
+                        : `${config.bgColor} hover:scale-105`
+                    }`}
+                  >
                     <div className="text-lg">{config.icon}</div>
                     <div className={`text-[10px] ${config.color} opacity-70`}>
                       {config.name}
@@ -605,10 +631,25 @@ export default function CardsPage() {
                     <div className={`text-xs font-medium ${config.color}`}>
                       {rarityStats.collected}/{rarityStats.total}
                     </div>
-                  </div>
+                  </button>
                 );
               })}
             </div>
+
+            {/* Komunikat o aktywnym filtrze rzadkości */}
+            {rarityFilter !== 'all' && (
+              <div className="mt-3 flex items-center justify-between bg-dark-700/50 rounded-lg px-3 py-2">
+                <span className="text-sm text-dark-300">
+                  Filtr: <span className={RARITY_CONFIG[rarityFilter].color}>{RARITY_CONFIG[rarityFilter].name}</span>
+                </span>
+                <button
+                  onClick={() => setRarityFilter('all')}
+                  className="text-xs text-dark-400 hover:text-white"
+                >
+                  Wyczyść
+                </button>
+              </div>
+            )}
 
             {/* Filtry kolekcji + widok siatki */}
             <div className="flex gap-2 mt-4">
