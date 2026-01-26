@@ -138,6 +138,12 @@ export default function AdminPage() {
   const [loadingCardOwners, setLoadingCardOwners] = useState(false);
   const [removingCard, setRemovingCard] = useState<string | null>(null);
 
+  // Bulk starter pack assignment
+  const [showStarterPackModal, setShowStarterPackModal] = useState(false);
+  const [assigningStarterPacks, setAssigningStarterPacks] = useState(false);
+  const [starterPackSize, setStarterPackSize] = useState(5);
+  const [starterPackProgress, setStarterPackProgress] = useState({ current: 0, total: 0, assigned: 0 });
+
   // Photo preview
   const [showPhotoModal, setShowPhotoModal] = useState(false);
   const [selectedPhotoUrl, setSelectedPhotoUrl] = useState<string | null>(null);
@@ -862,6 +868,134 @@ export default function AdminPage() {
       showError('Błąd', errorMessage);
     } finally {
       setRemovingCard(null);
+    }
+  };
+
+  // === STARTER PACK ASSIGNMENT ===
+  const handleAssignStarterPacks = async () => {
+    setAssigningStarterPacks(true);
+    setStarterPackProgress({ current: 0, total: 0, assigned: 0 });
+
+    try {
+      // Pobierz wszystkie karty samochodów
+      const { data: allCarCards, error: cardsError } = await supabase
+        .from('cards')
+        .select('*')
+        .eq('card_type', 'car')
+        .eq('is_active', true)
+        .is('is_hero', false);
+
+      if (cardsError || !allCarCards || allCarCards.length === 0) {
+        showError('Błąd', 'Brak dostępnych kart samochodów w bazie');
+        setAssigningStarterPacks(false);
+        return;
+      }
+
+      // Grupuj karty według rzadkości
+      const cardsByRarity: Record<string, CollectibleCard[]> = {
+        common: allCarCards.filter(c => c.rarity === 'common'),
+        rare: allCarCards.filter(c => c.rarity === 'rare'),
+        epic: allCarCards.filter(c => c.rarity === 'epic'),
+        legendary: allCarCards.filter(c => c.rarity === 'legendary'),
+      };
+
+      // Pobierz wszystkich użytkowników
+      const { data: allUsers, error: usersError } = await supabase
+        .from('users')
+        .select('id, nick');
+
+      if (usersError || !allUsers) {
+        showError('Błąd', 'Nie udało się pobrać listy użytkowników');
+        setAssigningStarterPacks(false);
+        return;
+      }
+
+      setStarterPackProgress({ current: 0, total: allUsers.length, assigned: 0 });
+
+      let totalAssigned = 0;
+
+      for (let i = 0; i < allUsers.length; i++) {
+        const user = allUsers[i];
+
+        // Pobierz karty które użytkownik już ma
+        const { data: existingCards } = await supabase
+          .from('user_cards')
+          .select('card_id')
+          .eq('user_id', user.id);
+
+        const existingCardIds = new Set(existingCards?.map(c => c.card_id) || []);
+
+        // Losuj karty dla tego użytkownika
+        const selectedCards: CollectibleCard[] = [];
+        const usedCardIds = new Set<string>();
+
+        // Funkcja losowania karty z danej rzadkości
+        const pickRandomCard = (rarity: string): CollectibleCard | null => {
+          const pool = cardsByRarity[rarity]?.filter(
+            c => !existingCardIds.has(c.id) && !usedCardIds.has(c.id)
+          ) || [];
+          if (pool.length === 0) return null;
+          const card = pool[Math.floor(Math.random() * pool.length)];
+          usedCardIds.add(card.id);
+          return card;
+        };
+
+        // Losuj karty według szans (60% common, 25% rare, 12% epic, 3% legendary)
+        for (let j = 0; j < starterPackSize; j++) {
+          const roll = Math.random() * 100;
+          let card: CollectibleCard | null = null;
+
+          if (roll < 3) {
+            card = pickRandomCard('legendary') || pickRandomCard('epic') || pickRandomCard('rare') || pickRandomCard('common');
+          } else if (roll < 15) {
+            card = pickRandomCard('epic') || pickRandomCard('rare') || pickRandomCard('common');
+          } else if (roll < 40) {
+            card = pickRandomCard('rare') || pickRandomCard('common');
+          } else {
+            card = pickRandomCard('common') || pickRandomCard('rare');
+          }
+
+          if (card) {
+            selectedCards.push(card);
+          }
+        }
+
+        // Dodaj karty użytkownikowi
+        if (selectedCards.length > 0) {
+          const insertData = selectedCards.map(card => ({
+            user_id: user.id,
+            card_id: card.id,
+            obtained_from: 'admin',
+          }));
+
+          const { error: insertError } = await supabase
+            .from('user_cards')
+            .insert(insertData);
+
+          if (!insertError) {
+            totalAssigned += selectedCards.length;
+
+            // Wyślij powiadomienie
+            await sendUserNotification(
+              user.id,
+              'Pakiet startowy!',
+              `Otrzymałeś ${selectedCards.length} kart w pakiecie startowym! Sprawdź swoją kolekcję.`,
+              'card_received',
+              { cards_count: selectedCards.length }
+            );
+          }
+        }
+
+        setStarterPackProgress({ current: i + 1, total: allUsers.length, assigned: totalAssigned });
+      }
+
+      success('Gotowe!', `Przydzielono łącznie ${totalAssigned} kart dla ${allUsers.length} użytkowników`);
+      setShowStarterPackModal(false);
+    } catch (e: unknown) {
+      const errorMessage = e instanceof Error ? e.message : 'Nieznany błąd';
+      showError('Błąd', errorMessage);
+    } finally {
+      setAssigningStarterPacks(false);
     }
   };
 
@@ -2494,7 +2628,20 @@ export default function AdminPage() {
 
               {/* Users Tab */}
               {activeTab === 'users' && (
-                <div className="space-y-3">
+                <div className="space-y-4">
+                  {/* Header z przyciskiem pakietu startowego */}
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-lg font-semibold text-white">Gracze ({users.length})</h3>
+                      <p className="text-sm text-dark-400">Zarządzaj użytkownikami i przydzielaj karty</p>
+                    </div>
+                    <Button onClick={() => setShowStarterPackModal(true)}>
+                      <Package className="w-4 h-4 mr-1" />
+                      Pakiet startowy
+                    </Button>
+                  </div>
+
+                  <div className="space-y-3">
                   {users.map((user, index) => (
                     <Card key={user.id} hover onClick={() => openUserDetails(user)} className="p-4">
                       <div className="flex items-center gap-4">
@@ -2530,6 +2677,7 @@ export default function AdminPage() {
                       </div>
                     </Card>
                   ))}
+                  </div>
                 </div>
               )}
 
@@ -5021,6 +5169,119 @@ export default function AdminPage() {
           >
             Zamknij
           </Button>
+        </div>
+      </Modal>
+
+      {/* Starter Pack Modal */}
+      <Modal
+        isOpen={showStarterPackModal}
+        onClose={() => !assigningStarterPacks && setShowStarterPackModal(false)}
+        title="Przydziel pakiety startowe"
+        size="md"
+      >
+        <div className="space-y-4">
+          <Card variant="outlined" className="border-turbo-500/30">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-xl bg-turbo-500/20 flex items-center justify-center">
+                <Package className="w-6 h-6 text-turbo-400" />
+              </div>
+              <div>
+                <p className="font-medium text-white">Pakiet startowy dla wszystkich</p>
+                <p className="text-sm text-dark-400">
+                  Każdy gracz otrzyma losowe karty samochodów
+                </p>
+              </div>
+            </div>
+          </Card>
+
+          <div>
+            <label className="block text-sm font-medium text-dark-300 mb-2">
+              Ilość kart na gracza
+            </label>
+            <div className="flex gap-2">
+              {[3, 5, 7, 10].map(size => (
+                <button
+                  key={size}
+                  onClick={() => setStarterPackSize(size)}
+                  disabled={assigningStarterPacks}
+                  className={`flex-1 py-3 rounded-xl font-bold transition-colors ${
+                    starterPackSize === size
+                      ? 'bg-turbo-500 text-white'
+                      : 'bg-dark-700 text-dark-300 hover:bg-dark-600'
+                  }`}
+                >
+                  {size} kart
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="p-3 bg-dark-700 rounded-xl">
+            <p className="text-sm text-dark-400 mb-2">Szanse na rzadkość:</p>
+            <div className="grid grid-cols-4 gap-2 text-center text-xs">
+              <div>
+                <span className="text-gray-400">Zwykła</span>
+                <p className="font-bold text-white">60%</p>
+              </div>
+              <div>
+                <span className="text-blue-400">Rzadka</span>
+                <p className="font-bold text-white">25%</p>
+              </div>
+              <div>
+                <span className="text-purple-400">Epicka</span>
+                <p className="font-bold text-white">12%</p>
+              </div>
+              <div>
+                <span className="text-yellow-400">Legendarna</span>
+                <p className="font-bold text-white">3%</p>
+              </div>
+            </div>
+          </div>
+
+          {assigningStarterPacks && (
+            <div className="p-4 bg-dark-700 rounded-xl">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-dark-300">Postęp:</span>
+                <span className="text-white font-medium">
+                  {starterPackProgress.current}/{starterPackProgress.total} graczy
+                </span>
+              </div>
+              <div className="w-full bg-dark-600 rounded-full h-2 mb-2">
+                <div
+                  className="bg-turbo-500 h-2 rounded-full transition-all"
+                  style={{ width: `${(starterPackProgress.current / Math.max(1, starterPackProgress.total)) * 100}%` }}
+                />
+              </div>
+              <p className="text-sm text-turbo-400">
+                Przydzielono: {starterPackProgress.assigned} kart
+              </p>
+            </div>
+          )}
+
+          <div className="flex gap-3">
+            <Button
+              variant="secondary"
+              fullWidth
+              onClick={() => setShowStarterPackModal(false)}
+              disabled={assigningStarterPacks}
+            >
+              Anuluj
+            </Button>
+            <Button
+              fullWidth
+              onClick={handleAssignStarterPacks}
+              disabled={assigningStarterPacks}
+            >
+              {assigningStarterPacks ? (
+                <>Przydzielanie...</>
+              ) : (
+                <>
+                  <Package className="w-4 h-4 mr-1" />
+                  Przydziel wszystkim
+                </>
+              )}
+            </Button>
+          </div>
         </div>
       </Modal>
 

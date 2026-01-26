@@ -43,14 +43,14 @@ export function Modal({
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
         <div
           className={cn(
-            'w-full bg-dark-800 border border-dark-700 rounded-2xl shadow-2xl pointer-events-auto animate-slide-up',
+            'w-full bg-dark-800 border border-dark-700 rounded-2xl shadow-2xl pointer-events-auto animate-slide-up max-h-[90vh] flex flex-col',
             sizes[size]
           )}
           onClick={e => e.stopPropagation()}
         >
           {/* Header */}
           {(title || showCloseButton) && (
-            <div className="flex items-center justify-between p-4 border-b border-dark-700">
+            <div className="flex items-center justify-between p-4 border-b border-dark-700 flex-shrink-0">
               {title && (
                 <h2 className="text-lg font-semibold text-white">{title}</h2>
               )}
@@ -66,7 +66,7 @@ export function Modal({
           )}
 
           {/* Content */}
-          <div className="p-4">{children}</div>
+          <div className="flex-1 overflow-y-auto min-h-0">{children}</div>
         </div>
       </div>
     </Fragment>

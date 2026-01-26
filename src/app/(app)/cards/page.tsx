@@ -175,10 +175,19 @@ export default function CardsPage() {
   const isDemoMode = allCards.length === 0;
 
   // Rozdziel Heroes i zwykłe samochody
-  const heroCards = allCarCards.filter(c => c.is_hero);
+  const heroCardsRaw = allCarCards.filter(c => c.is_hero);
   const regularCarCards = allCarCards.filter(c => !c.is_hero);
 
-  // Grupuj samochody po markach
+  // Sortuj Heroes - posiadane pierwsze
+  const heroCards = useMemo(() => {
+    return [...heroCardsRaw].sort((a, b) => {
+      const aOwned = !isDemoMode && hasCard(a.id) ? 0 : 1;
+      const bOwned = !isDemoMode && hasCard(b.id) ? 0 : 1;
+      return aOwned - bOwned;
+    });
+  }, [heroCardsRaw, isDemoMode, hasCard]);
+
+  // Grupuj samochody po markach (z sortowaniem - posiadane pierwsze)
   const brandGroups = useMemo(() => {
     const brands = new Map<string, BrandGroup>();
 
@@ -192,6 +201,15 @@ export default function CardsPage() {
       if (!isDemoMode && hasCard(card.id)) {
         group.collected++;
       }
+    });
+
+    // Sortuj karty w każdej grupie - posiadane pierwsze
+    brands.forEach(group => {
+      group.cards.sort((a, b) => {
+        const aOwned = !isDemoMode && hasCard(a.id) ? 0 : 1;
+        const bOwned = !isDemoMode && hasCard(b.id) ? 0 : 1;
+        return aOwned - bOwned;
+      });
     });
 
     return Array.from(brands.values()).sort((a, b) => b.cards.length - a.cards.length);
@@ -234,6 +252,13 @@ export default function CardsPage() {
 
     return { total, collected, byRarity };
   }, [heroCards, regularCarCards, isDemoMode, hasCard]);
+
+  // Sprawdź czy karta jest wyprzedana (limit wyczerpany)
+  const isCardSoldOut = (card: CollectibleCard): boolean => {
+    if (!card.total_supply) return false; // Brak limitu = zawsze dostępna
+    const soldCount = card.sold_count || 0;
+    return soldCount >= card.total_supply;
+  };
 
   // Rozpocznij proces zakupu
   const handleBuyClick = (card: CollectibleCard) => {
@@ -395,7 +420,11 @@ export default function CardsPage() {
             </h3>
             <div className="flex items-center justify-between mt-1">
               <span className="text-xs text-dark-500">{card.category}</span>
-              <span className="text-xs font-medium text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-500">+{card.points} XP</span>
+              {!owned && !isDemoMode && isCardSoldOut(card) ? (
+                <span className="text-xs font-medium text-orange-400">W kolekcji gracza</span>
+              ) : (
+                <span className="text-xs font-medium text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-500">+{card.points} XP</span>
+              )}
             </div>
           </div>
         </div>
@@ -629,7 +658,14 @@ export default function CardsPage() {
 
           {/* Karty osiągnięć grupowane po kategorii */}
           {Array.from(new Set(displayAchievementCards.map(c => c.category))).map(category => {
-            const categoryCards = displayAchievementCards.filter(c => c.category === category);
+            const categoryCards = displayAchievementCards
+              .filter(c => c.category === category)
+              .sort((a, b) => {
+                // Sortuj - posiadane pierwsze
+                const aOwned = !isDemoMode && hasCard(a.id) ? 0 : 1;
+                const bOwned = !isDemoMode && hasCard(b.id) ? 0 : 1;
+                return aOwned - bOwned;
+              });
             return (
               <div key={category}>
                 <h2 className="text-sm font-semibold text-dark-400 uppercase tracking-wider mb-3">
@@ -694,6 +730,14 @@ export default function CardsPage() {
                           x{count}
                         </div>
                       )}
+
+                      {!owned && !isDemoMode && isCardSoldOut(selectedCard) && (
+                        <div className="absolute bottom-2 left-2 right-2 bg-orange-500/90 backdrop-blur-sm py-1.5 px-3 rounded-lg">
+                          <p className="text-white text-xs font-medium text-center">
+                            Karta w kolekcji innego gracza
+                          </p>
+                        </div>
+                      )}
                     </div>
 
                     <div className="p-4 bg-dark-800">
@@ -734,8 +778,20 @@ export default function CardsPage() {
                         <p className="text-dark-400 text-sm mt-4">{selectedCard.description}</p>
                       )}
 
-                      <div className="flex items-center justify-end mt-4">
-                        <span className="font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-500">+{selectedCard.points} XP</span>
+                      <div className="flex items-center justify-between mt-4">
+                        {selectedCard.total_supply && (
+                          <span className="text-xs text-dark-500">
+                            {selectedCard.sold_count || 0}/{selectedCard.total_supply} szt.
+                            {isCardSoldOut(selectedCard) && <span className="text-orange-400 ml-1">(wyprzedane)</span>}
+                          </span>
+                        )}
+                        <span className="ml-auto">
+                          {!owned && !isDemoMode && isCardSoldOut(selectedCard) ? (
+                            <span className="font-bold text-orange-400">W kolekcji gracza</span>
+                          ) : (
+                            <span className="font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-500">+{selectedCard.points} XP</span>
+                          )}
+                        </span>
                       </div>
 
                       {/* === ROZSZERZONE INFO (tylko dla posiadanych kart) === */}
@@ -867,7 +923,7 @@ export default function CardsPage() {
                         </button>
                       )}
 
-                      {selectedCard.is_purchasable && selectedCard.price && !owned && !isDemoMode && (
+                      {selectedCard.is_purchasable && selectedCard.price && !owned && !isDemoMode && !isCardSoldOut(selectedCard) && (
                         <Button
                           onClick={() => {
                             setSelectedCard(null);
@@ -903,7 +959,9 @@ export default function CardsPage() {
                       <div className="absolute inset-0 bg-dark-900/60 flex items-center justify-center">
                         <div className="text-center">
                           <Lock className="w-12 h-12 text-dark-400 mx-auto mb-2" />
-                          <p className="text-dark-400">Nie posiadasz tej karty</p>
+                          <p className="text-dark-400">
+                            {isCardSoldOut(selectedCard) ? 'Karta w kolekcji innego gracza' : 'Nie posiadasz tej karty'}
+                          </p>
                         </div>
                       </div>
                     )}
@@ -925,13 +983,18 @@ export default function CardsPage() {
 
                     <div className="flex items-center justify-between">
                       <span className="text-dark-500">{selectedCard.category}</span>
-                      <span className="font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-500">+{selectedCard.points} XP</span>
+                      {!owned && !isDemoMode && isCardSoldOut(selectedCard) ? (
+                        <span className="font-bold text-orange-400">W kolekcji gracza</span>
+                      ) : (
+                        <span className="font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-500">+{selectedCard.points} XP</span>
+                      )}
                     </div>
 
                     {selectedCard.total_supply && (
                       <div className="mt-3 pt-3 border-t border-dark-700">
                         <p className="text-xs text-dark-500 text-center">
-                          Limitowana edycja: {selectedCard.total_supply} sztuk
+                          Limitowana edycja: {selectedCard.sold_count || 0}/{selectedCard.total_supply} sztuk
+                          {isCardSoldOut(selectedCard) && <span className="text-orange-400 ml-1">(wyprzedane)</span>}
                         </p>
                       </div>
                     )}

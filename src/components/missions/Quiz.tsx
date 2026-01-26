@@ -189,104 +189,111 @@ export function Quiz({ quizData, onComplete, onCancel }: QuizProps) {
   }
 
   return (
-    <div className="p-4">
-      {/* Header z postępem i czasem */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-dark-400">Pytanie</span>
-          <span className="font-bold text-white">
-            {currentQuestionIndex + 1}/{quizData.questions.length}
-          </span>
-        </div>
-
-        {/* Classic mode - countdown */}
-        {hasTimeLimit && (
-          <div
-            className={cn(
-              'flex items-center gap-1 px-3 py-1 rounded-full',
-              timeLeft <= 30 ? 'bg-red-500/20 text-red-400' : 'bg-dark-700 text-dark-300'
-            )}
-          >
-            <Clock className="w-4 h-4" />
-            <span className="font-mono">{formatTime(timeLeft)}</span>
+    <div className="flex flex-col h-full max-h-[80vh]">
+      {/* Header z postępem i czasem - stały */}
+      <div className="flex-shrink-0 p-4 pb-0">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-dark-400">Pytanie</span>
+            <span className="font-bold text-white">
+              {currentQuestionIndex + 1}/{quizData.questions.length}
+            </span>
           </div>
-        )}
 
-        {/* Speedrun mode - count up */}
-        {isSpeedrun && (
-          <div className="flex items-center gap-1 px-3 py-1 rounded-full bg-turbo-500/20 text-turbo-400">
-            <Zap className="w-4 h-4" />
-            <span className="font-mono">{formatTimeMs(elapsedTime)}</span>
-          </div>
-        )}
-      </div>
-
-      {/* Tryb info */}
-      {isSpeedrun && currentQuestionIndex === 0 && (
-        <div className="bg-turbo-500/10 border border-turbo-500/30 rounded-xl p-3 mb-4 text-sm text-turbo-300">
-          <Zap className="w-4 h-4 inline mr-1" />
-          <strong>Tryb na czas!</strong> Odpowiedz poprawnie na wszystkie pytania jak najszybciej.
-        </div>
-      )}
-
-      {/* Pasek postępu */}
-      <div className="h-1.5 bg-dark-700 rounded-full mb-6 overflow-hidden">
-        <div
-          className="h-full bg-turbo-500 transition-all duration-300"
-          style={{
-            width: `${((currentQuestionIndex + 1) / quizData.questions.length) * 100}%`,
-          }}
-        />
-      </div>
-
-      {/* Pytanie */}
-      <h3 className="text-lg font-semibold text-white mb-6">
-        {currentQuestion.question}
-      </h3>
-
-      {/* Odpowiedzi */}
-      <div className="space-y-3 mb-6">
-        {currentQuestion.answers.map(answer => (
-          <button
-            key={answer.id}
-            onClick={() => handleAnswerSelect(answer.id)}
-            className={cn(
-              'w-full p-4 text-left rounded-xl border-2 transition-all duration-200',
-              getAnswerClass(answer.id, answer.is_correct)
-            )}
-          >
-            <div className="flex items-center gap-3">
-              <div
-                className={cn(
-                  'w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0',
-                  selectedAnswer === answer.id
-                    ? 'border-turbo-500 bg-turbo-500'
-                    : 'border-dark-500'
-                )}
-              >
-                {selectedAnswer === answer.id && (
-                  <div className="w-2 h-2 rounded-full bg-white" />
-                )}
-              </div>
-              <span className="text-white">{answer.text}</span>
+          {/* Classic mode - countdown */}
+          {hasTimeLimit && (
+            <div
+              className={cn(
+                'flex items-center gap-1 px-3 py-1 rounded-full',
+                timeLeft <= 30 ? 'bg-red-500/20 text-red-400' : 'bg-dark-700 text-dark-300'
+              )}
+            >
+              <Clock className="w-4 h-4" />
+              <span className="font-mono">{formatTime(timeLeft)}</span>
             </div>
-          </button>
-        ))}
+          )}
+
+          {/* Speedrun mode - count up */}
+          {isSpeedrun && (
+            <div className="flex items-center gap-1 px-3 py-1 rounded-full bg-turbo-500/20 text-turbo-400">
+              <Zap className="w-4 h-4" />
+              <span className="font-mono">{formatTimeMs(elapsedTime)}</span>
+            </div>
+          )}
+        </div>
+
+        {/* Tryb info */}
+        {isSpeedrun && currentQuestionIndex === 0 && (
+          <div className="bg-turbo-500/10 border border-turbo-500/30 rounded-xl p-3 mb-4 text-sm text-turbo-300">
+            <Zap className="w-4 h-4 inline mr-1" />
+            <strong>Tryb na czas!</strong> Odpowiedz poprawnie na wszystkie pytania jak najszybciej.
+          </div>
+        )}
+
+        {/* Pasek postępu */}
+        <div className="h-1.5 bg-dark-700 rounded-full mb-4 overflow-hidden">
+          <div
+            className="h-full bg-turbo-500 transition-all duration-300"
+            style={{
+              width: `${((currentQuestionIndex + 1) / quizData.questions.length) * 100}%`,
+            }}
+          />
+        </div>
       </div>
 
-      {/* Przyciski */}
-      <div className="flex gap-3">
-        <Button variant="ghost" onClick={onCancel} className="flex-1">
-          Anuluj
-        </Button>
-        <Button
-          onClick={handleNext}
-          disabled={!selectedAnswer}
-          className="flex-1"
-        >
-          {isLastQuestion ? 'Zakończ' : 'Dalej'}
-          <ArrowRight className="w-4 h-4 ml-2" />
-        </Button>
+      {/* Środkowa część - przewijalna */}
+      <div className="flex-1 overflow-y-auto px-4 min-h-0">
+        {/* Pytanie */}
+        <h3 className="text-lg font-semibold text-white mb-4">
+          {currentQuestion.question}
+        </h3>
+
+        {/* Odpowiedzi */}
+        <div className="space-y-3 pb-4">
+          {currentQuestion.answers.map(answer => (
+            <button
+              key={answer.id}
+              onClick={() => handleAnswerSelect(answer.id)}
+              className={cn(
+                'w-full p-3 text-left rounded-xl border-2 transition-all duration-200',
+                getAnswerClass(answer.id, answer.is_correct)
+              )}
+            >
+              <div className="flex items-center gap-3">
+                <div
+                  className={cn(
+                    'w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0',
+                    selectedAnswer === answer.id
+                      ? 'border-turbo-500 bg-turbo-500'
+                      : 'border-dark-500'
+                  )}
+                >
+                  {selectedAnswer === answer.id && (
+                    <div className="w-2 h-2 rounded-full bg-white" />
+                  )}
+                </div>
+                <span className="text-white text-sm">{answer.text}</span>
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Przyciski - stałe na dole */}
+      <div className="flex-shrink-0 p-4 pt-2 border-t border-dark-700 bg-dark-800">
+        <div className="flex gap-3">
+          <Button variant="ghost" onClick={onCancel} className="flex-1">
+            Anuluj
+          </Button>
+          <Button
+            onClick={handleNext}
+            disabled={!selectedAnswer}
+            className="flex-1"
+          >
+            {isLastQuestion ? 'Zakończ' : 'Dalej'}
+            <ArrowRight className="w-4 h-4 ml-2" />
+          </Button>
+        </div>
       </div>
     </div>
   );
