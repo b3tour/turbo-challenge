@@ -36,6 +36,8 @@ import {
   Activity,
   Cog,
   Swords,
+  Grid2X2,
+  Grid3X3,
 } from 'lucide-react';
 import Link from 'next/link';
 import { CollectibleCardDisplay } from '@/components/cards';
@@ -153,6 +155,7 @@ export default function CardsPage() {
 
   const [activeTab, setActiveTab] = useState<ViewTab>('car');
   const [collectionFilter, setCollectionFilter] = useState<'all' | 'owned' | 'to_collect'>('all');
+  const [gridColumns, setGridColumns] = useState<2 | 3>(2);
   const [selectedCard, setSelectedCard] = useState<CollectibleCard | null>(null);
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
   const [purchaseCard, setPurchaseCard] = useState<CollectibleCard | null>(null);
@@ -606,7 +609,7 @@ export default function CardsPage() {
               })}
             </div>
 
-            {/* Filtry kolekcji */}
+            {/* Filtry kolekcji + widok siatki */}
             <div className="flex gap-2 mt-4">
               <button
                 onClick={() => setCollectionFilter(collectionFilter === 'owned' ? 'all' : 'owned')}
@@ -630,6 +633,32 @@ export default function CardsPage() {
                 <Lock className="w-5 h-5" />
                 Do zdobycia ({allCarStats.total - allCarStats.collected})
               </button>
+
+              {/* Przełącznik widoku siatki */}
+              <div className="flex bg-dark-700 rounded-xl p-1">
+                <button
+                  onClick={() => setGridColumns(2)}
+                  className={`p-2 rounded-lg transition-colors ${
+                    gridColumns === 2
+                      ? 'bg-dark-600 text-white'
+                      : 'text-dark-400 hover:text-white'
+                  }`}
+                  title="2 kolumny"
+                >
+                  <Grid2X2 className="w-5 h-5" />
+                </button>
+                <button
+                  onClick={() => setGridColumns(3)}
+                  className={`p-2 rounded-lg transition-colors ${
+                    gridColumns === 3
+                      ? 'bg-dark-600 text-white'
+                      : 'text-dark-400 hover:text-white'
+                  }`}
+                  title="3 kolumny"
+                >
+                  <Grid3X3 className="w-5 h-5" />
+                </button>
+              </div>
             </div>
           </Card>
 
@@ -679,7 +708,7 @@ export default function CardsPage() {
                   </div>
 
                   {/* Siatka kart */}
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className={`grid gap-3 ${gridColumns === 3 ? 'grid-cols-3' : 'grid-cols-2'}`}>
                     {group.cards.map(renderCarCard)}
                   </div>
                 </div>
