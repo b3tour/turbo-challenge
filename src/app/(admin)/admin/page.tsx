@@ -750,6 +750,16 @@ export default function AdminPage() {
         return;
       }
 
+      // Sprawdź czy karta ma jeszcze dostępne sztuki (total_supply)
+      if (card.total_supply) {
+        const currentSold = card.sold_count || 0;
+        if (currentSold >= card.total_supply) {
+          showError('Błąd', `Karta "${card.name}" osiągnęła limit ${card.total_supply} szt. i nie może być przyznana`);
+          setGrantingCard(false);
+          return;
+        }
+      }
+
       // Dodaj kartę do kolekcji użytkownika
       const { error: cardError } = await supabase
         .from('user_cards')
@@ -760,6 +770,14 @@ export default function AdminPage() {
         });
 
       if (cardError) throw cardError;
+
+      // Aktualizuj sold_count jeśli karta ma limit
+      if (card.total_supply) {
+        await supabase
+          .from('cards')
+          .update({ sold_count: (card.sold_count || 0) + 1 })
+          .eq('id', card.id);
+      }
 
       // Aktualizuj lokalną listę kart użytkownika
       setUserCardsForUser(prev => [...prev, card.id]);
@@ -891,13 +909,23 @@ export default function AdminPage() {
         return;
       }
 
-      // Grupuj karty według rzadkości
-      const cardsByRarity: Record<string, CollectibleCard[]> = {
-        common: allCarCards.filter(c => c.rarity === 'common'),
-        rare: allCarCards.filter(c => c.rarity === 'rare'),
-        epic: allCarCards.filter(c => c.rarity === 'epic'),
-        legendary: allCarCards.filter(c => c.rarity === 'legendary'),
+      // Śledź globalnie ile kart zostało przydzielonych (dla limitów total_supply)
+      const globalCardAssignments: Record<string, number> = {};
+
+      // Funkcja sprawdzająca czy karta jest dostępna (uwzględnia total_supply)
+      const isCardAvailable = (card: CollectibleCard): boolean => {
+        if (!card.total_supply) return true; // Brak limitu
+        const currentSold = (card.sold_count || 0) + (globalCardAssignments[card.id] || 0);
+        return currentSold < card.total_supply;
       };
+
+      // Filtruj karty które mają dostępne sztuki i grupuj według rzadkości
+      const getAvailableCardsByRarity = () => ({
+        common: allCarCards.filter(c => c.rarity === 'common' && isCardAvailable(c)),
+        rare: allCarCards.filter(c => c.rarity === 'rare' && isCardAvailable(c)),
+        epic: allCarCards.filter(c => c.rarity === 'epic' && isCardAvailable(c)),
+        legendary: allCarCards.filter(c => c.rarity === 'legendary' && isCardAvailable(c)),
+      });
 
       // Pobierz wszystkich użytkowników
       const { data: allUsers, error: usersError } = await supabase
@@ -929,14 +957,17 @@ export default function AdminPage() {
         const selectedCards: CollectibleCard[] = [];
         const usedCardIds = new Set<string>();
 
-        // Funkcja losowania karty z danej rzadkości
+        // Funkcja losowania karty z danej rzadkości (z uwzględnieniem limitu)
         const pickRandomCard = (rarity: string): CollectibleCard | null => {
-          const pool = cardsByRarity[rarity]?.filter(
+          const cardsByRarity = getAvailableCardsByRarity();
+          const pool = cardsByRarity[rarity as keyof typeof cardsByRarity]?.filter(
             c => !existingCardIds.has(c.id) && !usedCardIds.has(c.id)
           ) || [];
           if (pool.length === 0) return null;
           const card = pool[Math.floor(Math.random() * pool.length)];
           usedCardIds.add(card.id);
+          // Zwiększ globalny licznik przydziałów
+          globalCardAssignments[card.id] = (globalCardAssignments[card.id] || 0) + 1;
           return card;
         };
 
@@ -974,6 +1005,16 @@ export default function AdminPage() {
 
           if (!insertError) {
             totalAssigned += selectedCards.length;
+
+            // Aktualizuj sold_count dla kart z limitem
+            for (const card of selectedCards) {
+              if (card.total_supply) {
+                await supabase
+                  .from('cards')
+                  .update({ sold_count: (card.sold_count || 0) + 1 })
+                  .eq('id', card.id);
+              }
+            }
 
             // Wyślij powiadomienie
             await sendUserNotification(
