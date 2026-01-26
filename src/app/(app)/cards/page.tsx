@@ -613,10 +613,10 @@ export default function CardsPage() {
             <div className="flex gap-2 mt-4">
               <button
                 onClick={() => setCollectionFilter(collectionFilter === 'owned' ? 'all' : 'owned')}
-                className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-medium transition-colors ${
+                className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-medium transition-all duration-200 ${
                   collectionFilter === 'owned'
-                    ? 'bg-green-500 text-white'
-                    : 'bg-dark-700 text-dark-300 hover:bg-dark-600'
+                    ? 'bg-gradient-to-r from-green-500 to-green-600 text-white shadow-lg shadow-green-500/30'
+                    : 'bg-gradient-to-r from-green-500/10 to-green-600/10 text-green-400 border border-green-500/20 hover:from-green-500/20 hover:to-green-600/20'
                 }`}
               >
                 <CheckCircle className="w-5 h-5" />
@@ -624,10 +624,10 @@ export default function CardsPage() {
               </button>
               <button
                 onClick={() => setCollectionFilter(collectionFilter === 'to_collect' ? 'all' : 'to_collect')}
-                className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-medium transition-colors ${
+                className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-medium transition-all duration-200 ${
                   collectionFilter === 'to_collect'
-                    ? 'bg-turbo-500 text-white'
-                    : 'bg-dark-700 text-dark-300 hover:bg-dark-600'
+                    ? 'bg-gradient-to-r from-red-500 to-orange-500 text-white shadow-lg shadow-red-500/30'
+                    : 'bg-gradient-to-r from-red-500/10 to-orange-500/10 text-red-400 border border-red-500/20 hover:from-red-500/20 hover:to-orange-500/20'
                 }`}
               >
                 <Lock className="w-5 h-5" />
