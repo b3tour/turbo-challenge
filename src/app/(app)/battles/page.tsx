@@ -535,33 +535,12 @@ export default function BattlesPage() {
 
                 <div>
                   <p className="text-dark-400 text-sm mb-2">Nagroda:</p>
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      onClick={() => setSelectedRewardType('xp')}
-                      className={`p-3 rounded-xl text-sm font-medium transition-colors ${
-                        selectedRewardType === 'xp'
-                          ? 'bg-turbo-500 text-white'
-                          : 'bg-dark-700 text-dark-300 hover:bg-dark-600'
-                      }`}
-                    >
-                      ⚡ Na XP
-                    </button>
-                    <button
-                      onClick={() => setSelectedRewardType('cards')}
-                      className={`p-3 rounded-xl text-sm font-medium transition-colors ${
-                        selectedRewardType === 'cards'
-                          ? 'bg-red-500 text-white'
-                          : 'bg-dark-700 text-dark-300 hover:bg-dark-600'
-                      }`}
-                    >
-                      🃏 Na karty
-                    </button>
-                  </div>
-                  {selectedRewardType === 'cards' && (
-                    <p className="text-xs text-red-400 mt-2">
-                      ⚠️ Przegrany traci postawione karty!
+                  <div className="p-3 rounded-xl bg-turbo-500/20 border border-turbo-500/30">
+                    <p className="text-turbo-400 font-medium text-sm">⚡ Punkty XP</p>
+                    <p className="text-xs text-dark-400 mt-1">
+                      Zwycięzca: +100 XP • Przegrany: +20 XP
                     </p>
-                  )}
+                  </div>
                 </div>
               </div>
 
