@@ -18,6 +18,9 @@ import {
   Target,
   Package,
   Gift,
+  Eye,
+  Crown,
+  Minus,
 } from 'lucide-react';
 import Link from 'next/link';
 import { CollectibleCard, BattleCategory, BattleRewardType, User } from '@/types';
@@ -47,7 +50,9 @@ export default function BattlesPage() {
   // Modals
   const [showNewChallengeModal, setShowNewChallengeModal] = useState(false);
   const [showAcceptModal, setShowAcceptModal] = useState(false);
+  const [showBattleDetailModal, setShowBattleDetailModal] = useState(false);
   const [selectedBattleId, setSelectedBattleId] = useState<string | null>(null);
+  const [detailBattle, setDetailBattle] = useState<typeof myBattles[0] | null>(null);
 
   // New challenge state
   const [availablePlayers, setAvailablePlayers] = useState<User[]>([]);
@@ -334,16 +339,23 @@ export default function BattlesPage() {
               const isWinner = battle.winner_id === profile.id;
               const isDraw = battle.status === 'completed' && !battle.winner_id;
               const isPending = battle.status === 'pending';
+              const isDeclined = battle.status === 'declined';
+              const isCompleted = battle.status === 'completed';
               const opponent = battle.challenger_id === profile.id ? battle.opponent : battle.challenger;
 
               return (
                 <Card
                   key={battle.id}
-                  className={
+                  className={`${
                     isPending ? 'border-yellow-500/30' :
+                    isDeclined ? 'border-dark-500/30' :
                     isDraw ? 'border-blue-500/30' :
                     isWinner ? 'border-green-500/30' : 'border-red-500/30'
-                  }
+                  } ${isCompleted ? 'cursor-pointer hover:bg-dark-700/50 transition-colors' : ''}`}
+                  onClick={isCompleted ? () => {
+                    setDetailBattle(battle);
+                    setShowBattleDetailModal(true);
+                  } : undefined}
                 >
                   <div className="flex items-center gap-3">
                     <Avatar
@@ -355,8 +367,9 @@ export default function BattlesPage() {
                       <div className="flex items-center gap-2">
                         <p className="font-medium text-white">{opponent?.nick}</p>
                         {isPending && <Badge variant="warning">Oczekuje</Badge>}
+                        {isDeclined && <Badge variant="default">Odrzucone</Badge>}
                         {isDraw && <Badge variant="info">Remis</Badge>}
-                        {!isPending && !isDraw && (
+                        {isCompleted && !isDraw && (
                           <Badge variant={isWinner ? 'success' : 'danger'}>
                             {isWinner ? 'Wygrana' : 'Przegrana'}
                           </Badge>
@@ -366,12 +379,15 @@ export default function BattlesPage() {
                         {getCategoryIcon(battle.category)} {getCategoryName(battle.category)}
                       </p>
                     </div>
-                    {battle.status === 'completed' && (
-                      <div className="text-right">
-                        <div className={`font-bold ${isWinner ? 'text-green-400' : 'text-red-400'}`}>
-                          {battle.challenger_id === profile.id ? battle.challenger_score : battle.opponent_score}
+                    {isCompleted && (
+                      <div className="flex items-center gap-3">
+                        <div className="text-right">
+                          <div className={`font-bold ${isDraw ? 'text-blue-400' : isWinner ? 'text-green-400' : 'text-red-400'}`}>
+                            {battle.challenger_id === profile.id ? battle.challenger_score : battle.opponent_score}
+                          </div>
+                          <div className="text-xs text-dark-500">vs {battle.challenger_id === profile.id ? battle.opponent_score : battle.challenger_score}</div>
                         </div>
-                        <div className="text-xs text-dark-500">vs {battle.challenger_id === profile.id ? battle.opponent_score : battle.challenger_score}</div>
+                        <ChevronRight className="w-4 h-4 text-dark-500" />
                       </div>
                     )}
                   </div>
@@ -656,6 +672,152 @@ export default function BattlesPage() {
             </Button>
           </div>
         )}
+      </Modal>
+
+      {/* Battle Detail Modal */}
+      <Modal
+        isOpen={showBattleDetailModal}
+        onClose={() => {
+          setShowBattleDetailModal(false);
+          setDetailBattle(null);
+        }}
+        title="Szczegóły bitwy"
+      >
+        {detailBattle && (() => {
+          const iAmChallenger = detailBattle.challenger_id === profile.id;
+          const myData = iAmChallenger
+            ? { user: detailBattle.challenger, cards: detailBattle.challenger_cards || [], score: detailBattle.challenger_score }
+            : { user: detailBattle.opponent, cards: detailBattle.opponent_cards || [], score: detailBattle.opponent_score };
+          const theirData = iAmChallenger
+            ? { user: detailBattle.opponent, cards: detailBattle.opponent_cards || [], score: detailBattle.opponent_score }
+            : { user: detailBattle.challenger, cards: detailBattle.challenger_cards || [], score: detailBattle.challenger_score };
+          const isWinner = detailBattle.winner_id === profile.id;
+          const isDraw = !detailBattle.winner_id;
+          const scoreDiff = Math.abs((myData.score || 0) - (theirData.score || 0));
+
+          return (
+            <div className="space-y-4">
+              {/* Result banner */}
+              <div className={`text-center py-3 rounded-xl ${
+                isDraw ? 'bg-blue-500/20' : isWinner ? 'bg-green-500/20' : 'bg-red-500/20'
+              }`}>
+                <div className="flex items-center justify-center gap-2 mb-1">
+                  {isDraw ? (
+                    <Minus className="w-6 h-6 text-blue-400" />
+                  ) : isWinner ? (
+                    <Crown className="w-6 h-6 text-yellow-400" />
+                  ) : (
+                    <X className="w-6 h-6 text-red-400" />
+                  )}
+                  <span className={`text-lg font-bold ${
+                    isDraw ? 'text-blue-400' : isWinner ? 'text-green-400' : 'text-red-400'
+                  }`}>
+                    {isDraw ? 'Remis!' : isWinner ? 'Wygrana!' : 'Przegrana'}
+                  </span>
+                </div>
+                {!isDraw && (
+                  <p className="text-sm text-dark-300">
+                    Roznica: {scoreDiff} pkt
+                  </p>
+                )}
+              </div>
+
+              {/* Category & date */}
+              <div className="flex items-center justify-between text-sm text-dark-400">
+                <span>{getCategoryIcon(detailBattle.category)} {getCategoryName(detailBattle.category)}</span>
+                <span>{detailBattle.completed_at ? new Date(detailBattle.completed_at).toLocaleDateString('pl-PL') : ''}</span>
+              </div>
+
+              {/* Score comparison */}
+              <div className="flex items-center gap-3">
+                <div className="flex-1 text-center">
+                  <Avatar src={myData.user?.avatar_url} fallback={myData.user?.nick || '?'} size="md" />
+                  <p className="text-sm font-medium text-white mt-1">{myData.user?.nick || 'Ty'}</p>
+                  <p className={`text-2xl font-bold mt-1 ${isDraw ? 'text-blue-400' : isWinner ? 'text-green-400' : 'text-red-400'}`}>
+                    {myData.score || 0}
+                  </p>
+                </div>
+                <div className="text-dark-500 font-bold text-lg">VS</div>
+                <div className="flex-1 text-center">
+                  <Avatar src={theirData.user?.avatar_url} fallback={theirData.user?.nick || '?'} size="md" />
+                  <p className="text-sm font-medium text-white mt-1">{theirData.user?.nick || 'Przeciwnik'}</p>
+                  <p className={`text-2xl font-bold mt-1 ${isDraw ? 'text-blue-400' : !isWinner ? 'text-green-400' : 'text-red-400'}`}>
+                    {theirData.score || 0}
+                  </p>
+                </div>
+              </div>
+
+              {/* My cards */}
+              <div>
+                <p className="text-sm font-medium text-dark-300 mb-2">Twoje karty:</p>
+                <div className="space-y-2">
+                  {myData.cards.map(card => (
+                    <div key={card.id} className="flex items-center gap-3 p-2 bg-dark-700 rounded-xl">
+                      <div className="w-14 h-10 bg-dark-600 rounded-lg overflow-hidden flex-shrink-0">
+                        {card.image_url && (
+                          <img src={card.image_url} alt={card.name} className="w-full h-full object-cover" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-white text-sm truncate">{card.name}</p>
+                        <div className="flex gap-3 text-xs text-dark-400">
+                          {detailBattle.category === 'power' || detailBattle.category === 'total' ? (
+                            <span className={detailBattle.category === 'power' ? 'text-orange-400 font-medium' : ''}>{card.car_horsepower} KM</span>
+                          ) : null}
+                          {detailBattle.category === 'torque' || detailBattle.category === 'total' ? (
+                            <span className={detailBattle.category === 'torque' ? 'text-orange-400 font-medium' : ''}>{card.car_torque} Nm</span>
+                          ) : null}
+                          {detailBattle.category === 'speed' || detailBattle.category === 'total' ? (
+                            <span className={detailBattle.category === 'speed' ? 'text-orange-400 font-medium' : ''}>{card.car_max_speed} km/h</span>
+                          ) : null}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Their cards */}
+              <div>
+                <p className="text-sm font-medium text-dark-300 mb-2">Karty przeciwnika:</p>
+                <div className="space-y-2">
+                  {theirData.cards.map(card => (
+                    <div key={card.id} className="flex items-center gap-3 p-2 bg-dark-700 rounded-xl">
+                      <div className="w-14 h-10 bg-dark-600 rounded-lg overflow-hidden flex-shrink-0">
+                        {card.image_url && (
+                          <img src={card.image_url} alt={card.name} className="w-full h-full object-cover" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-white text-sm truncate">{card.name}</p>
+                        <div className="flex gap-3 text-xs text-dark-400">
+                          {detailBattle.category === 'power' || detailBattle.category === 'total' ? (
+                            <span className={detailBattle.category === 'power' ? 'text-orange-400 font-medium' : ''}>{card.car_horsepower} KM</span>
+                          ) : null}
+                          {detailBattle.category === 'torque' || detailBattle.category === 'total' ? (
+                            <span className={detailBattle.category === 'torque' ? 'text-orange-400 font-medium' : ''}>{card.car_torque} Nm</span>
+                          ) : null}
+                          {detailBattle.category === 'speed' || detailBattle.category === 'total' ? (
+                            <span className={detailBattle.category === 'speed' ? 'text-orange-400 font-medium' : ''}>{card.car_max_speed} km/h</span>
+                          ) : null}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Reward info */}
+              <div className="text-center text-sm text-dark-400 pt-2 border-t border-dark-700">
+                {detailBattle.reward_type === 'xp' ? (
+                  isWinner ? 'Nagroda: +100 XP' : isDraw ? 'Remis - brak nagrody XP' : 'Przegrana: +20 XP za udział'
+                ) : (
+                  isWinner ? 'Nagroda: karty przeciwnika' : isDraw ? 'Remis - karty zwrócone' : 'Strata: Twoje karty przeszły do zwycięzcy'
+                )}
+              </div>
+            </div>
+          );
+        })()}
       </Modal>
     </div>
   );

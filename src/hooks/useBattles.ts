@@ -116,8 +116,11 @@ export function useBattles(options: UseBattlesOptions = {}) {
         })
       );
 
-      // Rozdziel na moje wyzwania i przychodzące
-      const my = battlesWithCards.filter(b => b.challenger_id === userId);
+      // Rozdziel na historię bitew i przychodzące wyzwania
+      // Historia: wszystkie bitwy użytkownika OPRÓCZ pending incoming (te są w "Wyzwania")
+      const my = battlesWithCards.filter(b =>
+        !(b.opponent_id === userId && b.status === 'pending')
+      );
       const incoming = battlesWithCards.filter(
         b => b.opponent_id === userId && b.status === 'pending'
       );
@@ -442,13 +445,20 @@ export function useBattles(options: UseBattlesOptions = {}) {
     if (!userId) return [];
 
     // Pobierz użytkowników którzy mają min. 2 karty samochodów
-    const { data: usersWithCards } = await supabase
+    // Uwaga: Supabase domyślnie zwraca max 1000 wierszy - podnosimy limit
+    const { data: usersWithCards, error: cardsError } = await supabase
       .from('user_cards')
       .select('user_id, card:cards!inner(card_type)')
       .eq('card.card_type', 'car')
-      .neq('user_id', userId);
+      .neq('user_id', userId)
+      .limit(5000);
 
-    if (!usersWithCards) return [];
+    if (cardsError) {
+      console.error('Error fetching challengable players:', cardsError);
+      return [];
+    }
+
+    if (!usersWithCards || usersWithCards.length === 0) return [];
 
     // Zlicz karty na użytkownika
     const cardCounts: Record<string, number> = {};
