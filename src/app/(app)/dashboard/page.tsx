@@ -25,6 +25,7 @@ import {
   Package,
 } from 'lucide-react';
 import { useCards, RARITY_CONFIG } from '@/hooks/useCards';
+import { useBattles } from '@/hooks/useBattles';
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -38,6 +39,7 @@ export default function DashboardPage() {
   });
   const { getCollectionStats, userCards } = useCards({ userId: profile?.id });
   const { calculateLevel, calculateLevelProgress, xpToNextLevel, getNextLevel } = useLevels();
+  const { incomingChallenges } = useBattles({ userId: profile?.id });
 
   if (!profile) return null;
 
@@ -268,6 +270,11 @@ export default function DashboardPage() {
           <h2 className="text-lg font-semibold text-white flex items-center gap-2">
             <Swords className="w-5 h-5 text-orange-500" />
             Turbo Bitwy
+            {incomingChallenges.length > 0 && (
+              <span className="w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center animate-pulse">
+                {incomingChallenges.length}
+              </span>
+            )}
           </h2>
           <Link
             href="/battles"
@@ -279,17 +286,35 @@ export default function DashboardPage() {
         </div>
 
         <Link href="/battles">
-          <Card className="relative overflow-hidden hover:border-orange-500/50 transition-colors">
+          <Card className={`relative overflow-hidden hover:border-orange-500/50 transition-colors ${incomingChallenges.length > 0 ? 'border-orange-500/40' : ''}`}>
             <div className="absolute top-0 right-0 w-32 h-32 bg-orange-500/10 rounded-full blur-3xl" />
             <div className="relative flex items-center gap-4">
-              <div className="w-14 h-14 rounded-xl bg-orange-500/20 flex items-center justify-center">
+              <div className="w-14 h-14 rounded-xl bg-orange-500/20 flex items-center justify-center relative">
                 <Swords className="w-7 h-7 text-orange-500" />
+                {incomingChallenges.length > 0 && (
+                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center">
+                    <span className="text-[10px] font-bold text-white">!</span>
+                  </span>
+                )}
               </div>
               <div className="flex-1">
-                <h3 className="font-semibold text-white">Wyzwij gracza!</h3>
-                <p className="text-sm text-dark-400">
-                  Postaw swoje karty i walcz o XP lub karty przeciwnika
-                </p>
+                {incomingChallenges.length > 0 ? (
+                  <>
+                    <h3 className="font-semibold text-orange-400">
+                      {incomingChallenges.length === 1 ? 'Masz wyzwanie!' : `Masz ${incomingChallenges.length} wyzwania!`}
+                    </h3>
+                    <p className="text-sm text-dark-400">
+                      {incomingChallenges[0].challenger?.nick || 'Gracz'} czeka na odpowiedz
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <h3 className="font-semibold text-white">Wyzwij gracza!</h3>
+                    <p className="text-sm text-dark-400">
+                      Postaw swoje karty i walcz o XP lub karty przeciwnika
+                    </p>
+                  </>
+                )}
               </div>
               <ChevronRight className="w-5 h-5 text-dark-400" />
             </div>
