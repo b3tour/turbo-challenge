@@ -242,10 +242,6 @@ export function useBattles(options: UseBattlesOptions = {}) {
   ): Promise<{ success: boolean; error?: string; winner?: string }> => {
     if (!userId) return { success: false, error: 'Nie jesteś zalogowany' };
 
-    if (cardIds.length < 2) {
-      return { success: false, error: 'Musisz wybrać minimum 2 karty' };
-    }
-
     // Pobierz bitwę
     const { data: battle, error: fetchError } = await supabase
       .from('card_battles')
@@ -263,6 +259,12 @@ export function useBattles(options: UseBattlesOptions = {}) {
 
     if (battle.status !== 'pending') {
       return { success: false, error: 'To wyzwanie już zostało rozstrzygnięte' };
+    }
+
+    // Wymusz tę samą liczbę kart co challenger
+    const requiredCards = (battle.challenger_card_ids || []).length;
+    if (cardIds.length !== requiredCards) {
+      return { success: false, error: `Musisz wybrać dokładnie ${requiredCards} kart` };
     }
 
     // Sprawdź czy karty należą do użytkownika

@@ -154,15 +154,20 @@ export default function BattlesPage() {
     setSelectedRewardType('xp');
   };
 
-  const toggleCardSelection = (cardId: string) => {
-    setSelectedCards(prev =>
-      prev.includes(cardId)
-        ? prev.filter(id => id !== cardId)
-        : [...prev, cardId]
-    );
-  };
-
   const selectedBattle = incomingChallenges.find(b => b.id === selectedBattleId);
+  const requiredCardCount = selectedBattle?.challenger_card_ids?.length || 2;
+
+  const toggleCardSelection = (cardId: string, maxCards?: number) => {
+    setSelectedCards(prev => {
+      if (prev.includes(cardId)) {
+        return prev.filter(id => id !== cardId);
+      }
+      // Blokuj dodawanie ponad limit
+      const limit = maxCards || Infinity;
+      if (prev.length >= limit) return prev;
+      return [...prev, cardId];
+    });
+  };
 
   if (!profile) return null;
 
@@ -610,65 +615,72 @@ export default function BattlesPage() {
               </Badge>
             </div>
 
-            <div className="flex justify-center gap-4">
-              <div className="text-center">
-                <div className="w-16 h-12 bg-dark-600 rounded-lg flex items-center justify-center text-2xl mb-1">
-                  ?
-                </div>
-                <p className="text-xs text-dark-400">Karta 1</p>
-              </div>
-              <div className="text-center">
-                <div className="w-16 h-12 bg-dark-600 rounded-lg flex items-center justify-center text-2xl mb-1">
-                  ?
-                </div>
-                <p className="text-xs text-dark-400">Karta 2</p>
-              </div>
-            </div>
-
-            <p className="text-dark-400 text-sm">Wybierz swoje karty ({selectedCards.length}/2+):</p>
-
-            <div className="max-h-48 overflow-y-auto space-y-2">
-              {myCars.map(card => (
-                <button
-                  key={card.id}
-                  onClick={() => toggleCardSelection(card.id)}
-                  className={`w-full flex items-center gap-3 p-3 rounded-xl transition-colors ${
-                    selectedCards.includes(card.id)
-                      ? 'bg-turbo-500/20 border border-turbo-500'
-                      : 'bg-dark-700 hover:bg-dark-600'
-                  }`}
-                >
-                  <div className="w-12 h-8 bg-dark-600 rounded overflow-hidden">
-                    {card.image_url && (
-                      <img src={card.image_url} alt={card.name} className="w-full h-full object-cover" />
-                    )}
+            <div className="flex justify-center gap-2 flex-wrap">
+              {Array.from({ length: requiredCardCount }).map((_, i) => (
+                <div key={i} className="text-center">
+                  <div className="w-16 h-12 bg-dark-600 rounded-lg flex items-center justify-center text-2xl mb-1">
+                    {selectedCards[i] ? (
+                      <Check className="w-5 h-5 text-turbo-400" />
+                    ) : '?'}
                   </div>
-                  <div className="flex-1 text-left">
-                    <p className="font-medium text-white text-sm">{card.name}</p>
-                    <p className="text-xs text-dark-400">
-                      {card.car_horsepower}HP • {card.car_torque}Nm • {card.car_max_speed}km/h
-                    </p>
-                  </div>
-                  {selectedCards.includes(card.id) && (
-                    <Check className="w-5 h-5 text-turbo-400" />
-                  )}
-                </button>
+                  <p className="text-xs text-dark-400">Karta {i + 1}</p>
+                </div>
               ))}
             </div>
 
-            {selectedRewardType === 'cards' && (
+            <p className="text-dark-400 text-sm">
+              Wybierz {requiredCardCount} kart ({selectedCards.length}/{requiredCardCount}):
+            </p>
+
+            <div className="max-h-48 overflow-y-auto space-y-2">
+              {myCars.map(card => {
+                const isSelected = selectedCards.includes(card.id);
+                const isFull = selectedCards.length >= requiredCardCount && !isSelected;
+                return (
+                  <button
+                    key={card.id}
+                    onClick={() => toggleCardSelection(card.id, requiredCardCount)}
+                    disabled={isFull}
+                    className={`w-full flex items-center gap-3 p-3 rounded-xl transition-colors ${
+                      isSelected
+                        ? 'bg-turbo-500/20 border border-turbo-500'
+                        : isFull
+                          ? 'bg-dark-800 opacity-40 cursor-not-allowed'
+                          : 'bg-dark-700 hover:bg-dark-600'
+                    }`}
+                  >
+                    <div className="w-12 h-8 bg-dark-600 rounded overflow-hidden">
+                      {card.image_url && (
+                        <img src={card.image_url} alt={card.name} className="w-full h-full object-cover" />
+                      )}
+                    </div>
+                    <div className="flex-1 text-left">
+                      <p className="font-medium text-white text-sm">{card.name}</p>
+                      <p className="text-xs text-dark-400">
+                        {card.car_horsepower}HP • {card.car_torque}Nm • {card.car_max_speed}km/h
+                      </p>
+                    </div>
+                    {isSelected && (
+                      <Check className="w-5 h-5 text-turbo-400" />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            {selectedBattle?.reward_type === 'cards' && (
               <p className="text-xs text-red-400">
-                ⚠️ Jeśli przegrasz, stracisz wybrane karty!
+                Jesli przegrasz, stracisz wybrane karty!
               </p>
             )}
 
             <Button
               fullWidth
               loading={isSubmitting}
-              disabled={selectedCards.length < 2}
+              disabled={selectedCards.length !== requiredCardCount}
               onClick={handleAcceptChallenge}
             >
-              Walcz! ({selectedCards.length}/2 kart)
+              Walcz! ({selectedCards.length}/{requiredCardCount} kart)
             </Button>
           </div>
         )}
