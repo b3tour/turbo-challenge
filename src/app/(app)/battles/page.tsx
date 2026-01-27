@@ -56,7 +56,7 @@ export default function BattlesPage() {
 
   // New challenge state
   const [availablePlayers, setAvailablePlayers] = useState<User[]>([]);
-  const [myCars, setMyCars] = useState<CollectibleCard[]>([]);
+  const [myCars, setMyCars] = useState<(CollectibleCard & { cooldownUntil?: Date })[]>([]);
   const [selectedOpponent, setSelectedOpponent] = useState<User | null>(null);
   const [selectedCards, setSelectedCards] = useState<string[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<BattleCategory>('total');
@@ -489,32 +489,46 @@ export default function BattlesPage() {
                     </Link>
                   </div>
                 ) : (
-                  myCars.map(card => (
-                    <button
-                      key={card.id}
-                      onClick={() => toggleCardSelection(card.id)}
-                      className={`w-full flex items-center gap-3 p-3 rounded-xl transition-colors ${
-                        selectedCards.includes(card.id)
-                          ? 'bg-turbo-500/20 border border-turbo-500'
-                          : 'bg-dark-700 hover:bg-dark-600'
-                      }`}
-                    >
-                      <div className="w-12 h-8 bg-dark-600 rounded overflow-hidden">
-                        {card.image_url && (
-                          <img src={card.image_url} alt={card.name} className="w-full h-full object-cover" />
-                        )}
-                      </div>
-                      <div className="flex-1 text-left">
-                        <p className="font-medium text-white text-sm">{card.name}</p>
-                        <p className="text-xs text-dark-400">
-                          {card.car_horsepower}HP • {card.car_torque}Nm • {card.car_max_speed}km/h
-                        </p>
-                      </div>
-                      {selectedCards.includes(card.id) && (
-                        <Check className="w-5 h-5 text-turbo-400" />
-                      )}
-                    </button>
-                  ))
+                  myCars.map(card => {
+                    const onCooldown = !!card.cooldownUntil;
+                    const cooldownLabel = card.cooldownUntil && card.cooldownUntil.getFullYear() < 2090
+                      ? `${Math.ceil((card.cooldownUntil.getTime() - Date.now()) / (1000 * 60 * 60 * 24))}d`
+                      : onCooldown ? 'W grze' : '';
+                    return (
+                      <button
+                        key={card.id}
+                        onClick={() => !onCooldown && toggleCardSelection(card.id)}
+                        disabled={onCooldown}
+                        className={`w-full flex items-center gap-3 p-3 rounded-xl transition-colors ${
+                          onCooldown
+                            ? 'bg-dark-800 opacity-40 cursor-not-allowed'
+                            : selectedCards.includes(card.id)
+                              ? 'bg-turbo-500/20 border border-turbo-500'
+                              : 'bg-dark-700 hover:bg-dark-600'
+                        }`}
+                      >
+                        <div className="w-12 h-8 bg-dark-600 rounded overflow-hidden">
+                          {card.image_url && (
+                            <img src={card.image_url} alt={card.name} className="w-full h-full object-cover" />
+                          )}
+                        </div>
+                        <div className="flex-1 text-left">
+                          <p className="font-medium text-white text-sm">{card.name}</p>
+                          <p className="text-xs text-dark-400">
+                            {card.car_horsepower}HP • {card.car_torque}Nm • {card.car_max_speed}km/h
+                          </p>
+                        </div>
+                        {onCooldown ? (
+                          <span className="text-xs text-red-400 font-medium flex items-center gap-1">
+                            <Clock className="w-3 h-3" />
+                            {cooldownLabel}
+                          </span>
+                        ) : selectedCards.includes(card.id) ? (
+                          <Check className="w-5 h-5 text-turbo-400" />
+                        ) : null}
+                      </button>
+                    );
+                  })
                 )}
               </div>
 
@@ -635,18 +649,25 @@ export default function BattlesPage() {
             <div className="max-h-48 overflow-y-auto space-y-2">
               {myCars.map(card => {
                 const isSelected = selectedCards.includes(card.id);
+                const onCooldown = !!card.cooldownUntil;
                 const isFull = selectedCards.length >= requiredCardCount && !isSelected;
+                const isDisabled = onCooldown || isFull;
+                const cooldownLabel = card.cooldownUntil && card.cooldownUntil.getFullYear() < 2090
+                  ? `${Math.ceil((card.cooldownUntil.getTime() - Date.now()) / (1000 * 60 * 60 * 24))}d`
+                  : onCooldown ? 'W grze' : '';
                 return (
                   <button
                     key={card.id}
-                    onClick={() => toggleCardSelection(card.id, requiredCardCount)}
-                    disabled={isFull}
+                    onClick={() => !onCooldown && toggleCardSelection(card.id, requiredCardCount)}
+                    disabled={isDisabled}
                     className={`w-full flex items-center gap-3 p-3 rounded-xl transition-colors ${
-                      isSelected
-                        ? 'bg-turbo-500/20 border border-turbo-500'
-                        : isFull
-                          ? 'bg-dark-800 opacity-40 cursor-not-allowed'
-                          : 'bg-dark-700 hover:bg-dark-600'
+                      onCooldown
+                        ? 'bg-dark-800 opacity-40 cursor-not-allowed'
+                        : isSelected
+                          ? 'bg-turbo-500/20 border border-turbo-500'
+                          : isFull
+                            ? 'bg-dark-800 opacity-40 cursor-not-allowed'
+                            : 'bg-dark-700 hover:bg-dark-600'
                     }`}
                   >
                     <div className="w-12 h-8 bg-dark-600 rounded overflow-hidden">
@@ -660,9 +681,14 @@ export default function BattlesPage() {
                         {card.car_horsepower}HP • {card.car_torque}Nm • {card.car_max_speed}km/h
                       </p>
                     </div>
-                    {isSelected && (
+                    {onCooldown ? (
+                      <span className="text-xs text-red-400 font-medium flex items-center gap-1">
+                        <Clock className="w-3 h-3" />
+                        {cooldownLabel}
+                      </span>
+                    ) : isSelected ? (
                       <Check className="w-5 h-5 text-turbo-400" />
-                    )}
+                    ) : null}
                   </button>
                 );
               })}

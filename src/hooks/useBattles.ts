@@ -190,6 +190,17 @@ export function useBattles(options: UseBattlesOptions = {}) {
       return { success: false, error: 'Nie posiadasz wszystkich wybranych kart' };
     }
 
+    // Sprawdź cooldown kart
+    const cooldownMap = await getCardsOnCooldown();
+    const now = new Date();
+    const cooldownCards = cardIds.filter(id => {
+      const unlock = cooldownMap.get(id);
+      return unlock && unlock > now;
+    });
+    if (cooldownCards.length > 0) {
+      return { success: false, error: 'Niektóre karty są na cooldownie po ostatniej bitwie' };
+    }
+
     // Oblicz datę wygaśnięcia (7 dni)
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 7);
@@ -276,6 +287,17 @@ export function useBattles(options: UseBattlesOptions = {}) {
 
     if (!userCards || userCards.length < cardIds.length) {
       return { success: false, error: 'Nie posiadasz wszystkich wybranych kart' };
+    }
+
+    // Sprawdź cooldown kart
+    const cooldownMap = await getCardsOnCooldown();
+    const now = new Date();
+    const cooldownCards = cardIds.filter(id => {
+      const unlock = cooldownMap.get(id);
+      return unlock && unlock > now;
+    });
+    if (cooldownCards.length > 0) {
+      return { success: false, error: 'Niektóre karty są na cooldownie po ostatniej bitwie' };
     }
 
     // Pobierz karty obu stron
@@ -486,8 +508,67 @@ export function useBattles(options: UseBattlesOptions = {}) {
     return (users || []) as User[];
   }, [userId]);
 
-  // Pobierz moje karty samochodów do wyboru
-  const getMyCars = useCallback(async (): Promise<CollectibleCard[]> => {
+  // Pobierz karty na cooldownie (użyte w bitwach w ciągu ostatnich 7 dni)
+  const getCardsOnCooldown = useCallback(async (): Promise<Map<string, Date>> => {
+    if (!userId) return new Map();
+
+    const cooldownDays = 7;
+    const cooldownDate = new Date();
+    cooldownDate.setDate(cooldownDate.getDate() - cooldownDays);
+
+    // Pobierz zakończone bitwy z ostatnich 7 dni
+    const { data: recentBattles } = await supabase
+      .from('card_battles')
+      .select('challenger_id, opponent_id, challenger_card_ids, opponent_card_ids, completed_at')
+      .eq('status', 'completed')
+      .or(`challenger_id.eq.${userId},opponent_id.eq.${userId}`)
+      .gte('completed_at', cooldownDate.toISOString());
+
+    // Pobierz pending bitwy gdzie user jest challengerem (karty są zablokowane)
+    const { data: pendingBattles } = await supabase
+      .from('card_battles')
+      .select('challenger_card_ids, created_at')
+      .eq('status', 'pending')
+      .eq('challenger_id', userId);
+
+    const cooldownMap = new Map<string, Date>();
+
+    // Karty z zakończonych bitew - cooldown 7 dni od completed_at
+    (recentBattles || []).forEach(battle => {
+      const completedAt = new Date(battle.completed_at);
+      const unlockDate = new Date(completedAt);
+      unlockDate.setDate(unlockDate.getDate() + cooldownDays);
+
+      const myCardIds = battle.challenger_id === userId
+        ? battle.challenger_card_ids || []
+        : battle.opponent_card_ids || [];
+
+      myCardIds.forEach((cardId: string) => {
+        const existing = cooldownMap.get(cardId);
+        if (!existing || unlockDate > existing) {
+          cooldownMap.set(cardId, unlockDate);
+        }
+      });
+    });
+
+    // Karty z pending bitew (challenger zablokował karty)
+    (pendingBattles || []).forEach(battle => {
+      const cardIds = battle.challenger_card_ids || [];
+      cardIds.forEach((cardId: string) => {
+        // Pending = zablokowane do rozstrzygnięcia, ustawiamy daleki unlock
+        const existing = cooldownMap.get(cardId);
+        const pendingUnlock = new Date('2099-01-01');
+        if (!existing || pendingUnlock > existing) {
+          cooldownMap.set(cardId, pendingUnlock);
+        }
+      });
+    });
+
+    return cooldownMap;
+  }, [userId]);
+
+  // Pobierz moje karty samochodów do wyboru (z info o cooldownie)
+  const getMyCars = useCallback(async (): Promise<(CollectibleCard & { cooldownUntil?: Date })[]> => {
     if (!userId) return [];
 
     const { data } = await supabase
@@ -498,8 +579,19 @@ export function useBattles(options: UseBattlesOptions = {}) {
 
     if (!data) return [];
 
-    return data.map(d => d.card as unknown as CollectibleCard);
-  }, [userId]);
+    const cooldownMap = await getCardsOnCooldown();
+    const now = new Date();
+
+    return data.map(d => {
+      const card = d.card as unknown as CollectibleCard;
+      const unlockDate = cooldownMap.get(card.id);
+      const isOnCooldown = unlockDate && unlockDate > now;
+      return {
+        ...card,
+        cooldownUntil: isOnCooldown ? unlockDate : undefined,
+      };
+    });
+  }, [userId, getCardsOnCooldown]);
 
   // Statystyki bitew
   const getBattleStats = useCallback(async (): Promise<{ wins: number; losses: number; draws: number }> => {
