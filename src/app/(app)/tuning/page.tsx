@@ -76,12 +76,15 @@ export default function TuningPage() {
     category: TuningCategory;
   } | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
+  const [challengeRefresh, setChallengeRefresh] = useState(0);
+
+  const refreshMyChallenges = () => setChallengeRefresh(c => c + 1);
 
   useEffect(() => {
     if (profile?.id) {
       fetchMyChallenges().then(setMyChallenges);
     }
-  }, [profile?.id, fetchMyChallenges, openChallenges]);
+  }, [profile?.id, fetchMyChallenges, openChallenges, challengeRefresh]);
 
   if (!profile) return null;
 
@@ -146,7 +149,7 @@ export default function TuningPage() {
     if (result.success) {
       success('Wyzwanie wystawione!', 'Czekaj az ktos je podejmie');
       setShowPostChallengeModal(false);
-      fetchMyChallenges().then(setMyChallenges);
+      refreshMyChallenges();
     } else {
       toastError('Blad', result.error || 'Nie udalo sie wystawic wyzwania');
     }
@@ -158,7 +161,7 @@ export default function TuningPage() {
     const result = await cancelChallenge(challengeId);
     if (result.success) {
       success('Anulowano', 'Wyzwanie zostalo anulowane');
-      fetchMyChallenges().then(setMyChallenges);
+      refreshMyChallenges();
     } else {
       toastError('Blad', result.error || 'Nie udalo sie anulowac');
     }
@@ -378,51 +381,97 @@ export default function TuningPage() {
 
       {/* TAB: Wyzwania */}
       {tab === 'challenges' && (
-        <div className="space-y-3">
+        <div className="space-y-4">
           {loading ? (
             <div className="space-y-3">
               {[1, 2, 3].map(i => (
                 <Card key={i} className="h-20 animate-pulse bg-dark-700" />
               ))}
             </div>
-          ) : openChallenges.length > 0 ? (
-            openChallenges.map(ch => (
-              <Card key={ch.id} className="hover:border-orange-500/50 transition-colors cursor-pointer"
-                onClick={() => {
-                  setSelectedChallenge(ch);
-                  setSelectedAcceptCar(null);
-                  setShowAcceptModal(true);
-                }}
-              >
-                <div className="flex items-center gap-3">
-                  <Avatar
-                    src={(ch.challenger as unknown as { avatar_url?: string })?.avatar_url}
-                    fallback={(ch.challenger as unknown as { nick: string })?.nick || '?'}
-                    size="sm"
-                  />
-                  <div className="flex-1">
-                    <h3 className="font-medium text-white text-sm">
-                      {(ch.challenger as unknown as { nick: string })?.nick || 'Gracz'}
-                    </h3>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-400">
-                        {CATEGORY_LABELS[ch.category as TuningCategory]?.icon}{' '}
-                        {CATEGORY_LABELS[ch.category as TuningCategory]?.name}
-                      </span>
-                    </div>
-                  </div>
-                  <Button size="sm" variant="primary">
-                    Podejmij
-                  </Button>
-                </div>
-              </Card>
-            ))
           ) : (
-            <Card className="text-center py-12">
-              <Swords className="w-12 h-12 text-dark-600 mx-auto mb-3" />
-              <p className="text-dark-400">Brak otwartych wyzwan</p>
-              <p className="text-sm text-dark-500 mt-1">Wystaw wlasne wyzwanie w zakladce Garaz!</p>
-            </Card>
+            <>
+              {/* Moje otwarte wyzwania */}
+              {myChallenges.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-medium text-dark-400 mb-2">Twoje wyzwania</h3>
+                  <div className="space-y-2">
+                    {myChallenges.map(ch => (
+                      <Card key={ch.id} className="border-cyan-500/30">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-cyan-500/20 flex items-center justify-center flex-shrink-0">
+                            <Swords className="w-4 h-4 text-cyan-400" />
+                          </div>
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-medium text-white">
+                                {CATEGORY_LABELS[ch.category as TuningCategory]?.icon}{' '}
+                                {CATEGORY_LABELS[ch.category as TuningCategory]?.name}
+                              </span>
+                            </div>
+                            <span className="text-xs text-dark-500">Oczekuje na przeciwnika...</span>
+                          </div>
+                          <button
+                            onClick={() => handleCancelChallenge(ch.id)}
+                            disabled={actionLoading}
+                            className="px-3 py-1.5 text-xs font-medium text-red-400 hover:text-red-300 bg-red-500/10 rounded-lg hover:bg-red-500/20 transition-colors"
+                          >
+                            Anuluj
+                          </button>
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Wyzwania od innych graczy */}
+              {openChallenges.length > 0 ? (
+                <div>
+                  {myChallenges.length > 0 && (
+                    <h3 className="text-sm font-medium text-dark-400 mb-2">Wyzwania do podjecia</h3>
+                  )}
+                  <div className="space-y-2">
+                    {openChallenges.map(ch => (
+                      <Card key={ch.id} className="hover:border-orange-500/50 transition-colors cursor-pointer"
+                        onClick={() => {
+                          setSelectedChallenge(ch);
+                          setSelectedAcceptCar(null);
+                          setShowAcceptModal(true);
+                        }}
+                      >
+                        <div className="flex items-center gap-3">
+                          <Avatar
+                            src={(ch.challenger as unknown as { avatar_url?: string })?.avatar_url}
+                            fallback={(ch.challenger as unknown as { nick: string })?.nick || '?'}
+                            size="sm"
+                          />
+                          <div className="flex-1">
+                            <h3 className="font-medium text-white text-sm">
+                              {(ch.challenger as unknown as { nick: string })?.nick || 'Gracz'}
+                            </h3>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              <span className="text-xs px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-400">
+                                {CATEGORY_LABELS[ch.category as TuningCategory]?.icon}{' '}
+                                {CATEGORY_LABELS[ch.category as TuningCategory]?.name}
+                              </span>
+                            </div>
+                          </div>
+                          <Button size="sm" variant="primary">
+                            Podejmij
+                          </Button>
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
+              ) : myChallenges.length === 0 ? (
+                <Card className="text-center py-12">
+                  <Swords className="w-12 h-12 text-dark-600 mx-auto mb-3" />
+                  <p className="text-dark-400">Brak otwartych wyzwan</p>
+                  <p className="text-sm text-dark-500 mt-1">Wystaw wlasne wyzwanie w zakladce Garaz!</p>
+                </Card>
+              ) : null}
+            </>
           )}
         </div>
       )}
