@@ -23,7 +23,7 @@ export interface UserNotification {
   user_id: string;
   title: string;
   message: string;
-  type: 'xp_gain' | 'level_up' | 'achievement' | 'mission_approved' | 'mission_rejected' | 'card_received' | 'battle_challenge' | 'battle_result' | 'system';
+  type: 'xp_gain' | 'level_up' | 'achievement' | 'mission_approved' | 'mission_rejected' | 'card_received' | 'battle_challenge' | 'battle_result' | 'system' | 'tuning_result';
   read: boolean;
   data?: Record<string, unknown>;
   created_at: string;
@@ -58,6 +58,8 @@ function getNotificationLink(type: UserNotification['type']): string | null {
       return '/profile';
     case 'xp_gain':
       return '/leaderboard';
+    case 'tuning_result':
+      return '/tuning';
     case 'system':
     default:
       return null;
@@ -74,6 +76,7 @@ const notificationTypeMap: Record<UserNotification['type'], Announcement['type']
   card_received: 'success',
   battle_challenge: 'urgent',
   battle_result: 'success',
+  tuning_result: 'info',
   system: 'info',
 };
 

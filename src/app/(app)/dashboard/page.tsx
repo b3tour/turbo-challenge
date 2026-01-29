@@ -23,6 +23,7 @@ import {
   Layers,
   Swords,
   Package,
+  Wrench,
 } from 'lucide-react';
 import { useCards, RARITY_CONFIG } from '@/hooks/useCards';
 import { useBattles } from '@/hooks/useBattles';
@@ -315,6 +316,41 @@ export default function DashboardPage() {
                     </p>
                   </>
                 )}
+              </div>
+              <ChevronRight className="w-5 h-5 text-dark-400" />
+            </div>
+          </Card>
+        </Link>
+      </div>
+
+      {/* Strefa Tuningu */}
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+            <Wrench className="w-5 h-5 text-cyan-500" />
+            Strefa Tuningu
+          </h2>
+          <Link
+            href="/tuning"
+            className="text-sm text-accent-400 flex items-center"
+          >
+            Otwórz
+            <ChevronRight className="w-4 h-4" />
+          </Link>
+        </div>
+
+        <Link href="/tuning">
+          <Card className="relative overflow-hidden hover:border-cyan-500/50 transition-colors">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/10 rounded-full blur-3xl" />
+            <div className="relative flex items-center gap-4">
+              <div className="w-14 h-14 rounded-xl bg-cyan-500/20 flex items-center justify-center">
+                <Wrench className="w-7 h-7 text-cyan-500" />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-semibold text-white">Modyfikuj i walcz!</h3>
+                <p className="text-sm text-dark-400">
+                  Tuninguj auto, wystawiaj wyzwania, wygraj XP!
+                </p>
               </div>
               <ChevronRight className="w-5 h-5 text-dark-400" />
             </div>

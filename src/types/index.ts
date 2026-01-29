@@ -378,3 +378,39 @@ export interface CardBattle {
   challenger_cards?: CollectibleCard[];
   opponent_cards?: CollectibleCard[];
 }
+
+// Strefa Tuningu
+export type TuningCategory = 'drag' | 'hill_climb' | 'track' | 'time_attack';
+export type TuningChallengeStatus = 'open' | 'completed' | 'cancelled';
+
+export interface TunedCar {
+  id: string;
+  user_id: string;
+  card_id: string;
+  engine_stage: number;  // 0-3
+  turbo_stage: number;   // 0-3
+  weight_stage: number;  // 0-3
+  xp_invested: number;
+  created_at: string;
+  card?: CollectibleCard;
+}
+
+export interface TuningChallenge {
+  id: string;
+  challenger_id: string;
+  tuned_car_id: string;
+  category: TuningCategory;
+  status: TuningChallengeStatus;
+  opponent_id?: string | null;
+  opponent_tuned_car_id?: string | null;
+  challenger_score?: number | null;
+  opponent_score?: number | null;
+  winner_id?: string | null;
+  created_at: string;
+  completed_at?: string | null;
+  // Relacje
+  challenger?: User;
+  opponent?: User;
+  tuned_car?: TunedCar;
+  opponent_tuned_car?: TunedCar;
+}
