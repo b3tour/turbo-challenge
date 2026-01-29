@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { CardBattle, BattleRoundCategory, BattleSlotAssignment, BattleRoundResult, CollectibleCard, User } from '@/types';
 import { sendUserNotification } from '@/hooks/useAnnouncements';
+import { BATTLE_BADGES, BattleStatsForBadges } from '@/config/battleBadges';
 
 interface UseBattlesOptions {
   userId?: string;
@@ -284,6 +285,89 @@ export function useBattles(options: UseBattlesOptions = {}) {
     return { success: true, battle: data };
   }, [userId, getChallengesSentThisWeek, fetchBattles]);
 
+  // Sprawdz i przydziel odznaki bitewne (karty achievement) po kazdej bitwie
+  const checkAndAwardBattleBadges = useCallback(async (targetUserId: string) => {
+    try {
+      // Pobierz statystyki gracza
+      const { data: battles } = await supabase
+        .from('card_battles')
+        .select('winner_id, challenger_id, opponent_id, challenger_score, opponent_score')
+        .eq('status', 'completed')
+        .or(`challenger_id.eq.${targetUserId},opponent_id.eq.${targetUserId}`);
+
+      if (!battles) return;
+
+      let wins = 0, losses = 0, draws = 0;
+      let hasPerfectWin = false;
+
+      battles.forEach(b => {
+        if (b.winner_id === targetUserId) {
+          wins++;
+          const isChallenger = b.challenger_id === targetUserId;
+          const myScore = isChallenger ? b.challenger_score : b.opponent_score;
+          const theirScore = isChallenger ? b.opponent_score : b.challenger_score;
+          if (myScore === 3 && theirScore === 0) hasPerfectWin = true;
+        } else if (b.winner_id === null) {
+          draws++;
+        } else {
+          losses++;
+        }
+      });
+
+      const stats: BattleStatsForBadges = {
+        wins, losses, draws,
+        totalBattles: wins + losses + draws,
+        hasPerfectWin,
+      };
+
+      // Pobierz karty achievement gracza (zeby nie dawac duplikatow)
+      const { data: ownedAchievements } = await supabase
+        .from('user_cards')
+        .select('card:cards!inner(name, card_type)')
+        .eq('user_id', targetUserId)
+        .eq('card.card_type', 'achievement');
+
+      const ownedNames = new Set(
+        (ownedAchievements || []).map(uc => (uc.card as unknown as { name: string }).name)
+      );
+
+      // Sprawdz kazda odznake
+      for (const badge of BATTLE_BADGES) {
+        if (!badge.condition(stats)) continue;
+        if (ownedNames.has(badge.name)) continue;
+
+        // Szukaj karty w DB po nazwie
+        const { data: cardData } = await supabase
+          .from('cards')
+          .select('id')
+          .eq('name', badge.name)
+          .eq('card_type', 'achievement')
+          .eq('is_active', true)
+          .single();
+
+        if (!cardData) continue;
+
+        // Przydziel karte
+        await supabase.from('user_cards').insert({
+          user_id: targetUserId,
+          card_id: cardData.id,
+          obtained_from: 'achievement',
+        });
+
+        // Wyslij powiadomienie
+        await sendUserNotification(
+          targetUserId,
+          'Nowa odznaka bitewna!',
+          `Zdobyłeś odznakę "${badge.name}" — ${badge.description}!`,
+          'achievement',
+          { badge_id: badge.id, badge_name: badge.name }
+        );
+      }
+    } catch (e) {
+      console.error('Error checking battle badges:', e);
+    }
+  }, []);
+
   // Akceptuj wyzwanie (z wylosowanymi kartami i przydziałem slotów)
   const acceptChallenge = useCallback(async (
     battleId: string,
@@ -387,6 +471,10 @@ export function useBattles(options: UseBattlesOptions = {}) {
       await supabase.rpc('add_xp', { user_id: battle.opponent_id, xp_amount: 10 });
     }
 
+    // Sprawdz i przydziel odznaki bitewne obu graczom
+    await checkAndAwardBattleBadges(battle.challenger_id);
+    await checkAndAwardBattleBadges(battle.opponent_id);
+
     // Wyślij powiadomienia
     const { data: usersData } = await supabase
       .from('users')
@@ -437,7 +525,7 @@ export function useBattles(options: UseBattlesOptions = {}) {
 
     await fetchBattles();
     return { success: true, results, winnerId };
-  }, [userId, fetchBattles]);
+  }, [userId, fetchBattles, checkAndAwardBattleBadges]);
 
   // Odrzuć wyzwanie
   const declineChallenge = useCallback(async (battleId: string): Promise<{ success: boolean; error?: string }> => {
@@ -521,26 +609,40 @@ export function useBattles(options: UseBattlesOptions = {}) {
     return (users || []) as User[];
   }, [userId]);
 
-  // Statystyki bitew
-  const getBattleStats = useCallback(async (): Promise<{ wins: number; losses: number; draws: number }> => {
-    if (!userId) return { wins: 0, losses: 0, draws: 0 };
+  // Statystyki bitew (rozszerzone o hasPerfectWin i totalBattles)
+  const getBattleStats = useCallback(async (): Promise<BattleStatsForBadges> => {
+    if (!userId) return { wins: 0, losses: 0, draws: 0, totalBattles: 0, hasPerfectWin: false };
 
     const { data: battles } = await supabase
       .from('card_battles')
-      .select('winner_id, challenger_id, opponent_id')
+      .select('winner_id, challenger_id, opponent_id, challenger_score, opponent_score')
       .eq('status', 'completed')
       .or(`challenger_id.eq.${userId},opponent_id.eq.${userId}`);
 
-    if (!battles) return { wins: 0, losses: 0, draws: 0 };
+    if (!battles) return { wins: 0, losses: 0, draws: 0, totalBattles: 0, hasPerfectWin: false };
 
     let wins = 0, losses = 0, draws = 0;
+    let hasPerfectWin = false;
+
     battles.forEach(b => {
-      if (b.winner_id === userId) wins++;
-      else if (b.winner_id === null) draws++;
-      else losses++;
+      if (b.winner_id === userId) {
+        wins++;
+        // Sprawdz czy 3-0 sweep
+        const isChallenger = b.challenger_id === userId;
+        const myScore = isChallenger ? b.challenger_score : b.opponent_score;
+        const theirScore = isChallenger ? b.opponent_score : b.challenger_score;
+        if (myScore === 3 && theirScore === 0) {
+          hasPerfectWin = true;
+        }
+      } else if (b.winner_id === null) {
+        draws++;
+      } else {
+        losses++;
+      }
     });
 
-    return { wins, losses, draws };
+    const totalBattles = wins + losses + draws;
+    return { wins, losses, draws, totalBattles, hasPerfectWin };
   }, [userId]);
 
   return {
@@ -555,6 +657,7 @@ export function useBattles(options: UseBattlesOptions = {}) {
     dealRandomCards,
     getChallengesSentThisWeek,
     getBattleStats,
+    checkAndAwardBattleBadges,
     refetch: fetchBattles,
   };
 }

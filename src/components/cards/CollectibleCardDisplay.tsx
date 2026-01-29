@@ -13,6 +13,7 @@ import {
   User,
   CheckCircle,
   Clock,
+  Award,
 } from 'lucide-react';
 
 // Konfiguracja efektów według rzadkości
@@ -90,6 +91,82 @@ export function CollectibleCardDisplay({
     { top: '70%', right: '15%', delay: '1.5s' },
     { top: '40%', left: '80%', delay: '0.7s' },
   ] : [];
+
+  // === ACHIEVEMENT CARD (pionowa, bez car stats) ===
+  if (card.card_type === 'achievement' && variant === 'grid') {
+    return (
+      <button
+        onClick={onClick}
+        className={`relative text-left transition-all duration-300 group ${
+          owned ? 'hover:scale-[1.03]' : 'opacity-75 hover:opacity-100'
+        }`}
+      >
+        <div className={`relative rounded-xl border-3 overflow-hidden ${effects.frameClass} ${effects.cardClass} ${
+          owned ? 'shadow-xl' : ''
+        }`} style={{ borderWidth: '3px' }}>
+          {/* Iskierki dla legendary */}
+          {sparklePositions.map((pos, i) => (
+            <div
+              key={i}
+              className="sparkle-particle"
+              style={{ ...pos, animationDelay: pos.delay }}
+            />
+          ))}
+
+          {/* Obrazek lub ikona - proporcje 3:4 (pionowe) */}
+          <div className="aspect-[3/4] relative">
+            {card.image_url ? (
+              <img
+                src={card.image_url}
+                alt={card.name}
+                className={`w-full h-full object-cover transition-all duration-500 ${
+                  !owned && !isDemoMode ? 'grayscale brightness-50' : ''
+                } ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
+                onLoad={() => setImageLoaded(true)}
+              />
+            ) : (
+              <div className={`w-full h-full ${config.bgColor} flex items-center justify-center`}>
+                <Award className={`w-12 h-12 ${config.color}`} />
+              </div>
+            )}
+
+            {/* Lock overlay */}
+            {!owned && !isDemoMode && (
+              <div className="absolute inset-0 bg-dark-900/50 flex items-center justify-center">
+                <Lock className="w-8 h-8 text-dark-400" />
+              </div>
+            )}
+
+            {/* Posiadana */}
+            {owned && (
+              <div className="absolute top-2 left-2">
+                <CheckCircle className="w-6 h-6 text-green-500 drop-shadow-lg" />
+              </div>
+            )}
+
+            {/* Gradient overlay na dole */}
+            <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-dark-900 to-transparent" />
+          </div>
+
+          {/* Info pod obrazkiem */}
+          <div className="p-2.5 bg-dark-800">
+            <h3 className={`font-bold text-sm truncate ${owned ? 'text-white' : 'text-dark-300'}`}>
+              {card.name}
+            </h3>
+            <p className="text-xs text-dark-500 mt-0.5 truncate">{card.description}</p>
+            <div className="flex items-center gap-1 mt-1">
+              <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${config.bgColor} ${config.color}`}>
+                {card.rarity.charAt(0).toUpperCase() + card.rarity.slice(1)}
+              </span>
+              {card.category && (
+                <span className="text-[10px] text-dark-500">{card.category}</span>
+              )}
+            </div>
+          </div>
+        </div>
+      </button>
+    );
+  }
 
   // === HERO VARIANT (pełna szerokość, 16:9) ===
   if (variant === 'hero') {
