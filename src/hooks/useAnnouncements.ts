@@ -38,6 +38,30 @@ export interface UnifiedNotification {
   created_at: string;
   is_read: boolean;
   source: 'announcement' | 'notification';
+  originalType?: UserNotification['type'];
+  link?: string | null;
+}
+
+// Mapowanie oryginalnego typu powiadomienia na docelowy URL
+function getNotificationLink(type: UserNotification['type']): string | null {
+  switch (type) {
+    case 'battle_challenge':
+    case 'battle_result':
+      return '/battles';
+    case 'mission_approved':
+    case 'mission_rejected':
+      return '/missions';
+    case 'achievement':
+    case 'card_received':
+      return '/cards';
+    case 'level_up':
+      return '/profile';
+    case 'xp_gain':
+      return '/leaderboard';
+    case 'system':
+    default:
+      return null;
+  }
 }
 
 // Mapowanie typów powiadomień na typy wizualne
@@ -107,15 +131,20 @@ export function useAnnouncements(userId?: string) {
       }));
 
       // Zunifikuj powiadomienia
-      const unifiedNotifications: UnifiedNotification[] = (userNotifs || []).map(n => ({
-        id: n.id,
-        title: n.title,
-        message: n.message,
-        type: notificationTypeMap[n.type as UserNotification['type']] || 'info',
-        created_at: n.created_at,
-        is_read: n.read,
-        source: 'notification' as const,
-      }));
+      const unifiedNotifications: UnifiedNotification[] = (userNotifs || []).map(n => {
+        const origType = n.type as UserNotification['type'];
+        return {
+          id: n.id,
+          title: n.title,
+          message: n.message,
+          type: notificationTypeMap[origType] || 'info',
+          created_at: n.created_at,
+          is_read: n.read,
+          source: 'notification' as const,
+          originalType: origType,
+          link: getNotificationLink(origType),
+        };
+      });
 
       // Połącz i posortuj
       const all = [...unifiedAnnouncements, ...unifiedNotifications]

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useAnnouncements, UnifiedNotification } from '@/hooks/useAnnouncements';
 import { useToast } from '@/components/ui/Toast';
 import { formatDateTime } from '@/lib/utils';
@@ -30,6 +31,7 @@ interface NotificationBellProps {
 export default function NotificationBell({ userId }: NotificationBellProps) {
   const { notifications, unreadCount, markAsRead, markAllAsRead } = useAnnouncements(userId);
   const { info } = useToast();
+  const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [lastSeenCount, setLastSeenCount] = useState(0);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -61,6 +63,11 @@ export default function NotificationBell({ userId }: NotificationBellProps) {
   const handleNotificationClick = (notification: UnifiedNotification) => {
     if (!notification.is_read) {
       markAsRead(notification.id, notification.source);
+    }
+    // Nawiguj do odpowiedniej strony
+    if (notification.link) {
+      setIsOpen(false);
+      router.push(notification.link);
     }
   };
 

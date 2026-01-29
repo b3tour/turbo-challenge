@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { useAnnouncements, UnifiedNotification } from '@/hooks/useAnnouncements';
 import { Card, Badge } from '@/components/ui';
@@ -14,6 +15,7 @@ import {
   CheckCheck,
   Clock,
   Megaphone,
+  ChevronRight,
 } from 'lucide-react';
 
 const typeConfig: Record<UnifiedNotification['type'], { icon: React.ElementType; color: string; bgColor: string; label: string }> = {
@@ -28,6 +30,7 @@ type FilterType = 'all' | 'unread' | 'read';
 export default function AnnouncementsPage() {
   const { profile } = useAuth();
   const { notifications, unreadCount, loading, markAsRead, markAllAsRead } = useAnnouncements(profile?.id);
+  const router = useRouter();
   const [filter, setFilter] = useState<FilterType>('all');
 
   if (!profile) return null;
@@ -47,6 +50,10 @@ export default function AnnouncementsPage() {
   const handleNotificationClick = (notification: UnifiedNotification) => {
     if (!notification.is_read) {
       markAsRead(notification.id, notification.source);
+    }
+    // Nawiguj do odpowiedniej strony
+    if (notification.link) {
+      router.push(notification.link);
     }
   };
 
@@ -163,6 +170,13 @@ export default function AnnouncementsPage() {
                       </Badge>
                     </div>
                   </div>
+
+                  {/* Strzałka nawigacji */}
+                  {notification.link && (
+                    <div className="flex-shrink-0 self-center">
+                      <ChevronRight className="w-5 h-5 text-dark-500" />
+                    </div>
+                  )}
                 </div>
               </Card>
             );
