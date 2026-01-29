@@ -207,13 +207,26 @@ export function useTuning({ userId }: UseTuningProps) {
     const { data: activeChallenge } = await supabase
       .from('tuning_challenges')
       .select('id')
-      .eq('tuned_car_id', tunedCarId)
+      .or(`tuned_car_id.eq.${tunedCarId},opponent_tuned_car_id.eq.${tunedCarId}`)
       .eq('status', 'open')
       .limit(1);
 
     if (activeChallenge && activeChallenge.length > 0) {
       return { success: false, error: 'Anuluj najpierw aktywne wyzwanie z tym autem' };
     }
+
+    // Nullify FK references in completed/cancelled challenges before deleting
+    await supabase
+      .from('tuning_challenges')
+      .update({ tuned_car_id: null })
+      .eq('tuned_car_id', tunedCarId)
+      .in('status', ['completed', 'cancelled']);
+
+    await supabase
+      .from('tuning_challenges')
+      .update({ opponent_tuned_car_id: null })
+      .eq('opponent_tuned_car_id', tunedCarId)
+      .in('status', ['completed', 'cancelled']);
 
     const { error } = await supabase
       .from('tuned_cars')
