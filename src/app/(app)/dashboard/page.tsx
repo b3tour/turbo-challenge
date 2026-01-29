@@ -278,7 +278,7 @@ export default function DashboardPage() {
             )}
           </h2>
           <Link
-            href="/battles"
+            href="/arena"
             className="text-sm text-accent-400 flex items-center"
           >
             Rozpocznij
@@ -286,7 +286,7 @@ export default function DashboardPage() {
           </Link>
         </div>
 
-        <Link href="/battles">
+        <Link href="/arena">
           <Card className={`relative overflow-hidden hover:border-orange-500/50 transition-colors ${incomingChallenges.length > 0 ? 'border-orange-500/40' : ''}`}>
             <div className="absolute top-0 right-0 w-32 h-32 bg-orange-500/10 rounded-full blur-3xl" />
             <div className="relative flex items-center gap-4">
@@ -331,7 +331,7 @@ export default function DashboardPage() {
             Strefa Tuningu
           </h2>
           <Link
-            href="/tuning"
+            href="/arena"
             className="text-sm text-accent-400 flex items-center"
           >
             Otwórz
@@ -339,7 +339,7 @@ export default function DashboardPage() {
           </Link>
         </div>
 
-        <Link href="/tuning">
+        <Link href="/arena">
           <Card className="relative overflow-hidden hover:border-cyan-500/50 transition-colors">
             <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/10 rounded-full blur-3xl" />
             <div className="relative flex items-center gap-4">

@@ -47,7 +47,7 @@ function getNotificationLink(type: UserNotification['type']): string | null {
   switch (type) {
     case 'battle_challenge':
     case 'battle_result':
-      return '/battles';
+      return '/arena';
     case 'mission_approved':
     case 'mission_rejected':
       return '/missions';
@@ -59,7 +59,7 @@ function getNotificationLink(type: UserNotification['type']): string | null {
     case 'xp_gain':
       return '/leaderboard';
     case 'tuning_result':
-      return '/tuning';
+      return '/arena';
     case 'system':
     default:
       return null;
