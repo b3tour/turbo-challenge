@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { useMissions } from '@/hooks/useMissions';
 import { useLeaderboard } from '@/hooks/useLeaderboard';
-import { Card, Badge, Button, ProgressBar, Avatar } from '@/components/ui';
+import { Card, ProgressBar, Avatar } from '@/components/ui';
 import { MissionCard } from '@/components/missions';
 import { formatNumber } from '@/lib/utils';
 import { useLevels } from '@/hooks/useLevels';
@@ -13,17 +13,12 @@ import {
   Target,
   Trophy,
   Heart,
-  TrendingUp,
   ChevronRight,
   Zap,
   Medal,
-  Gift,
-  Crown,
-  Award,
   Layers,
   Swords,
   Package,
-  Wrench,
 } from 'lucide-react';
 import { useCards, RARITY_CONFIG } from '@/hooks/useCards';
 import { useBattles } from '@/hooks/useBattles';
@@ -35,10 +30,8 @@ export default function DashboardPage() {
     userId: profile?.id,
     activeOnly: true,
   });
-  const { leaderboard, getUserRank, loading: leaderboardLoading } = useLeaderboard({
-    limit: 5,
-  });
-  const { getCollectionStats, userCards } = useCards({ userId: profile?.id });
+  const { getUserRank } = useLeaderboard({ limit: 5 });
+  const { getCollectionStats } = useCards({ userId: profile?.id });
   const { calculateLevel, calculateLevelProgress, xpToNextLevel, getNextLevel } = useLevels();
   const { incomingChallenges } = useBattles({ userId: profile?.id });
 
@@ -57,10 +50,13 @@ export default function DashboardPage() {
     .filter(s => s.status === 'approved' || s.status === 'pending' || s.status === 'failed')
     .map(s => s.mission_id);
 
-  // Dostępne misje - tylko te bez zgłoszenia lub odrzucone/wycofane, posortowane od najnowszych
+  // Dostępne misje - tylko te bez zgłoszenia lub odrzucone/wycofane
   const availableMissions = missions
-    .filter(m => !busyMissionIds.includes(m.id))
-    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    .filter(m => !busyMissionIds.includes(m.id));
+
+  // Misja priorytetowa — najwyższe XP
+  const priorityMission = [...availableMissions]
+    .sort((a, b) => (b.xp_reward || 0) - (a.xp_reward || 0))[0] || null;
 
   // Liczba ukończonych misji
   const completedMissionIds = userSubmissions
@@ -172,7 +168,7 @@ export default function DashboardPage() {
           </h2>
           <Link
             href="/missions"
-            className="text-sm text-accent-400 flex items-center"
+            className="text-sm text-accent-400 flex items-center px-2 py-1 -mr-2 rounded-lg active:bg-dark-700/50"
           >
             Zobacz wszystkie
             <ChevronRight className="w-4 h-4" />
@@ -180,29 +176,17 @@ export default function DashboardPage() {
         </div>
 
         {missionsLoading ? (
-          <div className="space-y-3">
-            {[1, 2, 3].map(i => (
-              <Card key={i} className="h-24 animate-pulse bg-dark-700" />
-            ))}
-          </div>
-        ) : availableMissions.length > 0 ? (
-          <div className="space-y-3">
-            {availableMissions.slice(0, 3).map(mission => (
-              <MissionCard
-                key={mission.id}
-                mission={mission}
-                compact
-                onClick={() => router.push('/missions')}
-              />
-            ))}
-          </div>
+          <Card className="h-20 animate-pulse bg-dark-700" />
+        ) : priorityMission ? (
+          <MissionCard
+            mission={priorityMission}
+            compact
+            onClick={() => router.push('/missions')}
+          />
         ) : (
-          <Card className="text-center py-8">
-            <Target className="w-12 h-12 text-dark-600 mx-auto mb-3" />
-            <p className="text-dark-400">Wszystkie misje ukończone!</p>
-            <p className="text-sm text-dark-500 mt-1">
-              Sprawdź później - nowe misje wkrótce!
-            </p>
+          <Card className="text-center py-6">
+            <Target className="w-10 h-10 text-dark-600 mx-auto mb-2" />
+            <p className="text-dark-400 text-sm">Wszystkie misje ukończone!</p>
           </Card>
         )}
       </div>
@@ -216,7 +200,7 @@ export default function DashboardPage() {
           </h2>
           <Link
             href="/cards"
-            className="text-sm text-accent-400 flex items-center"
+            className="text-sm text-accent-400 flex items-center px-2 py-1 -mr-2 rounded-lg active:bg-dark-700/50"
           >
             Zobacz wszystkie
             <ChevronRight className="w-4 h-4" />
@@ -265,255 +249,54 @@ export default function DashboardPage() {
         </Card>
       </div>
 
-      {/* Turbo Battles */}
-      <div>
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-            <Swords className="w-5 h-5 text-orange-500" />
-            Turbo Bitwy
-            {incomingChallenges.length > 0 && (
-              <span className="w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center animate-pulse">
-                {incomingChallenges.length}
-              </span>
-            )}
-          </h2>
-          <Link
-            href="/arena"
-            className="text-sm text-accent-400 flex items-center"
-          >
-            Rozpocznij
-            <ChevronRight className="w-4 h-4" />
-          </Link>
-        </div>
-
+      {/* Action Grid */}
+      <div className="grid grid-cols-3 gap-3">
         <Link href="/arena">
-          <Card className={`relative overflow-hidden hover:border-orange-500/50 transition-colors ${incomingChallenges.length > 0 ? 'border-orange-500/40' : ''}`}>
-            <div className="absolute top-0 right-0 w-32 h-32 bg-orange-500/10 rounded-full blur-3xl" />
-            <div className="relative flex items-center gap-4">
-              <div className="w-14 h-14 rounded-xl bg-orange-500/20 flex items-center justify-center relative">
-                <Swords className="w-7 h-7 text-orange-500" />
-                {incomingChallenges.length > 0 && (
-                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center">
-                    <span className="text-[10px] font-bold text-white">!</span>
-                  </span>
-                )}
-              </div>
-              <div className="flex-1">
-                {incomingChallenges.length > 0 ? (
-                  <>
-                    <h3 className="font-semibold text-orange-400">
-                      {incomingChallenges.length === 1 ? 'Masz wyzwanie!' : `Masz ${incomingChallenges.length} wyzwania!`}
-                    </h3>
-                    <p className="text-sm text-dark-400">
-                      {incomingChallenges[0].challenger?.nick || 'Gracz'} czeka na odpowiedz
-                    </p>
-                  </>
-                ) : (
-                  <>
-                    <h3 className="font-semibold text-white">Wyzwij gracza!</h3>
-                    <p className="text-sm text-dark-400">
-                      3 rundy, losowe karty, strategiczny przydział!
-                    </p>
-                  </>
-                )}
-              </div>
-              <ChevronRight className="w-5 h-5 text-dark-400" />
+          <Card className="relative text-center py-4 border-turbo-500/30 bg-gradient-to-b from-turbo-500/10 to-transparent hover:border-turbo-500/50 transition-colors">
+            <div className="relative inline-block">
+              <Swords className="w-7 h-7 text-turbo-500 mx-auto mb-2" />
+              {incomingChallenges.length > 0 && (
+                <span className="absolute -top-1 -right-3 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center animate-pulse">
+                  <span className="text-[9px] font-bold text-white">{incomingChallenges.length}</span>
+                </span>
+              )}
             </div>
+            <p className="text-sm font-semibold text-white">Arena</p>
+            <p className="text-[11px] text-dark-400 mt-0.5">Bitwy i Tuning</p>
           </Card>
         </Link>
-      </div>
-
-      {/* Strefa Tuningu */}
-      <div>
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-            <Wrench className="w-5 h-5 text-cyan-500" />
-            Strefa Tuningu
-          </h2>
-          <Link
-            href="/arena"
-            className="text-sm text-accent-400 flex items-center"
-          >
-            Otwórz
-            <ChevronRight className="w-4 h-4" />
-          </Link>
-        </div>
-
-        <Link href="/arena">
-          <Card className="relative overflow-hidden hover:border-cyan-500/50 transition-colors">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/10 rounded-full blur-3xl" />
-            <div className="relative flex items-center gap-4">
-              <div className="w-14 h-14 rounded-xl bg-cyan-500/20 flex items-center justify-center">
-                <Wrench className="w-7 h-7 text-cyan-500" />
-              </div>
-              <div className="flex-1">
-                <h3 className="font-semibold text-white">Modyfikuj i walcz!</h3>
-                <p className="text-sm text-dark-400">
-                  Tuninguj auto, wystawiaj wyzwania, wygraj XP!
-                </p>
-              </div>
-              <ChevronRight className="w-5 h-5 text-dark-400" />
-            </div>
-          </Card>
-        </Link>
-      </div>
-
-      {/* Mystery Garage */}
-      <div>
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-            <Package className="w-5 h-5 text-emerald-500" />
-            Mystery Garage
-          </h2>
-          <Link
-            href="/mystery"
-            className="text-sm text-accent-400 flex items-center"
-          >
-            Kup pakiet
-            <ChevronRight className="w-4 h-4" />
-          </Link>
-        </div>
 
         <Link href="/mystery">
-          <Card className="relative overflow-hidden hover:border-emerald-500/50 transition-colors">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-3xl" />
-            <div className="relative flex items-center gap-4">
-              <div className="w-14 h-14 rounded-xl bg-emerald-500/20 flex items-center justify-center">
-                <Package className="w-7 h-7 text-emerald-500" />
-              </div>
-              <div className="flex-1">
-                <h3 className="font-semibold text-white">Losowe pakiety kart!</h3>
-                <p className="text-sm text-dark-400">
-                  Otwórz pakiet i odkryj losowe karty samochodów
-                </p>
-              </div>
-              <ChevronRight className="w-5 h-5 text-dark-400" />
-            </div>
+          <Card className="text-center py-4 hover:border-emerald-500/50 transition-colors">
+            <Package className="w-7 h-7 text-emerald-500 mx-auto mb-2" />
+            <p className="text-sm font-semibold text-white">Mystery</p>
+            <p className="text-[11px] text-dark-400 mt-0.5">Pakiety kart</p>
+          </Card>
+        </Link>
+
+        <Link href="/leaderboard">
+          <Card className="text-center py-4 hover:border-yellow-500/50 transition-colors">
+            <Trophy className="w-7 h-7 text-yellow-500 mx-auto mb-2" />
+            <p className="text-sm font-semibold text-white">Ranking</p>
+            <p className="text-[11px] text-dark-400 mt-0.5">Top gracze</p>
           </Card>
         </Link>
       </div>
 
-      {/* Leaderboard Preview */}
-      <div>
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-            <Trophy className="w-5 h-5 text-yellow-500" />
-            Top gracze
-          </h2>
-          <Link
-            href="/leaderboard"
-            className="text-sm text-accent-400 flex items-center"
-          >
-            Pełny ranking
-            <ChevronRight className="w-4 h-4" />
-          </Link>
-        </div>
-
-        {leaderboardLoading ? (
-          <Card className="animate-pulse h-48 bg-dark-700" />
-        ) : (
-          <Card padding="sm">
-            <div className="divide-y divide-dark-700">
-              {leaderboard.slice(0, 5).map((entry, index) => (
-                <div
-                  key={entry.user_id}
-                  className={`flex items-center gap-3 py-2.5 ${
-                    entry.user_id === profile.id ? 'bg-turbo-500/10 -mx-3 px-3 rounded-lg' : ''
-                  }`}
-                >
-                  <div
-                    className={`w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold ${
-                      index === 0
-                        ? 'bg-yellow-500 text-black'
-                        : index === 1
-                        ? 'bg-gray-400 text-black'
-                        : index === 2
-                        ? 'bg-amber-700 text-white'
-                        : 'bg-dark-700 text-dark-300'
-                    }`}
-                  >
-                    {entry.rank}
-                  </div>
-                  <Avatar
-                    src={entry.avatar_url}
-                    fallback={entry.nick}
-                    size="sm"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-white truncate">{entry.nick}</p>
-                    <p className="text-xs text-dark-400">{entry.level_name}</p>
-                  </div>
-                  <div className="text-right">
-                    <div className="font-bold text-turbo-400">
-                      {formatNumber(entry.total_xp)}
-                    </div>
-                    <div className="text-xs text-dark-500">XP</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Card>
-        )}
-      </div>
-
-      {/* Rewards Preview */}
-      <div>
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-            <Gift className="w-5 h-5 text-yellow-500" />
-            Nagrody do zdobycia
-          </h2>
-          <Link
-            href="/rewards"
-            className="text-sm text-accent-400 flex items-center"
-          >
-            Zobacz wszystkie
-            <ChevronRight className="w-4 h-4" />
-          </Link>
-        </div>
-
-        <Card className="relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-br from-yellow-500/5 via-transparent to-amber-500/5" />
-          <div className="relative">
-            {/* Podium preview */}
-            <div className="flex items-end justify-center gap-2 py-4">
-              {/* 2. miejsce */}
-              <div className="flex flex-col items-center">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-gray-300 to-gray-500 flex items-center justify-center mb-1 shadow-lg">
-                  <Medal className="w-5 h-5 text-white" />
-                </div>
-                <div className="w-16 h-12 bg-gradient-to-t from-gray-500 to-gray-400 rounded-t-lg flex items-center justify-center">
-                  <span className="text-white font-bold text-lg">2</span>
-                </div>
-              </div>
-
-              {/* 1. miejsce */}
-              <div className="flex flex-col items-center -mt-4">
-                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-yellow-400 to-amber-600 flex items-center justify-center mb-1 shadow-lg shadow-yellow-500/30">
-                  <Crown className="w-6 h-6 text-white" />
-                </div>
-                <div className="w-20 h-16 bg-gradient-to-t from-yellow-600 to-yellow-400 rounded-t-lg flex items-center justify-center">
-                  <span className="text-white font-bold text-xl">1</span>
-                </div>
-              </div>
-
-              {/* 3. miejsce */}
-              <div className="flex flex-col items-center">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-600 to-orange-800 flex items-center justify-center mb-1 shadow-lg">
-                  <Award className="w-5 h-5 text-white" />
-                </div>
-                <div className="w-16 h-10 bg-gradient-to-t from-amber-800 to-amber-600 rounded-t-lg flex items-center justify-center">
-                  <span className="text-white font-bold text-lg">3</span>
-                </div>
-              </div>
-            </div>
-
-            <p className="text-center text-dark-300 text-sm pb-2">
-              Zdobądź TOP 3 i wygraj nagrody!
-            </p>
+      {/* Ranking Widget */}
+      <Link href="/leaderboard">
+        <Card padding="sm" className="flex items-center gap-3 hover:border-yellow-500/50 transition-colors">
+          <Trophy className="w-5 h-5 text-yellow-500 flex-shrink-0" />
+          <div className="flex-1">
+            <span className="text-sm text-dark-300">Twoja pozycja w rankingu</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-lg font-bold text-turbo-400">#{userRank || '?'}</span>
+            <ChevronRight className="w-4 h-4 text-dark-500" />
           </div>
         </Card>
-      </div>
+      </Link>
+
     </div>
   );
 }

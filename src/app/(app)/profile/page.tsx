@@ -25,6 +25,7 @@ import {
   Loader2,
   Layers,
   HelpCircle,
+  Gift,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useCards, RARITY_CONFIG } from '@/hooks/useCards';
@@ -387,6 +388,25 @@ export default function ProfilePage() {
                   );
                 })()}
               </div>
+            </div>
+            <ChevronRight className="w-5 h-5 text-dark-400" />
+          </div>
+        </Card>
+      </Link>
+
+      {/* Rewards */}
+      <Link href="/rewards">
+        <Card className="relative overflow-hidden hover:border-yellow-500/50 transition-colors">
+          <div className="absolute top-0 right-0 w-24 h-24 bg-yellow-500/10 rounded-full blur-2xl" />
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 rounded-xl bg-yellow-500/20 flex items-center justify-center">
+              <Gift className="w-7 h-7 text-yellow-500" />
+            </div>
+            <div className="flex-1">
+              <h3 className="font-semibold text-white">Nagrody do zdobycia</h3>
+              <p className="text-sm text-dark-400 mt-1">
+                Sprawdz co mozesz wygrac!
+              </p>
             </div>
             <ChevronRight className="w-5 h-5 text-dark-400" />
           </div>
