@@ -54,6 +54,8 @@ import {
   CreditCard,
   Crown,
   Package,
+  UserPlus,
+  Check,
 } from 'lucide-react';
 import { LEVELS } from '@/lib/utils';
 import { Level } from '@/types';
@@ -137,6 +139,10 @@ export default function AdminPage() {
   const [cardOwners, setCardOwners] = useState<{ user: User; user_card_id: string; obtained_from: string; obtained_at: string }[]>([]);
   const [loadingCardOwners, setLoadingCardOwners] = useState(false);
   const [removingCard, setRemovingCard] = useState<string | null>(null);
+  const [showAssignToPlayer, setShowAssignToPlayer] = useState(false);
+  const [assignSearchQuery, setAssignSearchQuery] = useState('');
+  const [assignSearchResults, setAssignSearchResults] = useState<User[]>([]);
+  const [assigningToPlayer, setAssigningToPlayer] = useState(false);
 
   // Bulk starter pack assignment
   const [showStarterPackModal, setShowStarterPackModal] = useState(false);
@@ -886,6 +892,87 @@ export default function AdminPage() {
       showError('Błąd', errorMessage);
     } finally {
       setRemovingCard(null);
+    }
+  };
+
+  // === ASSIGN CARD TO PLAYER ===
+  const handleSearchPlayersForAssign = async (query: string) => {
+    setAssignSearchQuery(query);
+    if (query.length < 2) {
+      setAssignSearchResults([]);
+      return;
+    }
+
+    const { data } = await supabase
+      .from('users')
+      .select('id, nick, avatar_url, total_xp, level')
+      .ilike('nick', `%${query}%`)
+      .limit(10);
+
+    setAssignSearchResults((data || []) as User[]);
+  };
+
+  const handleAssignCardToUser = async (targetUser: User) => {
+    if (!selectedCardForOwners) return;
+
+    // Sprawdź czy gracz już ma tę kartę
+    const alreadyOwns = cardOwners.some(o => o.user.id === targetUser.id);
+    if (alreadyOwns) {
+      showError('Już posiada', `${targetUser.nick} już ma kartę "${selectedCardForOwners.name}"`);
+      return;
+    }
+
+    setAssigningToPlayer(true);
+
+    try {
+      const { data, error } = await supabase
+        .from('user_cards')
+        .insert({
+          user_id: targetUser.id,
+          card_id: selectedCardForOwners.id,
+          obtained_from: 'admin',
+        })
+        .select('id, obtained_from, obtained_at')
+        .single();
+
+      if (error) throw error;
+
+      // Aktualizuj sold_count jeśli karta ma limit
+      if (selectedCardForOwners.total_supply) {
+        await supabase
+          .from('cards')
+          .update({ sold_count: (selectedCardForOwners.sold_count || 0) + 1 })
+          .eq('id', selectedCardForOwners.id);
+      }
+
+      // Powiadomienie dla gracza
+      await sendUserNotification(
+        targetUser.id,
+        'Nowa karta!',
+        `Otrzymałeś kartę "${selectedCardForOwners.name}" od administracji. Sprawdź swoją kolekcję!`,
+        'card_received',
+        { card_id: selectedCardForOwners.id, card_name: selectedCardForOwners.name }
+      );
+
+      success('Przydzielono!', `Karta "${selectedCardForOwners.name}" → ${targetUser.nick}`);
+
+      // Dodaj do listy właścicieli
+      setCardOwners(prev => [{
+        user: targetUser,
+        user_card_id: data.id,
+        obtained_from: data.obtained_from,
+        obtained_at: data.obtained_at,
+      }, ...prev]);
+
+      // Zamknij panel przydzielania
+      setShowAssignToPlayer(false);
+      setAssignSearchQuery('');
+      setAssignSearchResults([]);
+    } catch (e: unknown) {
+      const errorMessage = e instanceof Error ? e.message : 'Nieznany błąd';
+      showError('Błąd', errorMessage);
+    } finally {
+      setAssigningToPlayer(false);
     }
   };
 
@@ -5199,6 +5286,74 @@ export default function AdminPage() {
             </div>
           )}
 
+          {/* Assign to player section */}
+          {!showAssignToPlayer ? (
+            <Button
+              fullWidth
+              onClick={() => setShowAssignToPlayer(true)}
+            >
+              <UserPlus className="w-4 h-4 mr-1" />
+              Przydziel graczowi
+            </Button>
+          ) : (
+            <Card className="border-turbo-500/30">
+              <p className="text-sm font-medium text-turbo-400 mb-2">Przydziel kartę graczowi:</p>
+              <input
+                type="text"
+                placeholder="Wpisz nick gracza..."
+                value={assignSearchQuery}
+                onChange={(e) => handleSearchPlayersForAssign(e.target.value)}
+                className="w-full px-3 py-2 bg-dark-700 border border-dark-500 rounded-lg text-white text-sm focus:outline-none focus:border-turbo-500 mb-2"
+                autoFocus
+              />
+              {assignSearchResults.length > 0 && (
+                <div className="space-y-1 max-h-40 overflow-y-auto">
+                  {assignSearchResults.map(player => (
+                    <button
+                      key={player.id}
+                      onClick={() => handleAssignCardToUser(player)}
+                      disabled={assigningToPlayer}
+                      className="w-full flex items-center gap-2 p-2 rounded-lg hover:bg-dark-600 transition-colors text-left"
+                    >
+                      <div className="w-8 h-8 rounded-full bg-dark-700 flex items-center justify-center text-white text-xs font-bold overflow-hidden flex-shrink-0">
+                        {player.avatar_url ? (
+                          <img src={player.avatar_url} alt={player.nick} className="w-full h-full object-cover" />
+                        ) : (
+                          player.nick.charAt(0).toUpperCase()
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-white truncate">{player.nick}</p>
+                        <p className="text-xs text-dark-400">Poziom {player.level}</p>
+                      </div>
+                      {cardOwners.some(o => o.user.id === player.id) ? (
+                        <span className="text-xs text-yellow-400">Już ma</span>
+                      ) : (
+                        <Check className="w-4 h-4 text-green-400" />
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {assignSearchQuery.length >= 2 && assignSearchResults.length === 0 && (
+                <p className="text-xs text-dark-500 text-center py-2">Nie znaleziono graczy</p>
+              )}
+              <Button
+                variant="secondary"
+                fullWidth
+                size="sm"
+                className="mt-2"
+                onClick={() => {
+                  setShowAssignToPlayer(false);
+                  setAssignSearchQuery('');
+                  setAssignSearchResults([]);
+                }}
+              >
+                Anuluj
+              </Button>
+            </Card>
+          )}
+
           <Button
             variant="secondary"
             fullWidth
@@ -5206,6 +5361,9 @@ export default function AdminPage() {
               setShowCardOwnersModal(false);
               setSelectedCardForOwners(null);
               setCardOwners([]);
+              setShowAssignToPlayer(false);
+              setAssignSearchQuery('');
+              setAssignSearchResults([]);
             }}
           >
             Zamknij
