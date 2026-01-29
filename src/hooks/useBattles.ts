@@ -378,15 +378,13 @@ export function useBattles(options: UseBattlesOptions = {}) {
       return { success: false, error: updateError.message };
     }
 
-    // Przyznaj XP
+    // Przyznaj XP (wygrana: 30, przegrana: 0, remis: 10)
     if (winnerId) {
-      const loserId = winnerId === battle.challenger_id ? battle.opponent_id : battle.challenger_id;
-      await supabase.rpc('add_xp', { user_id: winnerId, xp_amount: 100 });
-      await supabase.rpc('add_xp', { user_id: loserId, xp_amount: 20 });
+      await supabase.rpc('add_xp', { user_id: winnerId, xp_amount: 30 });
     } else {
-      // Remis — obaj +20 XP
-      await supabase.rpc('add_xp', { user_id: battle.challenger_id, xp_amount: 20 });
-      await supabase.rpc('add_xp', { user_id: battle.opponent_id, xp_amount: 20 });
+      // Remis — obaj +10 XP
+      await supabase.rpc('add_xp', { user_id: battle.challenger_id, xp_amount: 10 });
+      await supabase.rpc('add_xp', { user_id: battle.opponent_id, xp_amount: 10 });
     }
 
     // Wyślij powiadomienia
@@ -407,33 +405,33 @@ export function useBattles(options: UseBattlesOptions = {}) {
       await sendUserNotification(
         winnerId,
         'Wygrana w Turbo Bitwie!',
-        `Pokonałeś ${loserNick}! Wynik rund: ${scoreText}. +100 XP!`,
+        `Pokonałeś ${loserNick}! Wynik rund: ${scoreText}. +30 XP!`,
         'battle_result',
-        { battle_id: battleId, result: 'win', xp_gained: 100 }
+        { battle_id: battleId, result: 'win', xp_gained: 30 }
       );
 
       await sendUserNotification(
         loserId,
         'Przegrana w Turbo Bitwie',
-        `${winnerNick} wygrał bitwę. Wynik rund: ${scoreText}. +20 XP za udział.`,
+        `${winnerNick} wygrał bitwę. Wynik rund: ${scoreText}.`,
         'battle_result',
-        { battle_id: battleId, result: 'loss', xp_gained: 20 }
+        { battle_id: battleId, result: 'loss', xp_gained: 0 }
       );
     } else {
       await sendUserNotification(
         battle.challenger_id,
         'Remis w Turbo Bitwie!',
-        `Bitwa z ${opponent?.nick} zakończyła się remisem! Wynik rund: ${scoreText}. +20 XP.`,
+        `Bitwa z ${opponent?.nick} zakończyła się remisem! Wynik rund: ${scoreText}. +10 XP.`,
         'battle_result',
-        { battle_id: battleId, result: 'draw', xp_gained: 20 }
+        { battle_id: battleId, result: 'draw', xp_gained: 10 }
       );
 
       await sendUserNotification(
         battle.opponent_id,
         'Remis w Turbo Bitwie!',
-        `Bitwa z ${challenger?.nick} zakończyła się remisem! Wynik rund: ${scoreText}. +20 XP.`,
+        `Bitwa z ${challenger?.nick} zakończyła się remisem! Wynik rund: ${scoreText}. +10 XP.`,
         'battle_result',
-        { battle_id: battleId, result: 'draw', xp_gained: 20 }
+        { battle_id: battleId, result: 'draw', xp_gained: 10 }
       );
     }
 

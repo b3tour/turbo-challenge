@@ -863,8 +863,8 @@ export default function BattlesPage() {
                     </span>
                   </div>
                   <p className="text-sm text-dark-300">
-                    {revealWinnerId === null ? '+20 XP' :
-                     revealWinnerId === profile.id ? '+100 XP' : '+20 XP za udział'}
+                    {revealWinnerId === null ? '+10 XP' :
+                     revealWinnerId === profile.id ? '+30 XP' : 'Brak XP'}
                   </p>
                 </div>
               )}
@@ -994,7 +994,7 @@ export default function BattlesPage() {
 
               {/* Reward info */}
               <div className="text-center text-sm text-dark-400 pt-2 border-t border-dark-700">
-                {isWinner ? 'Nagroda: +100 XP' : isDraw ? 'Remis: +20 XP' : 'Przegrana: +20 XP za udział'}
+                {isWinner ? 'Nagroda: +30 XP' : isDraw ? 'Remis: +10 XP' : 'Przegrana: brak XP'}
               </div>
             </div>
           );
