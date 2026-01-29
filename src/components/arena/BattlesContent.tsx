@@ -14,40 +14,14 @@ import {
   Check,
   X,
   Zap,
-  AlertCircle,
-  Package,
   Gift,
-  Eye,
   Crown,
   Minus,
   Shuffle,
   ArrowRight,
-  Shield,
-  Star,
-  Award,
 } from 'lucide-react';
 import Link from 'next/link';
 import { CollectibleCard, BattleSlotAssignment, BattleRoundCategory, BattleRoundResult, User } from '@/types';
-import { BATTLE_BADGES, BattleBadgeDefinition, BattleStatsForBadges } from '@/config/battleBadges';
-
-// Mapowanie nazw ikon na komponenty
-const BADGE_ICON_MAP: Record<BattleBadgeDefinition['icon'], React.ComponentType<{ className?: string }>> = {
-  Trophy,
-  Swords,
-  Shield,
-  Crown,
-  Star,
-  Zap,
-  Users,
-};
-
-// Kolory ramek wg rzadkosci
-const BADGE_RARITY_COLORS: Record<string, { border: string; bg: string; text: string }> = {
-  common: { border: 'border-slate-500', bg: 'bg-slate-500/20', text: 'text-slate-400' },
-  rare: { border: 'border-blue-500', bg: 'bg-blue-500/20', text: 'text-blue-400' },
-  epic: { border: 'border-purple-500', bg: 'bg-purple-500/20', text: 'text-purple-400' },
-  legendary: { border: 'border-yellow-500', bg: 'bg-yellow-500/20', text: 'text-yellow-400' },
-};
 
 type Tab = 'challenges' | 'my_battles' | 'new';
 
@@ -69,14 +43,11 @@ export function BattlesContent() {
     getChallengablePlayers,
     dealRandomCards,
     getChallengesSentThisWeek,
-    getBattleStats,
   } = useBattles({ userId: profile?.id });
   const { success, error: showError } = useToast();
 
   const [activeTab, setActiveTab] = useState<Tab>('challenges');
-  const [battleStats, setBattleStats] = useState<BattleStatsForBadges>({ wins: 0, losses: 0, draws: 0, totalBattles: 0, hasPerfectWin: false });
   const [challengesSentThisWeek, setChallengesSentThisWeek] = useState(0);
-  const [selectedBadgeTooltip, setSelectedBadgeTooltip] = useState<string | null>(null);
 
   // Create challenge state
   const [showNewChallengeModal, setShowNewChallengeModal] = useState(false);
@@ -108,10 +79,9 @@ export function BattlesContent() {
   // Load stats
   useEffect(() => {
     if (profile?.id) {
-      getBattleStats().then(setBattleStats);
       getChallengesSentThisWeek().then(setChallengesSentThisWeek);
     }
-  }, [profile?.id, getBattleStats, getChallengesSentThisWeek]);
+  }, [profile?.id, getChallengesSentThisWeek]);
 
   // Load players when opening new challenge modal
   useEffect(() => {
@@ -247,7 +217,6 @@ export function BattlesContent() {
       setTimeout(() => setRevealedRound(3), 2800);
       setTimeout(() => setAcceptStep('done'), 3600);
 
-      getBattleStats().then(setBattleStats);
     } else {
       showError('Błąd', result.error || 'Nie udało się rozstrzygnąć bitwy');
     }
@@ -300,67 +269,6 @@ export function BattlesContent() {
           3 rundy, losowe karty, strategiczny przydział!
         </p>
       </div>
-
-      {/* Stats */}
-      <div className="grid grid-cols-3 gap-3">
-        <Card padding="sm" className="text-center">
-          <Trophy className="w-5 h-5 text-yellow-500 mx-auto mb-1" />
-          <div className="text-lg font-bold text-white">{battleStats.wins}</div>
-          <div className="text-xs text-dark-400">Wygrane</div>
-        </Card>
-        <Card padding="sm" className="text-center">
-          <X className="w-5 h-5 text-red-500 mx-auto mb-1" />
-          <div className="text-lg font-bold text-white">{battleStats.losses}</div>
-          <div className="text-xs text-dark-400">Przegrane</div>
-        </Card>
-        <Card padding="sm" className="text-center">
-          <Minus className="w-5 h-5 text-blue-500 mx-auto mb-1" />
-          <div className="text-lg font-bold text-white">{battleStats.draws}</div>
-          <div className="text-xs text-dark-400">Remisy</div>
-        </Card>
-      </div>
-
-      {/* Battle Badges */}
-      <Card>
-        <div className="flex items-center gap-2 mb-3">
-          <Award className="w-5 h-5 text-orange-400" />
-          <h2 className="font-bold text-white text-sm">Odznaki bitewne</h2>
-        </div>
-        <div className="grid grid-cols-4 gap-2">
-          {BATTLE_BADGES.map(badge => {
-            const unlocked = badge.condition(battleStats);
-            const IconComponent = BADGE_ICON_MAP[badge.icon];
-            const colors = BADGE_RARITY_COLORS[badge.rarity];
-            const isSelected = selectedBadgeTooltip === badge.id;
-
-            return (
-              <button
-                key={badge.id}
-                onClick={() => setSelectedBadgeTooltip(isSelected ? null : badge.id)}
-                className={`relative flex flex-col items-center gap-1 p-2 rounded-xl border transition-all ${
-                  unlocked
-                    ? `${colors.border} ${colors.bg}`
-                    : 'border-dark-700 bg-dark-800/50 opacity-50'
-                }`}
-              >
-                <IconComponent className={`w-5 h-5 ${unlocked ? colors.text : 'text-dark-600'}`} />
-                <span className={`text-[10px] font-medium leading-tight text-center ${
-                  unlocked ? 'text-white' : 'text-dark-600'
-                }`}>
-                  {badge.name}
-                </span>
-
-                {/* Tooltip */}
-                {isSelected && (
-                  <div className="absolute -bottom-12 left-1/2 -translate-x-1/2 z-50 px-2 py-1.5 rounded-lg bg-dark-700 border border-dark-600 shadow-xl whitespace-nowrap">
-                    <p className="text-[10px] text-dark-300">{badge.description}</p>
-                  </div>
-                )}
-              </button>
-            );
-          })}
-        </div>
-      </Card>
 
       {/* Challenge limit */}
       <Card padding="sm" className="flex items-center justify-between">

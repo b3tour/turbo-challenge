@@ -1,13 +1,33 @@
 'use client';
 
+import { useState } from 'react';
+import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
 import { useArenaRankings } from '@/hooks/useArenaRankings';
 import { Card, Avatar } from '@/components/ui';
-import { Trophy, Crown, Medal, Swords, Wrench } from 'lucide-react';
+import {
+  Trophy, Crown, Medal, Swords, Wrench, X, Minus,
+  Shield, Star, Zap, Users, Award, Gift, ChevronRight,
+} from 'lucide-react';
+import { BATTLE_BADGES, BattleBadgeDefinition } from '@/config/battleBadges';
+
+// Badge icon map
+const BADGE_ICON_MAP: Record<BattleBadgeDefinition['icon'], React.ComponentType<{ className?: string }>> = {
+  Trophy, Swords, Shield, Crown, Star, Zap, Users,
+};
+
+// Badge rarity colors
+const BADGE_RARITY_COLORS: Record<string, { border: string; bg: string; text: string }> = {
+  common: { border: 'border-slate-500', bg: 'bg-slate-500/20', text: 'text-slate-400' },
+  rare: { border: 'border-blue-500', bg: 'bg-blue-500/20', text: 'text-blue-400' },
+  epic: { border: 'border-purple-500', bg: 'bg-purple-500/20', text: 'text-purple-400' },
+  legendary: { border: 'border-yellow-500', bg: 'bg-yellow-500/20', text: 'text-yellow-400' },
+};
 
 export function ArenaRankings() {
   const { profile } = useAuth();
-  const { rankings, loading } = useArenaRankings();
+  const { rankings, loading, arenaStats, statsLoading } = useArenaRankings(profile?.id);
+  const [selectedBadgeTooltip, setSelectedBadgeTooltip] = useState<string | null>(null);
 
   if (!profile) return null;
 
@@ -27,6 +47,70 @@ export function ArenaRankings() {
           Wygrane bitwy i wyzwania tuningu
         </p>
       </div>
+
+      {/* Personal Stats (combined) */}
+      {!statsLoading && (
+        <div className="grid grid-cols-3 gap-3">
+          <Card padding="sm" className="text-center">
+            <Trophy className="w-5 h-5 text-yellow-500 mx-auto mb-1" />
+            <div className="text-lg font-bold text-white">{arenaStats.wins}</div>
+            <div className="text-xs text-dark-400">Wygrane</div>
+          </Card>
+          <Card padding="sm" className="text-center">
+            <X className="w-5 h-5 text-red-500 mx-auto mb-1" />
+            <div className="text-lg font-bold text-white">{arenaStats.losses}</div>
+            <div className="text-xs text-dark-400">Przegrane</div>
+          </Card>
+          <Card padding="sm" className="text-center">
+            <Minus className="w-5 h-5 text-blue-500 mx-auto mb-1" />
+            <div className="text-lg font-bold text-white">{arenaStats.draws}</div>
+            <div className="text-xs text-dark-400">Remisy</div>
+          </Card>
+        </div>
+      )}
+
+      {/* Arena Badges */}
+      {!statsLoading && (
+        <Card>
+          <div className="flex items-center gap-2 mb-3">
+            <Award className="w-5 h-5 text-orange-400" />
+            <h2 className="font-bold text-white text-sm">Odznaki Arena</h2>
+          </div>
+          <div className="grid grid-cols-4 gap-2">
+            {BATTLE_BADGES.map(badge => {
+              const unlocked = badge.condition(arenaStats);
+              const IconComponent = BADGE_ICON_MAP[badge.icon];
+              const colors = BADGE_RARITY_COLORS[badge.rarity];
+              const isSelected = selectedBadgeTooltip === badge.id;
+
+              return (
+                <button
+                  key={badge.id}
+                  onClick={() => setSelectedBadgeTooltip(isSelected ? null : badge.id)}
+                  className={`relative flex flex-col items-center gap-1 p-2 rounded-xl border transition-all ${
+                    unlocked
+                      ? `${colors.border} ${colors.bg}`
+                      : 'border-dark-700 bg-dark-800/50 opacity-50'
+                  }`}
+                >
+                  <IconComponent className={`w-5 h-5 ${unlocked ? colors.text : 'text-dark-600'}`} />
+                  <span className={`text-[10px] font-medium leading-tight text-center ${
+                    unlocked ? 'text-white' : 'text-dark-600'
+                  }`}>
+                    {badge.name}
+                  </span>
+
+                  {isSelected && (
+                    <div className="absolute -bottom-12 left-1/2 -translate-x-1/2 z-50 px-2 py-1.5 rounded-lg bg-dark-700 border border-dark-600 shadow-xl whitespace-nowrap">
+                      <p className="text-[10px] text-dark-300">{badge.description}</p>
+                    </div>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </Card>
+      )}
 
       {loading ? (
         <div className="space-y-3">
@@ -178,6 +262,25 @@ export function ArenaRankings() {
           </div>
         </>
       )}
+
+      {/* Arena Rewards Info */}
+      <Card className="border-yellow-500/30 bg-gradient-to-r from-yellow-500/5 to-amber-500/5">
+        <div className="flex items-center gap-3 mb-2">
+          <Gift className="w-5 h-5 text-yellow-500" />
+          <h3 className="font-semibold text-white">Nagrody Arena TOP 3</h3>
+        </div>
+        <p className="text-sm text-dark-400 mb-3">
+          Najlepsi gracze Areny otrzymuja nagrody niezalezne od rankingu misji!
+          Walcz w Turbo Bitwach i Strefie Tuningu, aby awansowac.
+        </p>
+        <Link
+          href="/rewards"
+          className="inline-flex items-center gap-1 text-sm text-yellow-400 font-medium px-2 py-1 -ml-2 rounded-lg active:bg-yellow-500/10"
+        >
+          Sprawdz nagrody
+          <ChevronRight className="w-4 h-4" />
+        </Link>
+      </Card>
     </div>
   );
 }

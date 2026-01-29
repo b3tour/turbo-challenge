@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
+import { BattleStatsForBadges } from '@/config/battleBadges';
 
 export interface ArenaRankingEntry {
   rank: number;
@@ -13,9 +14,13 @@ export interface ArenaRankingEntry {
   total_wins: number;
 }
 
-export function useArenaRankings() {
+export function useArenaRankings(userId?: string) {
   const [rankings, setRankings] = useState<ArenaRankingEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [arenaStats, setArenaStats] = useState<BattleStatsForBadges>({
+    wins: 0, losses: 0, draws: 0, totalBattles: 0, hasPerfectWin: false,
+  });
+  const [statsLoading, setStatsLoading] = useState(true);
 
   const fetchRankings = useCallback(async () => {
     setLoading(true);
@@ -74,12 +79,12 @@ export function useArenaRankings() {
 
       // Build ranking entries
       const entries: ArenaRankingEntry[] = [];
-      winsMap.forEach((wins, userId) => {
-        const user = usersMap.get(userId);
+      winsMap.forEach((wins, uId) => {
+        const user = usersMap.get(uId);
         if (!user) return;
         entries.push({
           rank: 0,
-          user_id: userId,
+          user_id: uId,
           nick: user.nick,
           avatar_url: user.avatar_url,
           battle_wins: wins.battle_wins,
@@ -104,18 +109,89 @@ export function useArenaRankings() {
     }
   }, []);
 
+  // Fetch personal combined stats from both tables
+  const fetchPersonalStats = useCallback(async () => {
+    if (!userId) {
+      setStatsLoading(false);
+      return;
+    }
+    setStatsLoading(true);
+    try {
+      // Card battles
+      const { data: battles } = await supabase
+        .from('card_battles')
+        .select('winner_id, challenger_id, opponent_id, challenger_score, opponent_score')
+        .eq('status', 'completed')
+        .or(`challenger_id.eq.${userId},opponent_id.eq.${userId}`);
+
+      // Tuning challenges
+      const { data: tuning } = await supabase
+        .from('tuning_challenges')
+        .select('winner_id, challenger_id, opponent_id')
+        .eq('status', 'completed')
+        .or(`challenger_id.eq.${userId},opponent_id.eq.${userId}`);
+
+      let wins = 0, losses = 0, draws = 0;
+      let hasPerfectWin = false;
+
+      // Count card battle results
+      for (const b of battles || []) {
+        if (b.winner_id === userId) {
+          wins++;
+          const isChallenger = b.challenger_id === userId;
+          const myScore = isChallenger ? b.challenger_score : b.opponent_score;
+          const theirScore = isChallenger ? b.opponent_score : b.challenger_score;
+          if (myScore === 3 && theirScore === 0) hasPerfectWin = true;
+        } else if (b.winner_id === null) {
+          draws++;
+        } else {
+          losses++;
+        }
+      }
+
+      // Count tuning challenge results
+      for (const t of tuning || []) {
+        if (t.winner_id === userId) {
+          wins++;
+        } else if (t.winner_id === null) {
+          draws++;
+        } else {
+          losses++;
+        }
+      }
+
+      setArenaStats({
+        wins,
+        losses,
+        draws,
+        totalBattles: wins + losses + draws,
+        hasPerfectWin,
+      });
+    } catch (e) {
+      console.error('Error fetching personal arena stats:', e);
+    } finally {
+      setStatsLoading(false);
+    }
+  }, [userId]);
+
   useEffect(() => {
     fetchRankings();
   }, [fetchRankings]);
 
-  const getUserArenaRank = (userId: string): number | null => {
-    const entry = rankings.find(r => r.user_id === userId);
+  useEffect(() => {
+    fetchPersonalStats();
+  }, [fetchPersonalStats]);
+
+  const getUserArenaRank = (uId: string): number | null => {
+    const entry = rankings.find(r => r.user_id === uId);
     return entry ? entry.rank : null;
   };
 
   return {
     rankings,
     loading,
+    arenaStats,
+    statsLoading,
     getUserArenaRank,
     refresh: fetchRankings,
   };
