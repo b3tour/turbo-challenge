@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useBattles, getCategoryName, getCategoryIcon } from '@/hooks/useBattles';
 import { Card, Button, Avatar, Badge, Modal } from '@/components/ui';
@@ -15,17 +15,24 @@ import {
   X,
   Zap,
   AlertCircle,
-  Target,
   Package,
   Gift,
   Eye,
   Crown,
   Minus,
+  Shuffle,
+  ArrowRight,
 } from 'lucide-react';
 import Link from 'next/link';
-import { CollectibleCard, BattleCategory, BattleRewardType, User } from '@/types';
+import { CollectibleCard, BattleSlotAssignment, BattleRoundCategory, BattleRoundResult, User } from '@/types';
 
 type Tab = 'challenges' | 'my_battles' | 'new';
+
+// Kroki tworzenia wyzwania
+type ChallengeStep = 'select_opponent' | 'dealing' | 'assign_slots' | 'confirm';
+
+// Kroki akceptowania wyzwania
+type AcceptStep = 'dealing' | 'assign_slots' | 'revealing' | 'done';
 
 export default function BattlesPage() {
   const { profile } = useAuth();
@@ -37,7 +44,7 @@ export default function BattlesPage() {
     acceptChallenge,
     declineChallenge,
     getChallengablePlayers,
-    getMyCars,
+    dealRandomCards,
     getChallengesSentThisWeek,
     getBattleStats,
   } = useBattles({ userId: profile?.id });
@@ -47,21 +54,32 @@ export default function BattlesPage() {
   const [battleStats, setBattleStats] = useState({ wins: 0, losses: 0, draws: 0 });
   const [challengesSentThisWeek, setChallengesSentThisWeek] = useState(0);
 
-  // Modals
+  // Create challenge state
   const [showNewChallengeModal, setShowNewChallengeModal] = useState(false);
-  const [showAcceptModal, setShowAcceptModal] = useState(false);
-  const [showBattleDetailModal, setShowBattleDetailModal] = useState(false);
-  const [selectedBattleId, setSelectedBattleId] = useState<string | null>(null);
-  const [detailBattle, setDetailBattle] = useState<typeof myBattles[0] | null>(null);
-
-  // New challenge state
+  const [challengeStep, setChallengeStep] = useState<ChallengeStep>('select_opponent');
   const [availablePlayers, setAvailablePlayers] = useState<User[]>([]);
-  const [myCars, setMyCars] = useState<(CollectibleCard & { cooldownUntil?: Date })[]>([]);
   const [selectedOpponent, setSelectedOpponent] = useState<User | null>(null);
-  const [selectedCards, setSelectedCards] = useState<string[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState<BattleCategory>('total');
-  const [selectedRewardType, setSelectedRewardType] = useState<BattleRewardType>('xp');
+  const [dealtCards, setDealtCards] = useState<CollectibleCard[]>([]);
+  const [slotAssignment, setSlotAssignment] = useState<Partial<BattleSlotAssignment>>({});
+  const [selectedCardForSlot, setSelectedCardForSlot] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Accept challenge state
+  const [showAcceptModal, setShowAcceptModal] = useState(false);
+  const [acceptStep, setAcceptStep] = useState<AcceptStep>('dealing');
+  const [selectedBattleId, setSelectedBattleId] = useState<string | null>(null);
+  const [acceptDealtCards, setAcceptDealtCards] = useState<CollectibleCard[]>([]);
+  const [acceptSlotAssignment, setAcceptSlotAssignment] = useState<Partial<BattleSlotAssignment>>({});
+  const [acceptSelectedCard, setAcceptSelectedCard] = useState<string | null>(null);
+
+  // Reveal state
+  const [revealResults, setRevealResults] = useState<BattleRoundResult[] | null>(null);
+  const [revealedRound, setRevealedRound] = useState(0);
+  const [revealWinnerId, setRevealWinnerId] = useState<string | null | undefined>(undefined);
+
+  // Detail modal
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [detailBattle, setDetailBattle] = useState<typeof myBattles[0] | null>(null);
 
   // Load stats
   useEffect(() => {
@@ -71,39 +89,64 @@ export default function BattlesPage() {
     }
   }, [profile?.id, getBattleStats, getChallengesSentThisWeek]);
 
-  // Load players and cars when opening new challenge modal
+  // Load players when opening new challenge modal
   useEffect(() => {
     if (showNewChallengeModal && profile?.id) {
       getChallengablePlayers(20).then(setAvailablePlayers);
-      getMyCars().then(setMyCars);
     }
-  }, [showNewChallengeModal, profile?.id, getChallengablePlayers, getMyCars]);
+  }, [showNewChallengeModal, profile?.id, getChallengablePlayers]);
 
-  // Load my cars when accepting challenge
-  useEffect(() => {
-    if (showAcceptModal && profile?.id) {
-      getMyCars().then(setMyCars);
+  // --- CHALLENGE CREATION ---
+
+  const handleSelectOpponent = async (opponent: User) => {
+    setSelectedOpponent(opponent);
+    setChallengeStep('dealing');
+
+    // Losuj karty
+    try {
+      const cards = await dealRandomCards(profile!.id);
+      setDealtCards(cards);
+      // Po krótkim "losowaniu" przejdź do przydziału
+      setTimeout(() => setChallengeStep('assign_slots'), 1500);
+    } catch (e: any) {
+      showError('Błąd', e.message || 'Nie udało się wylosować kart');
+      setChallengeStep('select_opponent');
     }
-  }, [showAcceptModal, profile?.id, getMyCars]);
+  };
 
-  const handleCreateChallenge = async () => {
-    if (!selectedOpponent || selectedCards.length < 2) {
-      showError('Błąd', 'Wybierz przeciwnika i minimum 2 karty');
+  const handleAssignCardToSlot = (cardId: string, slot: BattleRoundCategory) => {
+    setSlotAssignment(prev => {
+      const updated = { ...prev };
+      // Jeśli karta jest już gdzieś przypisana, usuń ją stamtąd
+      for (const key of ['power', 'torque', 'speed'] as BattleRoundCategory[]) {
+        if (updated[key] === cardId) {
+          delete updated[key];
+        }
+      }
+      // Jeśli slot jest zajęty przez inną kartę, cofnij ją
+      // (karta wraca do puli nieprzydzielonych)
+      updated[slot] = cardId;
+      return updated;
+    });
+    setSelectedCardForSlot(null);
+  };
+
+  const handleSendChallenge = async () => {
+    if (!selectedOpponent || !slotAssignment.power || !slotAssignment.torque || !slotAssignment.speed) {
+      showError('Błąd', 'Przydziel karty do wszystkich slotów');
       return;
     }
 
     setIsSubmitting(true);
     const result = await createChallenge(
       selectedOpponent.id,
-      selectedCards,
-      selectedCategory,
-      selectedRewardType
+      dealtCards,
+      slotAssignment as BattleSlotAssignment
     );
 
     if (result.success) {
       success('Wyzwanie wysłane!', `${selectedOpponent.nick} otrzymał Twoje wyzwanie`);
-      setShowNewChallengeModal(false);
-      resetNewChallengeState();
+      closeNewChallengeModal();
       getChallengesSentThisWeek().then(setChallengesSentThisWeek);
     } else {
       showError('Błąd', result.error || 'Nie udało się wysłać wyzwania');
@@ -111,26 +154,75 @@ export default function BattlesPage() {
     setIsSubmitting(false);
   };
 
-  const handleAcceptChallenge = async () => {
-    if (!selectedBattleId || selectedCards.length < 2) {
-      showError('Błąd', 'Wybierz minimum 2 karty');
+  const closeNewChallengeModal = () => {
+    setShowNewChallengeModal(false);
+    setChallengeStep('select_opponent');
+    setSelectedOpponent(null);
+    setDealtCards([]);
+    setSlotAssignment({});
+    setSelectedCardForSlot(null);
+  };
+
+  // --- ACCEPTING CHALLENGE ---
+
+  const handleStartAccept = async (battleId: string) => {
+    setSelectedBattleId(battleId);
+    setAcceptStep('dealing');
+    setAcceptDealtCards([]);
+    setAcceptSlotAssignment({});
+    setAcceptSelectedCard(null);
+    setShowAcceptModal(true);
+
+    try {
+      const cards = await dealRandomCards(profile!.id);
+      setAcceptDealtCards(cards);
+      setTimeout(() => setAcceptStep('assign_slots'), 1500);
+    } catch (e: any) {
+      showError('Błąd', e.message || 'Nie udało się wylosować kart');
+      setShowAcceptModal(false);
+    }
+  };
+
+  const handleAcceptAssignCard = (cardId: string, slot: BattleRoundCategory) => {
+    setAcceptSlotAssignment(prev => {
+      const updated = { ...prev };
+      for (const key of ['power', 'torque', 'speed'] as BattleRoundCategory[]) {
+        if (updated[key] === cardId) {
+          delete updated[key];
+        }
+      }
+      updated[slot] = cardId;
+      return updated;
+    });
+    setAcceptSelectedCard(null);
+  };
+
+  const handleFight = async () => {
+    if (!selectedBattleId || !acceptSlotAssignment.power || !acceptSlotAssignment.torque || !acceptSlotAssignment.speed) {
+      showError('Błąd', 'Przydziel karty do wszystkich slotów');
       return;
     }
 
     setIsSubmitting(true);
-    const result = await acceptChallenge(selectedBattleId, selectedCards);
+    const result = await acceptChallenge(
+      selectedBattleId,
+      acceptDealtCards,
+      acceptSlotAssignment as BattleSlotAssignment
+    );
 
-    if (result.success) {
-      if (result.winner === profile?.id) {
-        success('Wygrałeś! 🏆', 'Gratulacje, Twoje karty były lepsze!');
-      } else if (result.winner) {
-        showError('Przegrałeś', 'Tym razem przeciwnik był lepszy');
-      } else {
-        success('Remis!', 'Macie identyczne wyniki');
-      }
-      setShowAcceptModal(false);
-      setSelectedBattleId(null);
-      setSelectedCards([]);
+    if (result.success && result.results) {
+      // Przejdź do animacji odsłonięcia
+      setRevealResults(result.results);
+      setRevealWinnerId(result.winnerId);
+      setRevealedRound(0);
+      setAcceptStep('revealing');
+
+      // Odsłaniaj rundy po kolei
+      setTimeout(() => setRevealedRound(1), 800);
+      setTimeout(() => setRevealedRound(2), 1800);
+      setTimeout(() => setRevealedRound(3), 2800);
+      setTimeout(() => setAcceptStep('done'), 3600);
+
       getBattleStats().then(setBattleStats);
     } else {
       showError('Błąd', result.error || 'Nie udało się rozstrzygnąć bitwy');
@@ -147,29 +239,30 @@ export default function BattlesPage() {
     }
   };
 
-  const resetNewChallengeState = () => {
-    setSelectedOpponent(null);
-    setSelectedCards([]);
-    setSelectedCategory('total');
-    setSelectedRewardType('xp');
+  const closeAcceptModal = () => {
+    setShowAcceptModal(false);
+    setSelectedBattleId(null);
+    setAcceptDealtCards([]);
+    setAcceptSlotAssignment({});
+    setAcceptSelectedCard(null);
+    setRevealResults(null);
+    setRevealedRound(0);
+    setRevealWinnerId(undefined);
+    setAcceptStep('dealing');
   };
 
-  const selectedBattle = incomingChallenges.find(b => b.id === selectedBattleId);
-  const requiredCardCount = selectedBattle?.challenger_card_ids?.length || 2;
+  // --- HELPERS ---
 
-  const toggleCardSelection = (cardId: string, maxCards?: number) => {
-    setSelectedCards(prev => {
-      if (prev.includes(cardId)) {
-        return prev.filter(id => id !== cardId);
-      }
-      // Blokuj dodawanie ponad limit
-      const limit = maxCards || Infinity;
-      if (prev.length >= limit) return prev;
-      return [...prev, cardId];
-    });
+  const getUnassignedCards = (cards: CollectibleCard[], assignment: Partial<BattleSlotAssignment>) => {
+    const assignedIds = new Set(Object.values(assignment).filter(Boolean));
+    return cards.filter(c => !assignedIds.has(c.id));
   };
+
+  const getCardById = (cards: CollectibleCard[], id: string) => cards.find(c => c.id === id);
 
   if (!profile) return null;
+
+  // --- RENDER ---
 
   return (
     <div className="py-4 space-y-6">
@@ -180,7 +273,7 @@ export default function BattlesPage() {
         </div>
         <h1 className="text-2xl font-bold text-white">Turbo Bitwy</h1>
         <p className="text-dark-400 mt-1">
-          Wyzwij innych graczy na pojedynek kart!
+          3 rundy, losowe karty, strategiczny przydział!
         </p>
       </div>
 
@@ -197,13 +290,13 @@ export default function BattlesPage() {
           <div className="text-xs text-dark-400">Przegrane</div>
         </Card>
         <Card padding="sm" className="text-center">
-          <Target className="w-5 h-5 text-blue-500 mx-auto mb-1" />
+          <Minus className="w-5 h-5 text-blue-500 mx-auto mb-1" />
           <div className="text-lg font-bold text-white">{battleStats.draws}</div>
           <div className="text-xs text-dark-400">Remisy</div>
         </Card>
       </div>
 
-      {/* Challenge limit info */}
+      {/* Challenge limit */}
       <Card padding="sm" className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Zap className="w-5 h-5 text-turbo-500" />
@@ -270,6 +363,7 @@ export default function BattlesPage() {
           ))}
         </div>
       ) : activeTab === 'challenges' ? (
+        /* === INCOMING CHALLENGES === */
         <div className="space-y-4">
           {incomingChallenges.length === 0 ? (
             <Card className="text-center py-12">
@@ -291,12 +385,18 @@ export default function BattlesPage() {
                   <div className="flex-1">
                     <p className="font-medium text-white">{battle.challenger?.nick}</p>
                     <p className="text-sm text-orange-400">
-                      Wyzwanie: {getCategoryIcon(battle.category)} {getCategoryName(battle.category)}
+                      Turbo Bitwa: 3 rundy
                     </p>
                   </div>
-                  <Badge variant={battle.reward_type === 'cards' ? 'danger' : 'turbo'}>
-                    {battle.reward_type === 'cards' ? '🃏 Na karty' : '⚡ Na XP'}
+                  <Badge variant="turbo">
+                    Best of 3
                   </Badge>
+                </div>
+
+                <div className="flex items-center gap-4 mb-3 text-xs text-dark-400">
+                  <span className="flex items-center gap-1">⚡ Moc</span>
+                  <span className="flex items-center gap-1">🔧 Moment</span>
+                  <span className="flex items-center gap-1">💨 Prędkość</span>
                 </div>
 
                 <div className="flex items-center gap-2 mb-3 text-sm text-dark-400">
@@ -315,11 +415,7 @@ export default function BattlesPage() {
                   </Button>
                   <Button
                     className="flex-1"
-                    onClick={() => {
-                      setSelectedBattleId(battle.id);
-                      setSelectedCards([]);
-                      setShowAcceptModal(true);
-                    }}
+                    onClick={() => handleStartAccept(battle.id)}
                   >
                     <Check className="w-4 h-4 mr-1" />
                     Akceptuj
@@ -330,6 +426,7 @@ export default function BattlesPage() {
           )}
         </div>
       ) : (
+        /* === BATTLE HISTORY === */
         <div className="space-y-4">
           {myBattles.length === 0 ? (
             <Card className="text-center py-12">
@@ -359,7 +456,7 @@ export default function BattlesPage() {
                   } ${isCompleted ? 'cursor-pointer hover:bg-dark-700/50 transition-colors' : ''}`}
                   onClick={isCompleted ? () => {
                     setDetailBattle(battle);
-                    setShowBattleDetailModal(true);
+                    setShowDetailModal(true);
                   } : undefined}
                 >
                   <div className="flex items-center gap-3">
@@ -381,7 +478,7 @@ export default function BattlesPage() {
                         )}
                       </div>
                       <p className="text-sm text-dark-400">
-                        {getCategoryIcon(battle.category)} {getCategoryName(battle.category)}
+                        Best of 3: ⚡ Moc / 🔧 Moment / 💨 Prędkość
                       </p>
                     </div>
                     {isCompleted && (
@@ -411,7 +508,7 @@ export default function BattlesPage() {
               <Gift className="w-7 h-7 text-emerald-400" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="font-bold text-white">Nie masz kart?</p>
+              <p className="font-bold text-white">Potrzebujesz kart?</p>
               <p className="text-sm text-emerald-400">
                 Otwórz pakiet w Mystery Garage i zdobądź losowe karty!
               </p>
@@ -421,30 +518,26 @@ export default function BattlesPage() {
         </Card>
       </Link>
 
-      {/* New Challenge Modal */}
+      {/* ========== NEW CHALLENGE MODAL ========== */}
       <Modal
         isOpen={showNewChallengeModal}
-        onClose={() => {
-          setShowNewChallengeModal(false);
-          resetNewChallengeState();
-        }}
+        onClose={closeNewChallengeModal}
         title="Nowe wyzwanie"
       >
         <div className="space-y-4">
-          {/* Step 1: Select opponent */}
-          {!selectedOpponent ? (
+          {challengeStep === 'select_opponent' && (
             <>
               <p className="text-dark-400 text-sm">Wybierz przeciwnika:</p>
               <div className="max-h-64 overflow-y-auto space-y-2">
                 {availablePlayers.length === 0 ? (
                   <p className="text-center text-dark-500 py-4">
-                    Brak graczy z wystarczającą liczbą kart
+                    Brak graczy z wystarczającą liczbą kart (min. 3)
                   </p>
                 ) : (
                   availablePlayers.map(player => (
                     <button
                       key={player.id}
-                      onClick={() => setSelectedOpponent(player)}
+                      onClick={() => handleSelectOpponent(player)}
                       className="w-full flex items-center gap-3 p-3 bg-dark-700 rounded-xl hover:bg-dark-600 transition-colors"
                     >
                       <Avatar src={player.avatar_url} fallback={player.nick} size="sm" />
@@ -458,280 +551,356 @@ export default function BattlesPage() {
                 )}
               </div>
             </>
-          ) : selectedCards.length < 2 ? (
+          )}
+
+          {challengeStep === 'dealing' && (
+            <div className="text-center py-8">
+              <Shuffle className="w-16 h-16 text-turbo-400 mx-auto mb-4 animate-spin" />
+              <p className="text-lg font-bold text-white">Losowanie kart...</p>
+              <p className="text-sm text-dark-400 mt-2">System wybiera 3 karty z Twojej kolekcji</p>
+            </div>
+          )}
+
+          {challengeStep === 'assign_slots' && (
             <>
-              {/* Step 2: Select cards */}
               <div className="flex items-center gap-2 mb-2">
-                <Avatar src={selectedOpponent.avatar_url} fallback={selectedOpponent.nick} size="sm" />
-                <span className="text-white font-medium">{selectedOpponent.nick}</span>
-                <button
-                  onClick={() => setSelectedOpponent(null)}
-                  className="text-dark-400 text-sm hover:text-white"
-                >
-                  (zmień)
-                </button>
+                <Avatar src={selectedOpponent?.avatar_url} fallback={selectedOpponent?.nick || '?'} size="sm" />
+                <span className="text-white font-medium">vs {selectedOpponent?.nick}</span>
               </div>
 
-              <p className="text-dark-400 text-sm">Wybierz minimum 2 karty ({selectedCards.length}/2+):</p>
+              <p className="text-dark-400 text-sm">Przydziel karty do kategorii:</p>
 
-              <div className="max-h-64 overflow-y-auto space-y-2">
-                {myCars.length < 2 ? (
-                  <div className="text-center py-4">
-                    <AlertCircle className="w-8 h-8 text-yellow-500 mx-auto mb-2" />
-                    <p className="text-dark-400 mb-3">Potrzebujesz minimum 2 kart samochodów</p>
-                    <Link
-                      href="/mystery"
-                      className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white font-medium rounded-xl transition-colors"
-                      onClick={() => setShowNewChallengeModal(false)}
+              {/* Sloty */}
+              <div className="space-y-2">
+                {(['power', 'torque', 'speed'] as BattleRoundCategory[]).map(cat => {
+                  const assignedCardId = slotAssignment[cat];
+                  const assignedCard = assignedCardId ? getCardById(dealtCards, assignedCardId) : null;
+
+                  return (
+                    <button
+                      key={cat}
+                      onClick={() => {
+                        if (selectedCardForSlot) {
+                          handleAssignCardToSlot(selectedCardForSlot, cat);
+                        } else if (assignedCardId) {
+                          // Cofnij kartę z slotu
+                          setSlotAssignment(prev => {
+                            const updated = { ...prev };
+                            delete updated[cat];
+                            return updated;
+                          });
+                        }
+                      }}
+                      className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 border-dashed transition-all ${
+                        selectedCardForSlot
+                          ? 'border-turbo-500 bg-turbo-500/10 hover:bg-turbo-500/20'
+                          : assignedCard
+                            ? 'border-orange-500/50 bg-dark-700'
+                            : 'border-dark-500 bg-dark-800'
+                      }`}
                     >
-                      <Package className="w-5 h-5" />
-                      Zdobądź karty w Mystery Garage
-                    </Link>
-                  </div>
-                ) : (
-                  myCars.map(card => {
-                    const onCooldown = !!card.cooldownUntil;
-                    const cooldownLabel = card.cooldownUntil && card.cooldownUntil.getFullYear() < 2090
-                      ? `${Math.ceil((card.cooldownUntil.getTime() - Date.now()) / (1000 * 60 * 60 * 24))}d`
-                      : onCooldown ? 'W grze' : '';
-                    return (
+                      <span className="text-xl w-8 text-center">{getCategoryIcon(cat)}</span>
+                      <div className="flex-1 text-left">
+                        <p className="text-sm font-medium text-dark-300">{getCategoryName(cat)}</p>
+                        {assignedCard ? (
+                          <p className="text-white font-medium">{assignedCard.name}</p>
+                        ) : (
+                          <p className="text-dark-500 text-sm">
+                            {selectedCardForSlot ? 'Kliknij, aby przydzielić' : 'Pusty slot'}
+                          </p>
+                        )}
+                      </div>
+                      {assignedCard && (
+                        <span className="text-sm text-orange-400 font-bold">
+                          {cat === 'power' && `${assignedCard.car_horsepower} KM`}
+                          {cat === 'torque' && `${assignedCard.car_torque} Nm`}
+                          {cat === 'speed' && `${assignedCard.car_max_speed} km/h`}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Nieprzydzielone karty */}
+              {getUnassignedCards(dealtCards, slotAssignment).length > 0 && (
+                <>
+                  <p className="text-dark-400 text-sm mt-2">Twoje wylosowane karty:</p>
+                  <div className="space-y-2">
+                    {getUnassignedCards(dealtCards, slotAssignment).map(card => (
                       <button
                         key={card.id}
-                        onClick={() => !onCooldown && toggleCardSelection(card.id)}
-                        disabled={onCooldown}
+                        onClick={() => setSelectedCardForSlot(
+                          selectedCardForSlot === card.id ? null : card.id
+                        )}
                         className={`w-full flex items-center gap-3 p-3 rounded-xl transition-colors ${
-                          onCooldown
-                            ? 'bg-dark-800 opacity-40 cursor-not-allowed'
-                            : selectedCards.includes(card.id)
-                              ? 'bg-turbo-500/20 border border-turbo-500'
-                              : 'bg-dark-700 hover:bg-dark-600'
+                          selectedCardForSlot === card.id
+                            ? 'bg-turbo-500/20 border border-turbo-500'
+                            : 'bg-dark-700 hover:bg-dark-600'
                         }`}
                       >
-                        <div className="w-12 h-8 bg-dark-600 rounded overflow-hidden">
+                        <div className="w-14 h-10 bg-dark-600 rounded-lg overflow-hidden flex-shrink-0">
                           {card.image_url && (
                             <img src={card.image_url} alt={card.name} className="w-full h-full object-cover" />
                           )}
                         </div>
-                        <div className="flex-1 text-left">
-                          <p className="font-medium text-white text-sm">{card.name}</p>
-                          <p className="text-xs text-dark-400">
-                            {card.car_horsepower}HP • {card.car_torque}Nm • {card.car_max_speed}km/h
-                          </p>
+                        <div className="flex-1 text-left min-w-0">
+                          <p className="font-medium text-white text-sm truncate">{card.name}</p>
+                          <div className="flex gap-3 text-xs text-dark-400">
+                            <span>⚡{card.car_horsepower}</span>
+                            <span>🔧{card.car_torque}</span>
+                            <span>💨{card.car_max_speed}</span>
+                          </div>
                         </div>
-                        {onCooldown ? (
-                          <span className="text-xs text-red-400 font-medium flex items-center gap-1">
-                            <Clock className="w-3 h-3" />
-                            {cooldownLabel}
-                          </span>
-                        ) : selectedCards.includes(card.id) ? (
-                          <Check className="w-5 h-5 text-turbo-400" />
-                        ) : null}
-                      </button>
-                    );
-                  })
-                )}
-              </div>
-
-              {selectedCards.length >= 2 && (
-                <Button fullWidth onClick={() => {}}>
-                  Dalej
-                </Button>
-              )}
-            </>
-          ) : (
-            <>
-              {/* Step 3: Select category and reward */}
-              <div className="flex items-center gap-2 mb-2">
-                <Avatar src={selectedOpponent.avatar_url} fallback={selectedOpponent.nick} size="sm" />
-                <span className="text-white font-medium">{selectedOpponent.nick}</span>
-              </div>
-
-              <p className="text-dark-400 text-sm mb-2">Wybrane karty: {selectedCards.length}</p>
-
-              <div className="space-y-3">
-                <div>
-                  <p className="text-dark-400 text-sm mb-2">Kategoria bitwy:</p>
-                  <div className="grid grid-cols-2 gap-2">
-                    {(['power', 'torque', 'speed', 'total'] as BattleCategory[]).map(cat => (
-                      <button
-                        key={cat}
-                        onClick={() => setSelectedCategory(cat)}
-                        className={`p-3 rounded-xl text-sm font-medium transition-colors ${
-                          selectedCategory === cat
-                            ? 'bg-orange-500 text-white'
-                            : 'bg-dark-700 text-dark-300 hover:bg-dark-600'
-                        }`}
-                      >
-                        {getCategoryIcon(cat)} {getCategoryName(cat)}
+                        {selectedCardForSlot === card.id && (
+                          <ArrowRight className="w-5 h-5 text-turbo-400 animate-pulse" />
+                        )}
                       </button>
                     ))}
                   </div>
-                </div>
+                </>
+              )}
 
-                <div>
-                  <p className="text-dark-400 text-sm mb-2">Nagroda:</p>
-                  <div className="p-3 rounded-xl bg-turbo-500/20 border border-turbo-500/30">
-                    <p className="text-turbo-400 font-medium text-sm">⚡ Punkty XP</p>
-                    <p className="text-xs text-dark-400 mt-1">
-                      Zwycięzca: +100 XP • Przegrany: +20 XP
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex gap-2 pt-2">
-                <Button
-                  variant="secondary"
-                  className="flex-1"
-                  onClick={() => setSelectedCards([])}
-                >
-                  Wróć
-                </Button>
-                <Button
-                  className="flex-1"
-                  loading={isSubmitting}
-                  onClick={handleCreateChallenge}
-                >
-                  Wyślij wyzwanie
-                </Button>
-              </div>
+              <Button
+                fullWidth
+                loading={isSubmitting}
+                disabled={!slotAssignment.power || !slotAssignment.torque || !slotAssignment.speed}
+                onClick={handleSendChallenge}
+              >
+                <Swords className="w-4 h-4 mr-2" />
+                Wyślij wyzwanie
+              </Button>
             </>
           )}
         </div>
       </Modal>
 
-      {/* Accept Challenge Modal */}
+      {/* ========== ACCEPT CHALLENGE MODAL ========== */}
       <Modal
         isOpen={showAcceptModal}
-        onClose={() => {
-          setShowAcceptModal(false);
-          setSelectedBattleId(null);
-          setSelectedCards([]);
-        }}
-        title="Akceptuj wyzwanie"
+        onClose={closeAcceptModal}
+        title={acceptStep === 'revealing' || acceptStep === 'done' ? 'Wynik bitwy' : 'Akceptuj wyzwanie'}
       >
-        {selectedBattle && (
-          <div className="space-y-4">
-            <div className="flex items-center gap-3 p-3 bg-dark-700 rounded-xl">
-              <Avatar
-                src={selectedBattle.challenger?.avatar_url}
-                fallback={selectedBattle.challenger?.nick || '?'}
-                size="md"
-              />
-              <div>
-                <p className="font-medium text-white">{selectedBattle.challenger?.nick}</p>
-                <p className="text-sm text-orange-400">
-                  {getCategoryIcon(selectedBattle.category)} {getCategoryName(selectedBattle.category)}
-                </p>
+        <div className="space-y-4">
+          {acceptStep === 'dealing' && (
+            <div className="text-center py-8">
+              <Shuffle className="w-16 h-16 text-turbo-400 mx-auto mb-4 animate-spin" />
+              <p className="text-lg font-bold text-white">Losowanie kart...</p>
+              <p className="text-sm text-dark-400 mt-2">System wybiera 3 karty z Twojej kolekcji</p>
+            </div>
+          )}
+
+          {acceptStep === 'assign_slots' && (
+            <>
+              <p className="text-dark-400 text-sm">Przydziel karty do kategorii:</p>
+
+              {/* Sloty */}
+              <div className="space-y-2">
+                {(['power', 'torque', 'speed'] as BattleRoundCategory[]).map(cat => {
+                  const assignedCardId = acceptSlotAssignment[cat];
+                  const assignedCard = assignedCardId ? getCardById(acceptDealtCards, assignedCardId) : null;
+
+                  return (
+                    <button
+                      key={cat}
+                      onClick={() => {
+                        if (acceptSelectedCard) {
+                          handleAcceptAssignCard(acceptSelectedCard, cat);
+                        } else if (assignedCardId) {
+                          setAcceptSlotAssignment(prev => {
+                            const updated = { ...prev };
+                            delete updated[cat];
+                            return updated;
+                          });
+                        }
+                      }}
+                      className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 border-dashed transition-all ${
+                        acceptSelectedCard
+                          ? 'border-turbo-500 bg-turbo-500/10 hover:bg-turbo-500/20'
+                          : assignedCard
+                            ? 'border-orange-500/50 bg-dark-700'
+                            : 'border-dark-500 bg-dark-800'
+                      }`}
+                    >
+                      <span className="text-xl w-8 text-center">{getCategoryIcon(cat)}</span>
+                      <div className="flex-1 text-left">
+                        <p className="text-sm font-medium text-dark-300">{getCategoryName(cat)}</p>
+                        {assignedCard ? (
+                          <p className="text-white font-medium">{assignedCard.name}</p>
+                        ) : (
+                          <p className="text-dark-500 text-sm">
+                            {acceptSelectedCard ? 'Kliknij, aby przydzielić' : 'Pusty slot'}
+                          </p>
+                        )}
+                      </div>
+                      {assignedCard && (
+                        <span className="text-sm text-orange-400 font-bold">
+                          {cat === 'power' && `${assignedCard.car_horsepower} KM`}
+                          {cat === 'torque' && `${assignedCard.car_torque} Nm`}
+                          {cat === 'speed' && `${assignedCard.car_max_speed} km/h`}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
-              <Badge variant={selectedBattle.reward_type === 'cards' ? 'danger' : 'turbo'} className="ml-auto">
-                {selectedBattle.reward_type === 'cards' ? '🃏 Na karty' : '⚡ Na XP'}
-              </Badge>
-            </div>
 
-            <div className="flex justify-center gap-2 flex-wrap">
-              {Array.from({ length: requiredCardCount }).map((_, i) => (
-                <div key={i} className="text-center">
-                  <div className="w-16 h-12 bg-dark-600 rounded-lg flex items-center justify-center text-2xl mb-1">
-                    {selectedCards[i] ? (
-                      <Check className="w-5 h-5 text-turbo-400" />
-                    ) : '?'}
-                  </div>
-                  <p className="text-xs text-dark-400">Karta {i + 1}</p>
-                </div>
-              ))}
-            </div>
-
-            <p className="text-dark-400 text-sm">
-              Wybierz {requiredCardCount} kart ({selectedCards.length}/{requiredCardCount}):
-            </p>
-
-            <div className="max-h-48 overflow-y-auto space-y-2">
-              {myCars.map(card => {
-                const isSelected = selectedCards.includes(card.id);
-                const onCooldown = !!card.cooldownUntil;
-                const isFull = selectedCards.length >= requiredCardCount && !isSelected;
-                const isDisabled = onCooldown || isFull;
-                const cooldownLabel = card.cooldownUntil && card.cooldownUntil.getFullYear() < 2090
-                  ? `${Math.ceil((card.cooldownUntil.getTime() - Date.now()) / (1000 * 60 * 60 * 24))}d`
-                  : onCooldown ? 'W grze' : '';
-                return (
-                  <button
-                    key={card.id}
-                    onClick={() => !onCooldown && toggleCardSelection(card.id, requiredCardCount)}
-                    disabled={isDisabled}
-                    className={`w-full flex items-center gap-3 p-3 rounded-xl transition-colors ${
-                      onCooldown
-                        ? 'bg-dark-800 opacity-40 cursor-not-allowed'
-                        : isSelected
-                          ? 'bg-turbo-500/20 border border-turbo-500'
-                          : isFull
-                            ? 'bg-dark-800 opacity-40 cursor-not-allowed'
+              {/* Nieprzydzielone karty */}
+              {getUnassignedCards(acceptDealtCards, acceptSlotAssignment).length > 0 && (
+                <>
+                  <p className="text-dark-400 text-sm mt-2">Twoje wylosowane karty:</p>
+                  <div className="space-y-2">
+                    {getUnassignedCards(acceptDealtCards, acceptSlotAssignment).map(card => (
+                      <button
+                        key={card.id}
+                        onClick={() => setAcceptSelectedCard(
+                          acceptSelectedCard === card.id ? null : card.id
+                        )}
+                        className={`w-full flex items-center gap-3 p-3 rounded-xl transition-colors ${
+                          acceptSelectedCard === card.id
+                            ? 'bg-turbo-500/20 border border-turbo-500'
                             : 'bg-dark-700 hover:bg-dark-600'
+                        }`}
+                      >
+                        <div className="w-14 h-10 bg-dark-600 rounded-lg overflow-hidden flex-shrink-0">
+                          {card.image_url && (
+                            <img src={card.image_url} alt={card.name} className="w-full h-full object-cover" />
+                          )}
+                        </div>
+                        <div className="flex-1 text-left min-w-0">
+                          <p className="font-medium text-white text-sm truncate">{card.name}</p>
+                          <div className="flex gap-3 text-xs text-dark-400">
+                            <span>⚡{card.car_horsepower}</span>
+                            <span>🔧{card.car_torque}</span>
+                            <span>💨{card.car_max_speed}</span>
+                          </div>
+                        </div>
+                        {acceptSelectedCard === card.id && (
+                          <ArrowRight className="w-5 h-5 text-turbo-400 animate-pulse" />
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+
+              <Button
+                fullWidth
+                loading={isSubmitting}
+                disabled={!acceptSlotAssignment.power || !acceptSlotAssignment.torque || !acceptSlotAssignment.speed}
+                onClick={handleFight}
+              >
+                <Swords className="w-4 h-4 mr-2" />
+                Walcz!
+              </Button>
+            </>
+          )}
+
+          {/* REVEAL ANIMATION */}
+          {(acceptStep === 'revealing' || acceptStep === 'done') && revealResults && (
+            <>
+              <div className="space-y-3">
+                {revealResults.map((round, i) => (
+                  <div
+                    key={round.category}
+                    className={`transition-all duration-500 ${
+                      i < revealedRound ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
                     }`}
                   >
-                    <div className="w-12 h-8 bg-dark-600 rounded overflow-hidden">
-                      {card.image_url && (
-                        <img src={card.image_url} alt={card.name} className="w-full h-full object-cover" />
-                      )}
+                    <div className="text-xs text-dark-400 mb-1 font-medium">
+                      Runda {i + 1}: {getCategoryIcon(round.category)} {getCategoryName(round.category)}
                     </div>
-                    <div className="flex-1 text-left">
-                      <p className="font-medium text-white text-sm">{card.name}</p>
-                      <p className="text-xs text-dark-400">
-                        {card.car_horsepower}HP • {card.car_torque}Nm • {card.car_max_speed}km/h
-                      </p>
+                    <div className={`flex items-center gap-2 p-3 rounded-xl ${
+                      round.winner === 'draw' ? 'bg-blue-500/10 border border-blue-500/30' :
+                      (round.winner === 'challenger' && profile.id === incomingChallenges.find(b => b.id === selectedBattleId)?.challenger_id) ||
+                      (round.winner === 'opponent' && profile.id !== incomingChallenges.find(b => b.id === selectedBattleId)?.challenger_id)
+                        ? 'bg-green-500/10 border border-green-500/30'
+                        : 'bg-red-500/10 border border-red-500/30'
+                    }`}>
+                      <div className="flex-1 text-center">
+                        <div className="text-lg font-bold text-white">{round.challenger_value}</div>
+                        <div className="text-xs text-dark-400">Wyzywający</div>
+                      </div>
+                      <div className="text-dark-500 font-bold text-sm">VS</div>
+                      <div className="flex-1 text-center">
+                        <div className="text-lg font-bold text-white">{round.opponent_value}</div>
+                        <div className="text-xs text-dark-400">Ty</div>
+                      </div>
+                      <div className="w-8 flex justify-center">
+                        {round.winner === 'draw' ? (
+                          <Minus className="w-5 h-5 text-blue-400" />
+                        ) : round.winner === 'opponent' ? (
+                          <Check className="w-5 h-5 text-green-400" />
+                        ) : (
+                          <X className="w-5 h-5 text-red-400" />
+                        )}
+                      </div>
                     </div>
-                    {onCooldown ? (
-                      <span className="text-xs text-red-400 font-medium flex items-center gap-1">
-                        <Clock className="w-3 h-3" />
-                        {cooldownLabel}
-                      </span>
-                    ) : isSelected ? (
-                      <Check className="w-5 h-5 text-turbo-400" />
-                    ) : null}
-                  </button>
-                );
-              })}
-            </div>
+                  </div>
+                ))}
+              </div>
 
-            {selectedBattle?.reward_type === 'cards' && (
-              <p className="text-xs text-red-400">
-                Jesli przegrasz, stracisz wybrane karty!
-              </p>
-            )}
+              {/* Final result */}
+              {acceptStep === 'done' && (
+                <div className={`text-center py-4 rounded-xl mt-2 transition-all duration-500 ${
+                  revealWinnerId === null ? 'bg-blue-500/20' :
+                  revealWinnerId === profile.id ? 'bg-green-500/20' : 'bg-red-500/20'
+                }`}>
+                  <div className="flex items-center justify-center gap-2 mb-1">
+                    {revealWinnerId === null ? (
+                      <Minus className="w-6 h-6 text-blue-400" />
+                    ) : revealWinnerId === profile.id ? (
+                      <Crown className="w-6 h-6 text-yellow-400" />
+                    ) : (
+                      <X className="w-6 h-6 text-red-400" />
+                    )}
+                    <span className={`text-xl font-bold ${
+                      revealWinnerId === null ? 'text-blue-400' :
+                      revealWinnerId === profile.id ? 'text-green-400' : 'text-red-400'
+                    }`}>
+                      {revealWinnerId === null ? 'Remis!' :
+                       revealWinnerId === profile.id ? 'Wygrana!' : 'Przegrana'}
+                    </span>
+                  </div>
+                  <p className="text-sm text-dark-300">
+                    {revealWinnerId === null ? '+20 XP' :
+                     revealWinnerId === profile.id ? '+100 XP' : '+20 XP za udział'}
+                  </p>
+                </div>
+              )}
 
-            <Button
-              fullWidth
-              loading={isSubmitting}
-              disabled={selectedCards.length !== requiredCardCount}
-              onClick={handleAcceptChallenge}
-            >
-              Walcz! ({selectedCards.length}/{requiredCardCount} kart)
-            </Button>
-          </div>
-        )}
+              {acceptStep === 'done' && (
+                <Button fullWidth onClick={closeAcceptModal}>
+                  Zamknij
+                </Button>
+              )}
+            </>
+          )}
+        </div>
       </Modal>
 
-      {/* Battle Detail Modal */}
+      {/* ========== BATTLE DETAIL MODAL ========== */}
       <Modal
-        isOpen={showBattleDetailModal}
+        isOpen={showDetailModal}
         onClose={() => {
-          setShowBattleDetailModal(false);
+          setShowDetailModal(false);
           setDetailBattle(null);
         }}
         title="Szczegóły bitwy"
       >
         {detailBattle && (() => {
           const iAmChallenger = detailBattle.challenger_id === profile.id;
-          const myData = iAmChallenger
-            ? { user: detailBattle.challenger, cards: detailBattle.challenger_cards || [], score: detailBattle.challenger_score }
-            : { user: detailBattle.opponent, cards: detailBattle.opponent_cards || [], score: detailBattle.opponent_score };
-          const theirData = iAmChallenger
-            ? { user: detailBattle.opponent, cards: detailBattle.opponent_cards || [], score: detailBattle.opponent_score }
-            : { user: detailBattle.challenger, cards: detailBattle.challenger_cards || [], score: detailBattle.challenger_score };
           const isWinner = detailBattle.winner_id === profile.id;
           const isDraw = !detailBattle.winner_id;
-          const scoreDiff = Math.abs((myData.score || 0) - (theirData.score || 0));
+          const myScore = iAmChallenger ? detailBattle.challenger_score : detailBattle.opponent_score;
+          const theirScore = iAmChallenger ? detailBattle.opponent_score : detailBattle.challenger_score;
+          const opponent = iAmChallenger ? detailBattle.opponent : detailBattle.challenger;
+          const rounds = (detailBattle.round_results || []) as BattleRoundResult[];
+
+          // Map kart z obu stron
+          const allCards = new Map<string, CollectibleCard>();
+          (detailBattle.challenger_cards || []).forEach(c => allCards.set(c.id, c));
+          (detailBattle.opponent_cards || []).forEach(c => allCards.set(c.id, c));
 
           return (
             <div className="space-y-4">
@@ -753,105 +922,79 @@ export default function BattlesPage() {
                     {isDraw ? 'Remis!' : isWinner ? 'Wygrana!' : 'Przegrana'}
                   </span>
                 </div>
-                {!isDraw && (
-                  <p className="text-sm text-dark-300">
-                    Roznica: {scoreDiff} pkt
-                  </p>
-                )}
+                <p className="text-sm text-dark-300">
+                  Wynik rund: {myScore}-{theirScore}
+                </p>
               </div>
 
-              {/* Category & date */}
-              <div className="flex items-center justify-between text-sm text-dark-400">
-                <span>{getCategoryIcon(detailBattle.category)} {getCategoryName(detailBattle.category)}</span>
-                <span>{detailBattle.completed_at ? new Date(detailBattle.completed_at).toLocaleDateString('pl-PL') : ''}</span>
-              </div>
-
-              {/* Score comparison */}
+              {/* Players */}
               <div className="flex items-center gap-3">
                 <div className="flex-1 text-center">
-                  <Avatar src={myData.user?.avatar_url} fallback={myData.user?.nick || '?'} size="md" />
-                  <p className="text-sm font-medium text-white mt-1">{myData.user?.nick || 'Ty'}</p>
-                  <p className={`text-2xl font-bold mt-1 ${isDraw ? 'text-blue-400' : isWinner ? 'text-green-400' : 'text-red-400'}`}>
-                    {myData.score || 0}
-                  </p>
+                  <Avatar src={profile.avatar_url} fallback={profile.nick} size="md" />
+                  <p className="text-sm font-medium text-white mt-1">{profile.nick}</p>
                 </div>
                 <div className="text-dark-500 font-bold text-lg">VS</div>
                 <div className="flex-1 text-center">
-                  <Avatar src={theirData.user?.avatar_url} fallback={theirData.user?.nick || '?'} size="md" />
-                  <p className="text-sm font-medium text-white mt-1">{theirData.user?.nick || 'Przeciwnik'}</p>
-                  <p className={`text-2xl font-bold mt-1 ${isDraw ? 'text-blue-400' : !isWinner ? 'text-green-400' : 'text-red-400'}`}>
-                    {theirData.score || 0}
-                  </p>
+                  <Avatar src={opponent?.avatar_url} fallback={opponent?.nick || '?'} size="md" />
+                  <p className="text-sm font-medium text-white mt-1">{opponent?.nick}</p>
                 </div>
               </div>
 
-              {/* My cards */}
-              <div>
-                <p className="text-sm font-medium text-dark-300 mb-2">Twoje karty:</p>
-                <div className="space-y-2">
-                  {myData.cards.map(card => (
-                    <div key={card.id} className="flex items-center gap-3 p-2 bg-dark-700 rounded-xl">
-                      <div className="w-14 h-10 bg-dark-600 rounded-lg overflow-hidden flex-shrink-0">
-                        {card.image_url && (
-                          <img src={card.image_url} alt={card.name} className="w-full h-full object-cover" />
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-white text-sm truncate">{card.name}</p>
-                        <div className="flex gap-3 text-xs text-dark-400">
-                          {detailBattle.category === 'power' || detailBattle.category === 'total' ? (
-                            <span className={detailBattle.category === 'power' ? 'text-orange-400 font-medium' : ''}>{card.car_horsepower} KM</span>
-                          ) : null}
-                          {detailBattle.category === 'torque' || detailBattle.category === 'total' ? (
-                            <span className={detailBattle.category === 'torque' ? 'text-orange-400 font-medium' : ''}>{card.car_torque} Nm</span>
-                          ) : null}
-                          {detailBattle.category === 'speed' || detailBattle.category === 'total' ? (
-                            <span className={detailBattle.category === 'speed' ? 'text-orange-400 font-medium' : ''}>{card.car_max_speed} km/h</span>
-                          ) : null}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
+              {/* Round details */}
+              <div className="space-y-3">
+                {rounds.map((round, i) => {
+                  const myCardId = iAmChallenger ? round.challenger_card_id : round.opponent_card_id;
+                  const theirCardId = iAmChallenger ? round.opponent_card_id : round.challenger_card_id;
+                  const myValue = iAmChallenger ? round.challenger_value : round.opponent_value;
+                  const theirValue = iAmChallenger ? round.opponent_value : round.challenger_value;
+                  const myCard = allCards.get(myCardId);
+                  const theirCard = allCards.get(theirCardId);
+                  const iWonRound = (iAmChallenger && round.winner === 'challenger') || (!iAmChallenger && round.winner === 'opponent');
+                  const roundDraw = round.winner === 'draw';
 
-              {/* Their cards */}
-              <div>
-                <p className="text-sm font-medium text-dark-300 mb-2">Karty przeciwnika:</p>
-                <div className="space-y-2">
-                  {theirData.cards.map(card => (
-                    <div key={card.id} className="flex items-center gap-3 p-2 bg-dark-700 rounded-xl">
-                      <div className="w-14 h-10 bg-dark-600 rounded-lg overflow-hidden flex-shrink-0">
-                        {card.image_url && (
-                          <img src={card.image_url} alt={card.name} className="w-full h-full object-cover" />
-                        )}
+                  return (
+                    <div key={round.category}>
+                      <div className="text-xs text-dark-400 mb-1 font-medium">
+                        Runda {i + 1}: {getCategoryIcon(round.category)} {getCategoryName(round.category)}
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-white text-sm truncate">{card.name}</p>
-                        <div className="flex gap-3 text-xs text-dark-400">
-                          {detailBattle.category === 'power' || detailBattle.category === 'total' ? (
-                            <span className={detailBattle.category === 'power' ? 'text-orange-400 font-medium' : ''}>{card.car_horsepower} KM</span>
-                          ) : null}
-                          {detailBattle.category === 'torque' || detailBattle.category === 'total' ? (
-                            <span className={detailBattle.category === 'torque' ? 'text-orange-400 font-medium' : ''}>{card.car_torque} Nm</span>
-                          ) : null}
-                          {detailBattle.category === 'speed' || detailBattle.category === 'total' ? (
-                            <span className={detailBattle.category === 'speed' ? 'text-orange-400 font-medium' : ''}>{card.car_max_speed} km/h</span>
-                          ) : null}
+                      <div className={`p-3 rounded-xl ${
+                        roundDraw ? 'bg-blue-500/10 border border-blue-500/30' :
+                        iWonRound ? 'bg-green-500/10 border border-green-500/30' :
+                        'bg-red-500/10 border border-red-500/30'
+                      }`}>
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1">
+                            <p className="text-xs text-dark-400 truncate">{myCard?.name || '?'}</p>
+                            <p className={`text-lg font-bold ${roundDraw ? 'text-blue-400' : iWonRound ? 'text-green-400' : 'text-red-400'}`}>
+                              {myValue}
+                            </p>
+                          </div>
+                          <div className="text-dark-500 text-sm font-bold">VS</div>
+                          <div className="flex-1 text-right">
+                            <p className="text-xs text-dark-400 truncate">{theirCard?.name || '?'}</p>
+                            <p className={`text-lg font-bold ${roundDraw ? 'text-blue-400' : !iWonRound ? 'text-green-400' : 'text-red-400'}`}>
+                              {theirValue}
+                            </p>
+                          </div>
+                          <div className="w-6 flex justify-center">
+                            {roundDraw ? (
+                              <Minus className="w-4 h-4 text-blue-400" />
+                            ) : iWonRound ? (
+                              <Check className="w-4 h-4 text-green-400" />
+                            ) : (
+                              <X className="w-4 h-4 text-red-400" />
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
-                  ))}
-                </div>
+                  );
+                })}
               </div>
 
               {/* Reward info */}
               <div className="text-center text-sm text-dark-400 pt-2 border-t border-dark-700">
-                {detailBattle.reward_type === 'xp' ? (
-                  isWinner ? 'Nagroda: +100 XP' : isDraw ? 'Remis - brak nagrody XP' : 'Przegrana: +20 XP za udział'
-                ) : (
-                  isWinner ? 'Nagroda: karty przeciwnika' : isDraw ? 'Remis - karty zwrócone' : 'Strata: Twoje karty przeszły do zwycięzcy'
-                )}
+                {isWinner ? 'Nagroda: +100 XP' : isDraw ? 'Remis: +20 XP' : 'Przegrana: +20 XP za udział'}
               </div>
             </div>
           );

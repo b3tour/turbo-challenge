@@ -311,7 +311,7 @@ export default function DashboardPage() {
                   <>
                     <h3 className="font-semibold text-white">Wyzwij gracza!</h3>
                     <p className="text-sm text-dark-400">
-                      Postaw swoje karty i walcz o XP lub karty przeciwnika
+                      3 rundy, losowe karty, strategiczny przydział!
                     </p>
                   </>
                 )}

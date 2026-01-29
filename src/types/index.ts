@@ -333,27 +333,46 @@ export interface MysteryPackPurchase {
   user?: User;
 }
 
-// Turbo Bitwy
-export type BattleCategory = 'power' | 'torque' | 'speed' | 'total';
-export type BattleRewardType = 'xp' | 'cards';
-export type BattleStatus = 'pending' | 'accepted' | 'completed' | 'expired' | 'declined';
+// Turbo Bitwy v2
+export type BattleRoundCategory = 'power' | 'torque' | 'speed';
+export type BattleStatus = 'pending' | 'completed' | 'expired' | 'declined';
+
+export interface BattleSlotAssignment {
+  power: string;   // card ID przydzielony do slotu Moc
+  torque: string;  // card ID przydzielony do slotu Moment
+  speed: string;   // card ID przydzielony do slotu Prędkość
+}
+
+export interface BattleRoundResult {
+  category: BattleRoundCategory;
+  challenger_card_id: string;
+  opponent_card_id: string;
+  challenger_value: number;
+  opponent_value: number;
+  winner: 'challenger' | 'opponent' | 'draw';
+}
 
 export interface CardBattle {
   id: string;
   challenger_id: string;
   opponent_id: string;
-  category: BattleCategory;
-  reward_type: BattleRewardType;
   status: BattleStatus;
-  challenger_card_ids: string[];
-  opponent_card_ids?: string[] | null;
+  // Wylosowane karty (system-dealt random 3)
+  challenger_dealt_card_ids: string[];
+  opponent_dealt_card_ids?: string[] | null;
+  // Przydział kart do slotów (player-chosen)
+  challenger_slot_assignment: BattleSlotAssignment;
+  opponent_slot_assignment?: BattleSlotAssignment | null;
+  // Wyniki rund
+  round_results?: BattleRoundResult[] | null;
   winner_id?: string | null;
-  challenger_score?: number | null;
-  opponent_score?: number | null;
+  challenger_score?: number | null;  // rundy wygrane (0-3)
+  opponent_score?: number | null;    // rundy wygrane (0-3)
+  // Timestamps
   created_at: string;
   expires_at: string;
   completed_at?: string | null;
-  // Relacje
+  // Relacje (populated by joins)
   challenger?: User;
   opponent?: User;
   challenger_cards?: CollectibleCard[];

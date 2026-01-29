@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
-import { CardBattle, BattleCategory, BattleRewardType, CollectibleCard, User } from '@/types';
+import { CardBattle, BattleRoundCategory, BattleSlotAssignment, BattleRoundResult, CollectibleCard, User } from '@/types';
 import { sendUserNotification } from '@/hooks/useAnnouncements';
 
 interface UseBattlesOptions {
@@ -16,42 +16,73 @@ interface BattleWithDetails extends CardBattle {
   opponent_cards?: CollectibleCard[];
 }
 
-// Oblicz wynik dla kategorii
-function calculateScore(cards: CollectibleCard[], category: BattleCategory): number {
-  return cards.reduce((sum, card) => {
-    switch (category) {
-      case 'power':
-        return sum + (card.car_horsepower || 0);
-      case 'torque':
-        return sum + (card.car_torque || 0);
-      case 'speed':
-        return sum + (card.car_max_speed || 0);
-      case 'total':
-        return sum + (card.car_horsepower || 0) + (card.car_torque || 0) + (card.car_max_speed || 0);
-      default:
-        return sum;
-    }
-  }, 0);
-}
-
-// Nazwa kategorii po polsku
-export function getCategoryName(category: BattleCategory): string {
+// Nazwa kategorii rundy po polsku
+export function getCategoryName(category: BattleRoundCategory): string {
   switch (category) {
     case 'power': return 'Moc (KM)';
-    case 'torque': return 'Moment obrotowy (Nm)';
-    case 'speed': return 'Prędkość max (km/h)';
-    case 'total': return 'Suma parametrów';
+    case 'torque': return 'Moment (Nm)';
+    case 'speed': return 'Prędkość (km/h)';
   }
 }
 
-// Ikona kategorii
-export function getCategoryIcon(category: BattleCategory): string {
+// Ikona kategorii rundy
+export function getCategoryIcon(category: BattleRoundCategory): string {
   switch (category) {
     case 'power': return '⚡';
     case 'torque': return '🔧';
     case 'speed': return '💨';
-    case 'total': return '🏆';
   }
+}
+
+// Pobierz wartość statu karty dla danej kategorii
+function getCardStatValue(card: CollectibleCard, category: BattleRoundCategory): number {
+  switch (category) {
+    case 'power': return card.car_horsepower || 0;
+    case 'torque': return card.car_torque || 0;
+    case 'speed': return card.car_max_speed || 0;
+  }
+}
+
+// Rozstrzygnij 3 rundy bitwy (pure function)
+function resolveRounds(
+  challengerSlots: BattleSlotAssignment,
+  opponentSlots: BattleSlotAssignment,
+  allCards: Map<string, CollectibleCard>
+): { results: BattleRoundResult[]; challengerWins: number; opponentWins: number } {
+  const categories: BattleRoundCategory[] = ['power', 'torque', 'speed'];
+  const results: BattleRoundResult[] = [];
+  let challengerWins = 0;
+  let opponentWins = 0;
+
+  for (const cat of categories) {
+    const cCard = allCards.get(challengerSlots[cat]);
+    const oCard = allCards.get(opponentSlots[cat]);
+
+    const cValue = cCard ? getCardStatValue(cCard, cat) : 0;
+    const oValue = oCard ? getCardStatValue(oCard, cat) : 0;
+
+    let winner: 'challenger' | 'opponent' | 'draw';
+    if (cValue > oValue) {
+      winner = 'challenger';
+      challengerWins++;
+    } else if (oValue > cValue) {
+      winner = 'opponent';
+      opponentWins++;
+    } else {
+      winner = 'draw';
+    }
+
+    results.push({
+      category: cat,
+      challenger_card_id: challengerSlots[cat],
+      opponent_card_id: opponentSlots[cat],
+      challenger_value: cValue,
+      opponent_value: oValue,
+      winner,
+    });
+  }
+
+  return { results, challengerWins, opponentWins };
 }
 
 export function useBattles(options: UseBattlesOptions = {}) {
@@ -70,7 +101,6 @@ export function useBattles(options: UseBattlesOptions = {}) {
     }
 
     try {
-      // Pobierz bitwy gdzie jestem challengerem lub przeciwnikiem
       const { data: battles, error: battlesError } = await supabase
         .from('card_battles')
         .select(`
@@ -83,41 +113,40 @@ export function useBattles(options: UseBattlesOptions = {}) {
 
       if (battlesError) throw battlesError;
 
-      // Pobierz karty dla każdej bitwy
-      const battlesWithCards: BattleWithDetails[] = await Promise.all(
-        (battles || []).map(async (battle) => {
-          // Pobierz karty challengera
-          const challengerCardIds = battle.challenger_card_ids || [];
-          let challengerCards: CollectibleCard[] = [];
-          if (challengerCardIds.length > 0) {
-            const { data: cards } = await supabase
-              .from('cards')
-              .select('*')
-              .in('id', challengerCardIds);
-            challengerCards = cards || [];
-          }
+      // Zbierz unikalne ID kart ze wszystkich bitew
+      const allCardIds = new Set<string>();
+      (battles || []).forEach(battle => {
+        (battle.challenger_dealt_card_ids || []).forEach((id: string) => allCardIds.add(id));
+        (battle.opponent_dealt_card_ids || []).forEach((id: string) => allCardIds.add(id));
+      });
 
-          // Pobierz karty przeciwnika (jeśli zaakceptował)
-          const opponentCardIds = battle.opponent_card_ids || [];
-          let opponentCards: CollectibleCard[] = [];
-          if (opponentCardIds.length > 0) {
-            const { data: cards } = await supabase
-              .from('cards')
-              .select('*')
-              .in('id', opponentCardIds);
-            opponentCards = cards || [];
-          }
+      // Pobierz wszystkie karty jednym zapytaniem (zamiast N+1)
+      let cardsMap = new Map<string, CollectibleCard>();
+      if (allCardIds.size > 0) {
+        const { data: cards } = await supabase
+          .from('cards')
+          .select('*')
+          .in('id', Array.from(allCardIds));
+        (cards || []).forEach(card => cardsMap.set(card.id, card as CollectibleCard));
+      }
 
-          return {
-            ...battle,
-            challenger_cards: challengerCards,
-            opponent_cards: opponentCards,
-          } as BattleWithDetails;
-        })
-      );
+      // Przypisz karty do bitew
+      const battlesWithCards: BattleWithDetails[] = (battles || []).map(battle => {
+        const challengerCards = (battle.challenger_dealt_card_ids || [])
+          .map((id: string) => cardsMap.get(id))
+          .filter(Boolean) as CollectibleCard[];
+        const opponentCards = (battle.opponent_dealt_card_ids || [])
+          .map((id: string) => cardsMap.get(id))
+          .filter(Boolean) as CollectibleCard[];
 
-      // Rozdziel na historię bitew i przychodzące wyzwania
-      // Historia: wszystkie bitwy użytkownika OPRÓCZ pending incoming (te są w "Wyzwania")
+        return {
+          ...battle,
+          challenger_cards: challengerCards,
+          opponent_cards: opponentCards,
+        } as BattleWithDetails;
+      });
+
+      // Rozdziel na historię i przychodzące wyzwania
       const my = battlesWithCards.filter(b =>
         !(b.opponent_id === userId && b.status === 'pending')
       );
@@ -155,18 +184,37 @@ export function useBattles(options: UseBattlesOptions = {}) {
     return count || 0;
   }, [userId]);
 
-  // Utwórz nowe wyzwanie
+  // Wylosuj 3 losowe karty samochodów z kolekcji gracza
+  const dealRandomCards = useCallback(async (targetUserId: string): Promise<CollectibleCard[]> => {
+    const { data } = await supabase
+      .from('user_cards')
+      .select('card:cards!inner(*)')
+      .eq('user_id', targetUserId)
+      .eq('card.card_type', 'car');
+
+    if (!data || data.length < 3) {
+      throw new Error('Niewystarczająca liczba kart samochodów (minimum 3)');
+    }
+
+    const cards = data.map(d => d.card as unknown as CollectibleCard);
+
+    // Fisher-Yates shuffle
+    const shuffled = [...cards];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+
+    return shuffled.slice(0, 3);
+  }, []);
+
+  // Utwórz nowe wyzwanie (z wylosowanymi kartami i przydziałem slotów)
   const createChallenge = useCallback(async (
     opponentId: string,
-    cardIds: string[],
-    category: BattleCategory,
-    rewardType: BattleRewardType
+    dealtCards: CollectibleCard[],
+    slotAssignment: BattleSlotAssignment
   ): Promise<{ success: boolean; error?: string; battle?: CardBattle }> => {
     if (!userId) return { success: false, error: 'Nie jesteś zalogowany' };
-
-    if (cardIds.length < 2) {
-      return { success: false, error: 'Musisz wybrać minimum 2 karty' };
-    }
 
     // Sprawdź limit tygodniowy
     const sentThisWeek = await getChallengesSentThisWeek();
@@ -179,26 +227,18 @@ export function useBattles(options: UseBattlesOptions = {}) {
       return { success: false, error: 'Nie możesz wyzwać samego siebie' };
     }
 
-    // Sprawdź czy karty należą do użytkownika
-    const { data: userCards } = await supabase
-      .from('user_cards')
-      .select('card_id')
-      .eq('user_id', userId)
-      .in('card_id', cardIds);
+    // Waliduj przydział — wszystkie 3 karty z dealt muszą być w slotach
+    const dealtIds = new Set(dealtCards.map(c => c.id));
+    const assignedIds = [slotAssignment.power, slotAssignment.torque, slotAssignment.speed];
+    const uniqueAssigned = new Set(assignedIds);
 
-    if (!userCards || userCards.length < cardIds.length) {
-      return { success: false, error: 'Nie posiadasz wszystkich wybranych kart' };
+    if (uniqueAssigned.size !== 3) {
+      return { success: false, error: 'Każdy slot musi mieć inną kartę' };
     }
-
-    // Sprawdź cooldown kart
-    const cooldownMap = await getCardsOnCooldown();
-    const now = new Date();
-    const cooldownCards = cardIds.filter(id => {
-      const unlock = cooldownMap.get(id);
-      return unlock && unlock > now;
-    });
-    if (cooldownCards.length > 0) {
-      return { success: false, error: 'Niektóre karty są na cooldownie po ostatniej bitwie' };
+    for (const id of assignedIds) {
+      if (!dealtIds.has(id)) {
+        return { success: false, error: 'Przydzielona karta nie jest z wylosowanego zestawu' };
+      }
     }
 
     // Oblicz datę wygaśnięcia (7 dni)
@@ -210,9 +250,8 @@ export function useBattles(options: UseBattlesOptions = {}) {
       .insert({
         challenger_id: userId,
         opponent_id: opponentId,
-        category,
-        reward_type: rewardType,
-        challenger_card_ids: cardIds,
+        challenger_dealt_card_ids: dealtCards.map(c => c.id),
+        challenger_slot_assignment: slotAssignment,
         status: 'pending',
         expires_at: expiresAt.toISOString(),
       })
@@ -224,7 +263,7 @@ export function useBattles(options: UseBattlesOptions = {}) {
       return { success: false, error: insertError.message };
     }
 
-    // Pobierz nick wyzywającego i wyślij powiadomienie do przeciwnika
+    // Wyślij powiadomienie do przeciwnika
     const { data: challengerData } = await supabase
       .from('users')
       .select('nick')
@@ -232,31 +271,31 @@ export function useBattles(options: UseBattlesOptions = {}) {
       .single();
 
     const challengerNick = challengerData?.nick || 'Gracz';
-    const categoryName = getCategoryName(category);
 
     await sendUserNotification(
       opponentId,
       'Nowe wyzwanie!',
-      `${challengerNick} wyzwał Cię na Turbo Bitwę! Kategoria: ${categoryName}. Masz 7 dni na odpowiedź.`,
+      `${challengerNick} wyzwał Cię na Turbo Bitwę! 3 rundy: Moc, Moment, Prędkość. Masz 7 dni na odpowiedź.`,
       'battle_challenge',
-      { battle_id: data.id, challenger_nick: challengerNick, category }
+      { battle_id: data.id, challenger_nick: challengerNick }
     );
 
     await fetchBattles();
     return { success: true, battle: data };
-  }, [userId, getChallengesSentThisWeek, fetchBattles, getCategoryName]);
+  }, [userId, getChallengesSentThisWeek, fetchBattles]);
 
-  // Akceptuj wyzwanie i wybierz karty
+  // Akceptuj wyzwanie (z wylosowanymi kartami i przydziałem slotów)
   const acceptChallenge = useCallback(async (
     battleId: string,
-    cardIds: string[]
-  ): Promise<{ success: boolean; error?: string; winner?: string }> => {
+    dealtCards: CollectibleCard[],
+    slotAssignment: BattleSlotAssignment
+  ): Promise<{ success: boolean; error?: string; results?: BattleRoundResult[]; winnerId?: string | null }> => {
     if (!userId) return { success: false, error: 'Nie jesteś zalogowany' };
 
     // Pobierz bitwę
     const { data: battle, error: fetchError } = await supabase
       .from('card_battles')
-      .select('*, challenger_card_ids')
+      .select('*')
       .eq('id', battleId)
       .single();
 
@@ -272,71 +311,65 @@ export function useBattles(options: UseBattlesOptions = {}) {
       return { success: false, error: 'To wyzwanie już zostało rozstrzygnięte' };
     }
 
-    // Wymusz tę samą liczbę kart co challenger
-    const requiredCards = (battle.challenger_card_ids || []).length;
-    if (cardIds.length !== requiredCards) {
-      return { success: false, error: `Musisz wybrać dokładnie ${requiredCards} kart` };
+    // Waliduj przydział
+    const dealtIds = new Set(dealtCards.map(c => c.id));
+    const assignedIds = [slotAssignment.power, slotAssignment.torque, slotAssignment.speed];
+    const uniqueAssigned = new Set(assignedIds);
+
+    if (uniqueAssigned.size !== 3) {
+      return { success: false, error: 'Każdy slot musi mieć inną kartę' };
+    }
+    for (const id of assignedIds) {
+      if (!dealtIds.has(id)) {
+        return { success: false, error: 'Przydzielona karta nie jest z wylosowanego zestawu' };
+      }
     }
 
-    // Sprawdź czy karty należą do użytkownika
-    const { data: userCards } = await supabase
-      .from('user_cards')
-      .select('card_id')
-      .eq('user_id', userId)
-      .in('card_id', cardIds);
+    // Pobierz karty challengera
+    const challengerSlots = battle.challenger_slot_assignment as BattleSlotAssignment;
+    const allCardIds = [
+      ...battle.challenger_dealt_card_ids,
+      ...dealtCards.map(c => c.id),
+    ];
 
-    if (!userCards || userCards.length < cardIds.length) {
-      return { success: false, error: 'Nie posiadasz wszystkich wybranych kart' };
-    }
-
-    // Sprawdź cooldown kart
-    const cooldownMap = await getCardsOnCooldown();
-    const now = new Date();
-    const cooldownCards = cardIds.filter(id => {
-      const unlock = cooldownMap.get(id);
-      return unlock && unlock > now;
-    });
-    if (cooldownCards.length > 0) {
-      return { success: false, error: 'Niektóre karty są na cooldownie po ostatniej bitwie' };
-    }
-
-    // Pobierz karty obu stron
-    const { data: challengerCards } = await supabase
+    const { data: allCardsData } = await supabase
       .from('cards')
       .select('*')
-      .in('id', battle.challenger_card_ids);
+      .in('id', allCardIds);
 
-    const { data: opponentCards } = await supabase
-      .from('cards')
-      .select('*')
-      .in('id', cardIds);
-
-    if (!challengerCards || !opponentCards) {
+    if (!allCardsData) {
       return { success: false, error: 'Błąd pobierania kart' };
     }
 
-    // Oblicz wyniki
-    const challengerScore = calculateScore(challengerCards, battle.category);
-    const opponentScore = calculateScore(opponentCards, battle.category);
+    const cardsMap = new Map<string, CollectibleCard>();
+    allCardsData.forEach(card => cardsMap.set(card.id, card as CollectibleCard));
+
+    // Rozstrzygnij 3 rundy
+    const { results, challengerWins, opponentWins } = resolveRounds(
+      challengerSlots,
+      slotAssignment,
+      cardsMap
+    );
 
     // Określ zwycięzcę
     let winnerId: string | null = null;
-    if (challengerScore > opponentScore) {
+    if (challengerWins > opponentWins) {
       winnerId = battle.challenger_id;
-    } else if (opponentScore > challengerScore) {
+    } else if (opponentWins > challengerWins) {
       winnerId = battle.opponent_id;
     }
-    // Remis = brak zwycięzcy
 
     // Aktualizuj bitwę
     const { error: updateError } = await supabase
       .from('card_battles')
       .update({
-        opponent_card_ids: cardIds,
+        opponent_dealt_card_ids: dealtCards.map(c => c.id),
+        opponent_slot_assignment: slotAssignment,
+        round_results: results,
         status: 'completed',
         winner_id: winnerId,
-        challenger_score: challengerScore,
-        opponent_score: opponentScore,
+        challenger_score: challengerWins,
+        opponent_score: opponentWins,
         completed_at: new Date().toISOString(),
       })
       .eq('id', battleId);
@@ -345,29 +378,18 @@ export function useBattles(options: UseBattlesOptions = {}) {
       return { success: false, error: updateError.message };
     }
 
-    // Przyznaj nagrody
-    if (winnerId && battle.reward_type === 'xp') {
-      // Zwycięzca dostaje 100 XP, przegrany 20 XP
+    // Przyznaj XP
+    if (winnerId) {
       const loserId = winnerId === battle.challenger_id ? battle.opponent_id : battle.challenger_id;
-
       await supabase.rpc('add_xp', { user_id: winnerId, xp_amount: 100 });
       await supabase.rpc('add_xp', { user_id: loserId, xp_amount: 20 });
-    } else if (winnerId && battle.reward_type === 'cards') {
-      // Zwycięzca zabiera karty przegranego
-      const loserId = winnerId === battle.challenger_id ? battle.opponent_id : battle.challenger_id;
-      const loserCardIds = winnerId === battle.challenger_id ? cardIds : battle.challenger_card_ids;
-
-      // Przenieś karty do zwycięzcy
-      for (const cardId of loserCardIds) {
-        await supabase
-          .from('user_cards')
-          .update({ user_id: winnerId, obtained_from: 'trade' })
-          .eq('user_id', loserId)
-          .eq('card_id', cardId);
-      }
+    } else {
+      // Remis — obaj +20 XP
+      await supabase.rpc('add_xp', { user_id: battle.challenger_id, xp_amount: 20 });
+      await supabase.rpc('add_xp', { user_id: battle.opponent_id, xp_amount: 20 });
     }
 
-    // Wyślij powiadomienia o wyniku do obu graczy
+    // Wyślij powiadomienia
     const { data: usersData } = await supabase
       .from('users')
       .select('id, nick')
@@ -375,57 +397,54 @@ export function useBattles(options: UseBattlesOptions = {}) {
 
     const challenger = usersData?.find(u => u.id === battle.challenger_id);
     const opponent = usersData?.find(u => u.id === battle.opponent_id);
+    const scoreText = `${challengerWins}-${opponentWins}`;
 
     if (winnerId) {
       const winnerNick = winnerId === battle.challenger_id ? challenger?.nick : opponent?.nick;
       const loserNick = winnerId === battle.challenger_id ? opponent?.nick : challenger?.nick;
       const loserId = winnerId === battle.challenger_id ? battle.opponent_id : battle.challenger_id;
 
-      // Powiadomienie dla zwycięzcy
       await sendUserNotification(
         winnerId,
         'Wygrana w Turbo Bitwie!',
-        `Pokonałeś ${loserNick}! Wynik: ${winnerId === battle.challenger_id ? challengerScore : opponentScore} vs ${winnerId === battle.challenger_id ? opponentScore : challengerScore}. +100 XP!`,
+        `Pokonałeś ${loserNick}! Wynik rund: ${scoreText}. +100 XP!`,
         'battle_result',
         { battle_id: battleId, result: 'win', xp_gained: 100 }
       );
 
-      // Powiadomienie dla przegranego
       await sendUserNotification(
         loserId,
         'Przegrana w Turbo Bitwie',
-        `${winnerNick} wygrał bitwę. Wynik: ${loserId === battle.challenger_id ? challengerScore : opponentScore} vs ${loserId === battle.challenger_id ? opponentScore : challengerScore}. +20 XP za udział.`,
+        `${winnerNick} wygrał bitwę. Wynik rund: ${scoreText}. +20 XP za udział.`,
         'battle_result',
         { battle_id: battleId, result: 'loss', xp_gained: 20 }
       );
     } else {
-      // Remis - powiadomienia dla obu
       await sendUserNotification(
         battle.challenger_id,
         'Remis w Turbo Bitwie!',
-        `Bitwa z ${opponent?.nick} zakończyła się remisem! Wynik: ${challengerScore} vs ${opponentScore}.`,
+        `Bitwa z ${opponent?.nick} zakończyła się remisem! Wynik rund: ${scoreText}. +20 XP.`,
         'battle_result',
-        { battle_id: battleId, result: 'draw' }
+        { battle_id: battleId, result: 'draw', xp_gained: 20 }
       );
 
       await sendUserNotification(
         battle.opponent_id,
         'Remis w Turbo Bitwie!',
-        `Bitwa z ${challenger?.nick} zakończyła się remisem! Wynik: ${opponentScore} vs ${challengerScore}.`,
+        `Bitwa z ${challenger?.nick} zakończyła się remisem! Wynik rund: ${scoreText}. +20 XP.`,
         'battle_result',
-        { battle_id: battleId, result: 'draw' }
+        { battle_id: battleId, result: 'draw', xp_gained: 20 }
       );
     }
 
     await fetchBattles();
-    return { success: true, winner: winnerId || undefined };
+    return { success: true, results, winnerId };
   }, [userId, fetchBattles]);
 
   // Odrzuć wyzwanie
   const declineChallenge = useCallback(async (battleId: string): Promise<{ success: boolean; error?: string }> => {
     if (!userId) return { success: false, error: 'Nie jesteś zalogowany' };
 
-    // Pobierz bitwę żeby znać challenger_id
     const { data: battle } = await supabase
       .from('card_battles')
       .select('challenger_id')
@@ -443,7 +462,6 @@ export function useBattles(options: UseBattlesOptions = {}) {
       return { success: false, error: updateError.message };
     }
 
-    // Wyślij powiadomienie do wyzywającego
     if (battle) {
       const { data: opponentData } = await supabase
         .from('users')
@@ -464,12 +482,10 @@ export function useBattles(options: UseBattlesOptions = {}) {
     return { success: true };
   }, [userId, fetchBattles]);
 
-  // Pobierz listę graczy do wyzwania (z wystarczającą liczbą kart)
+  // Pobierz listę graczy do wyzwania (min. 3 karty samochodów)
   const getChallengablePlayers = useCallback(async (limit: number = 20): Promise<User[]> => {
     if (!userId) return [];
 
-    // Pobierz użytkowników którzy mają min. 2 karty samochodów
-    // Uwaga: Supabase domyślnie zwraca max 1000 wierszy - podnosimy limit
     const { data: usersWithCards, error: cardsError } = await supabase
       .from('user_cards')
       .select('user_id, card:cards!inner(card_type)')
@@ -490,14 +506,13 @@ export function useBattles(options: UseBattlesOptions = {}) {
       cardCounts[uc.user_id] = (cardCounts[uc.user_id] || 0) + 1;
     });
 
-    // Filtruj tych z min. 2 kartami
+    // Filtruj tych z min. 3 kartami (było 2, teraz 3 bo potrzeba 3 do bitwy)
     const eligibleUserIds = Object.entries(cardCounts)
-      .filter(([_, count]) => count >= 2)
+      .filter(([_, count]) => count >= 3)
       .map(([id]) => id);
 
     if (eligibleUserIds.length === 0) return [];
 
-    // Pobierz dane użytkowników
     const { data: users } = await supabase
       .from('users')
       .select('id, nick, avatar_url, total_xp, level')
@@ -507,91 +522,6 @@ export function useBattles(options: UseBattlesOptions = {}) {
 
     return (users || []) as User[];
   }, [userId]);
-
-  // Pobierz karty na cooldownie (użyte w bitwach w ciągu ostatnich 7 dni)
-  const getCardsOnCooldown = useCallback(async (): Promise<Map<string, Date>> => {
-    if (!userId) return new Map();
-
-    const cooldownDays = 7;
-    const cooldownDate = new Date();
-    cooldownDate.setDate(cooldownDate.getDate() - cooldownDays);
-
-    // Pobierz zakończone bitwy z ostatnich 7 dni
-    const { data: recentBattles } = await supabase
-      .from('card_battles')
-      .select('challenger_id, opponent_id, challenger_card_ids, opponent_card_ids, completed_at')
-      .eq('status', 'completed')
-      .or(`challenger_id.eq.${userId},opponent_id.eq.${userId}`)
-      .gte('completed_at', cooldownDate.toISOString());
-
-    // Pobierz pending bitwy gdzie user jest challengerem (karty są zablokowane)
-    const { data: pendingBattles } = await supabase
-      .from('card_battles')
-      .select('challenger_card_ids, created_at')
-      .eq('status', 'pending')
-      .eq('challenger_id', userId);
-
-    const cooldownMap = new Map<string, Date>();
-
-    // Karty z zakończonych bitew - cooldown 7 dni od completed_at
-    (recentBattles || []).forEach(battle => {
-      const completedAt = new Date(battle.completed_at);
-      const unlockDate = new Date(completedAt);
-      unlockDate.setDate(unlockDate.getDate() + cooldownDays);
-
-      const myCardIds = battle.challenger_id === userId
-        ? battle.challenger_card_ids || []
-        : battle.opponent_card_ids || [];
-
-      myCardIds.forEach((cardId: string) => {
-        const existing = cooldownMap.get(cardId);
-        if (!existing || unlockDate > existing) {
-          cooldownMap.set(cardId, unlockDate);
-        }
-      });
-    });
-
-    // Karty z pending bitew (challenger zablokował karty)
-    (pendingBattles || []).forEach(battle => {
-      const cardIds = battle.challenger_card_ids || [];
-      cardIds.forEach((cardId: string) => {
-        // Pending = zablokowane do rozstrzygnięcia, ustawiamy daleki unlock
-        const existing = cooldownMap.get(cardId);
-        const pendingUnlock = new Date('2099-01-01');
-        if (!existing || pendingUnlock > existing) {
-          cooldownMap.set(cardId, pendingUnlock);
-        }
-      });
-    });
-
-    return cooldownMap;
-  }, [userId]);
-
-  // Pobierz moje karty samochodów do wyboru (z info o cooldownie)
-  const getMyCars = useCallback(async (): Promise<(CollectibleCard & { cooldownUntil?: Date })[]> => {
-    if (!userId) return [];
-
-    const { data } = await supabase
-      .from('user_cards')
-      .select('card:cards!inner(*)')
-      .eq('user_id', userId)
-      .eq('card.card_type', 'car');
-
-    if (!data) return [];
-
-    const cooldownMap = await getCardsOnCooldown();
-    const now = new Date();
-
-    return data.map(d => {
-      const card = d.card as unknown as CollectibleCard;
-      const unlockDate = cooldownMap.get(card.id);
-      const isOnCooldown = unlockDate && unlockDate > now;
-      return {
-        ...card,
-        cooldownUntil: isOnCooldown ? unlockDate : undefined,
-      };
-    });
-  }, [userId, getCardsOnCooldown]);
 
   // Statystyki bitew
   const getBattleStats = useCallback(async (): Promise<{ wins: number; losses: number; draws: number }> => {
@@ -624,11 +554,9 @@ export function useBattles(options: UseBattlesOptions = {}) {
     acceptChallenge,
     declineChallenge,
     getChallengablePlayers,
-    getMyCars,
+    dealRandomCards,
     getChallengesSentThisWeek,
     getBattleStats,
     refetch: fetchBattles,
-    getCategoryName,
-    getCategoryIcon,
   };
 }
