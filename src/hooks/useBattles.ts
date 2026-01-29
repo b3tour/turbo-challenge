@@ -5,6 +5,14 @@ import { supabase } from '@/lib/supabase';
 import { CardBattle, BattleRoundCategory, BattleSlotAssignment, BattleRoundResult, CollectibleCard, User } from '@/types';
 import { sendUserNotification } from '@/hooks/useAnnouncements';
 import { BATTLE_BADGES, BattleStatsForBadges } from '@/config/battleBadges';
+import { MOD_DEFINITIONS, getCumulativeBonus } from '@/config/tuningConfig';
+
+// Bonusy z tuningu dla jednej karty
+interface TuningBonuses {
+  hp: number;
+  torque: number;
+  speed: number;
+}
 
 interface UseBattlesOptions {
   userId?: string;
@@ -44,11 +52,30 @@ function getCardStatValue(card: CollectibleCard, category: BattleRoundCategory):
   }
 }
 
+// Pobierz wartosc statu karty z uwzglednieniem bonusow tuningu
+function getCardStatWithTuning(
+  card: CollectibleCard,
+  category: BattleRoundCategory,
+  tuning?: TuningBonuses
+): number {
+  let value = getCardStatValue(card, category);
+  if (tuning) {
+    switch (category) {
+      case 'power': value += tuning.hp; break;
+      case 'torque': value += tuning.torque; break;
+      case 'speed': value += tuning.speed; break;
+    }
+  }
+  return value;
+}
+
 // Rozstrzygnij 3 rundy bitwy (pure function)
 function resolveRounds(
   challengerSlots: BattleSlotAssignment,
   opponentSlots: BattleSlotAssignment,
-  allCards: Map<string, CollectibleCard>
+  allCards: Map<string, CollectibleCard>,
+  challengerTuning?: Map<string, TuningBonuses>,
+  opponentTuning?: Map<string, TuningBonuses>
 ): { results: BattleRoundResult[]; challengerWins: number; opponentWins: number } {
   const categories: BattleRoundCategory[] = ['power', 'torque', 'speed'];
   const results: BattleRoundResult[] = [];
@@ -59,8 +86,8 @@ function resolveRounds(
     const cCard = allCards.get(challengerSlots[cat]);
     const oCard = allCards.get(opponentSlots[cat]);
 
-    const cValue = cCard ? getCardStatValue(cCard, cat) : 0;
-    const oValue = oCard ? getCardStatValue(oCard, cat) : 0;
+    const cValue = cCard ? getCardStatWithTuning(cCard, cat, challengerTuning?.get(challengerSlots[cat])) : 0;
+    const oValue = oCard ? getCardStatWithTuning(oCard, cat, opponentTuning?.get(opponentSlots[cat])) : 0;
 
     let winner: 'challenger' | 'opponent' | 'draw';
     if (cValue > oValue) {
@@ -428,11 +455,38 @@ export function useBattles(options: UseBattlesOptions = {}) {
     const cardsMap = new Map<string, CollectibleCard>();
     allCardsData.forEach(card => cardsMap.set(card.id, card as CollectibleCard));
 
-    // Rozstrzygnij 3 rundy
+    // Pobierz bonusy tuningu obu graczy dla kart w tej bitwie
+    const { data: tuningData } = await supabase
+      .from('tuned_cars')
+      .select('card_id, user_id, engine_stage, turbo_stage, weight_stage')
+      .in('card_id', allCardIds)
+      .in('user_id', [battle.challenger_id, userId]);
+
+    const challengerTuning = new Map<string, TuningBonuses>();
+    const opponentTuning = new Map<string, TuningBonuses>();
+
+    if (tuningData) {
+      for (const tc of tuningData) {
+        const bonuses: TuningBonuses = {
+          hp: getCumulativeBonus(MOD_DEFINITIONS[0], tc.engine_stage),
+          torque: getCumulativeBonus(MOD_DEFINITIONS[1], tc.turbo_stage),
+          speed: getCumulativeBonus(MOD_DEFINITIONS[2], tc.weight_stage),
+        };
+        if (tc.user_id === battle.challenger_id) {
+          challengerTuning.set(tc.card_id, bonuses);
+        } else {
+          opponentTuning.set(tc.card_id, bonuses);
+        }
+      }
+    }
+
+    // Rozstrzygnij 3 rundy (z uwzglednieniem tuningu)
     const { results, challengerWins, opponentWins } = resolveRounds(
       challengerSlots,
       slotAssignment,
-      cardsMap
+      cardsMap,
+      challengerTuning,
+      opponentTuning
     );
 
     // Określ zwycięzcę
