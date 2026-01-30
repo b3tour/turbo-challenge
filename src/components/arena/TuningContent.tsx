@@ -194,9 +194,9 @@ export function TuningContent() {
 
   // === RENDER ===
   return (
-    <div className="py-4">
+    <div className="py-4 space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-white flex items-center gap-2">
           <Wrench className="w-7 h-7 text-turbo-500" />
           Strefa Tuningu
@@ -213,7 +213,7 @@ export function TuningContent() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-2 mb-4 overflow-x-auto pb-2">
+      <div className="flex gap-2 overflow-x-auto pb-1">
         {tabs.map(t => {
           const Icon = t.icon;
           return (

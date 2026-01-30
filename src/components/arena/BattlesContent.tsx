@@ -13,14 +13,11 @@ import {
   Clock,
   Check,
   X,
-  Zap,
-  Gift,
   Crown,
   Minus,
   Shuffle,
   ArrowRight,
 } from 'lucide-react';
-import Link from 'next/link';
 import { CollectibleCard, BattleSlotAssignment, BattleRoundCategory, BattleRoundResult, User } from '@/types';
 
 type Tab = 'challenges' | 'my_battles' | 'new';
@@ -257,76 +254,53 @@ export function BattlesContent() {
 
   // --- RENDER ---
 
+  const tabs: { value: Tab; label: string; icon: React.ElementType; count?: number }[] = [
+    { value: 'challenges', label: 'Wyzwania', icon: Swords, count: incomingChallenges.length },
+    { value: 'my_battles', label: 'Historia', icon: Trophy },
+  ];
+
   return (
-    <div className="py-4 space-y-6">
+    <div className="py-4 space-y-4">
       {/* Header */}
-      <div className="text-center">
-        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-orange-500/20 mb-3">
-          <Swords className="w-8 h-8 text-orange-500" />
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+          <Swords className="w-7 h-7 text-turbo-500" />
+          Turbo Bitwy
+        </h1>
+        <div className="text-right">
+          <div className="text-sm text-dark-400">Wyzwania w tygodniu</div>
+          <div className={`text-lg font-bold ${challengesSentThisWeek >= 3 ? 'text-red-400' : 'text-turbo-400'}`}>
+            {challengesSentThisWeek}/3
+          </div>
         </div>
-        <h1 className="text-2xl font-bold text-white">Turbo Bitwy</h1>
-        <p className="text-dark-400 mt-1">
-          3 rundy, losowe karty, strategiczny przydział!
-        </p>
       </div>
 
-      {/* Challenge limit */}
-      <Card padding="sm" className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Zap className="w-5 h-5 text-turbo-500" />
-          <span className="text-dark-300">Wyzwania w tym tygodniu:</span>
-        </div>
-        <span className={`font-bold ${challengesSentThisWeek >= 3 ? 'text-red-400' : 'text-turbo-400'}`}>
-          {challengesSentThisWeek}/3
-        </span>
-      </Card>
-
       {/* Tabs */}
-      <div className="flex gap-2">
-        <button
-          onClick={() => setActiveTab('challenges')}
-          className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-3 rounded-xl font-medium transition-colors relative ${
-            activeTab === 'challenges'
-              ? 'bg-orange-500 text-white'
-              : 'bg-dark-700 text-dark-300 hover:bg-dark-600'
-          }`}
-        >
-          <Swords className="w-4 h-4" />
-          <span className="text-sm">Wyzwania</span>
-          {incomingChallenges.length > 0 && (
-            <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full text-xs flex items-center justify-center text-white">
-              {incomingChallenges.length}
-            </span>
-          )}
-        </button>
-        <button
-          onClick={() => setActiveTab('my_battles')}
-          className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-3 rounded-xl font-medium transition-colors ${
-            activeTab === 'my_battles'
-              ? 'bg-orange-500 text-white'
-              : 'bg-dark-700 text-dark-300 hover:bg-dark-600'
-          }`}
-        >
-          <Trophy className="w-4 h-4" />
-          <span className="text-sm">Historia</span>
-        </button>
-        <button
-          onClick={() => {
-            if (challengesSentThisWeek >= 3) {
-              showError('Limit', 'Osiągnąłeś limit 3 wyzwań na tydzień');
-              return;
-            }
-            setShowNewChallengeModal(true);
-          }}
-          className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-3 rounded-xl font-medium transition-colors ${
-            challengesSentThisWeek >= 3
-              ? 'bg-dark-700 text-dark-500 cursor-not-allowed'
-              : 'bg-turbo-500 text-white hover:bg-turbo-600'
-          }`}
-        >
-          <Users className="w-4 h-4" />
-          <span className="text-sm">Wyzwij</span>
-        </button>
+      <div className="flex gap-2 overflow-x-auto pb-1">
+        {tabs.map(t => {
+          const Icon = t.icon;
+          return (
+            <button
+              key={t.value}
+              onClick={() => setActiveTab(t.value)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-colors ${
+                activeTab === t.value
+                  ? 'bg-turbo-500 text-white'
+                  : 'bg-dark-700 text-dark-300 hover:bg-dark-600'
+              }`}
+            >
+              <Icon className="w-4 h-4" />
+              {t.label}
+              {t.count !== undefined && t.count > 0 && (
+                <span className={`text-xs px-1.5 py-0.5 rounded-full ${
+                  activeTab === t.value ? 'bg-white/20' : 'bg-dark-600'
+                }`}>
+                  {t.count}
+                </span>
+              )}
+            </button>
+          );
+        })}
       </div>
 
       {/* Content */}
@@ -349,7 +323,7 @@ export function BattlesContent() {
             </Card>
           ) : (
             incomingChallenges.map(battle => (
-              <Card key={battle.id} className="border-orange-500/30">
+              <Card key={battle.id} className="border-turbo-500/30">
                 <div className="flex items-center gap-3 mb-3">
                   <Avatar
                     src={battle.challenger?.avatar_url}
@@ -358,7 +332,7 @@ export function BattlesContent() {
                   />
                   <div className="flex-1">
                     <p className="font-medium text-white">{battle.challenger?.nick}</p>
-                    <p className="text-sm text-orange-400">
+                    <p className="text-sm text-turbo-400">
                       Turbo Bitwa: 3 rundy
                     </p>
                   </div>
@@ -398,6 +372,25 @@ export function BattlesContent() {
               </Card>
             ))
           )}
+
+          {/* Wyzwij gracza */}
+          <button
+            onClick={() => {
+              if (challengesSentThisWeek >= 3) {
+                showError('Limit', 'Osiągnąłeś limit 3 wyzwań na tydzień');
+                return;
+              }
+              setShowNewChallengeModal(true);
+            }}
+            className={`w-full py-3 border-2 border-dashed rounded-xl flex items-center justify-center gap-2 transition-colors ${
+              challengesSentThisWeek >= 3
+                ? 'border-dark-700 text-dark-500 cursor-not-allowed'
+                : 'border-dark-600 text-dark-400 hover:border-turbo-500/50 hover:text-turbo-400'
+            }`}
+          >
+            <Users className="w-5 h-5" />
+            Wyzwij gracza
+          </button>
         </div>
       ) : (
         /* === BATTLE HISTORY === */
@@ -473,24 +466,6 @@ export function BattlesContent() {
           )}
         </div>
       )}
-
-      {/* Mystery Garage Promo */}
-      <Link href="/mystery">
-        <Card className="border-emerald-500/30 bg-gradient-to-r from-emerald-500/10 to-teal-500/10 hover:from-emerald-500/20 hover:to-teal-500/20 transition-all">
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-xl bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
-              <Gift className="w-7 h-7 text-emerald-400" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="font-bold text-white">Potrzebujesz kart?</p>
-              <p className="text-sm text-emerald-400">
-                Otwórz pakiet w Mystery Garage i zdobądź losowe karty!
-              </p>
-            </div>
-            <ChevronRight className="w-5 h-5 text-emerald-400 flex-shrink-0" />
-          </div>
-        </Card>
-      </Link>
 
       {/* ========== NEW CHALLENGE MODAL ========== */}
       <Modal
