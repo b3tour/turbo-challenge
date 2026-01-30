@@ -3,40 +3,27 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
-import { useMissions } from '@/hooks/useMissions';
 import { useLeaderboard } from '@/hooks/useLeaderboard';
-import { Card, Badge, Button, Avatar, ProgressBar, Modal, Input, AvatarEditor, AppInfoModal } from '@/components/ui';
+import { Card, Badge, Button, Avatar, ProgressBar, Modal, Input, AvatarEditor } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
 import { formatNumber, formatDate } from '@/lib/utils';
 import { useLevels } from '@/hooks/useLevels';
 import {
-  Settings,
   LogOut,
   Edit2,
-  Heart,
-  Target,
-  Trophy,
   Calendar,
   Phone,
   Mail,
-  ChevronRight,
   Shield,
   Camera,
   Loader2,
-  Layers,
-  HelpCircle,
-  Gift,
 } from 'lucide-react';
-import Link from 'next/link';
-import { useCards, RARITY_CONFIG } from '@/hooks/useCards';
 import { supabase } from '@/lib/supabase';
 
 export default function ProfilePage() {
   const router = useRouter();
   const { profile, signOut, updateProfile, refreshProfile } = useAuth();
-  const { userSubmissions } = useMissions({ userId: profile?.id });
   const { getUserRank } = useLeaderboard();
-  const { getCollectionStats, userCards } = useCards({ userId: profile?.id });
   const { success, error: showError } = useToast();
   const { levels, calculateLevel, calculateLevelProgress, xpToNextLevel, getNextLevel } = useLevels();
 
@@ -48,7 +35,6 @@ export default function ProfilePage() {
   const [showAvatarEditor, setShowAvatarEditor] = useState(false);
   const [avatarImageSrc, setAvatarImageSrc] = useState<string | null>(null);
   const [nickChangesCount, setNickChangesCount] = useState(0);
-  const [showAppInfo, setShowAppInfo] = useState(false);
 
   // Synchronicznie pobierz ranking użytkownika z cache
   const userRank = profile?.id ? getUserRank(profile.id) : null;
@@ -80,12 +66,6 @@ export default function ProfilePage() {
   const progress = calculateLevelProgress(profile.total_xp);
   const xpNeeded = xpToNextLevel(profile.total_xp);
   const nextLevel = getNextLevel(level.id);
-
-  const completedMissions = userSubmissions.filter(s => s.status === 'approved').length;
-  const pendingMissions = userSubmissions.filter(s => s.status === 'pending').length;
-  const totalXpEarned = userSubmissions
-    .filter(s => s.status === 'approved')
-    .reduce((sum, s) => sum + (s.xp_awarded || 0), 0);
 
   // Otwórz edytor zdjęcia po wybraniu pliku
   const handleAvatarSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -331,108 +311,6 @@ export default function ProfilePage() {
         </div>
       </Card>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 gap-4">
-        <Card className="text-center">
-          <Target className="w-8 h-8 text-turbo-500 mx-auto mb-2" />
-          <div className="text-2xl font-bold text-white">{completedMissions}</div>
-          <div className="text-sm text-dark-400">Ukończonych misji</div>
-        </Card>
-
-        <Card className="text-center">
-          <Heart className="w-8 h-8 text-red-500 mx-auto mb-2" />
-          <div className="text-2xl font-bold text-white">{formatNumber(totalXpEarned)}</div>
-          <div className="text-sm text-dark-400">Zdobytych XP</div>
-        </Card>
-
-        <Card className="text-center">
-          <Trophy className="w-8 h-8 text-blue-500 mx-auto mb-2" />
-          <div className="text-2xl font-bold text-white">#{userRank || '-'}</div>
-          <div className="text-sm text-dark-400">Pozycja w rankingu</div>
-        </Card>
-
-        <Card className="text-center">
-          <Calendar className="w-8 h-8 text-green-500 mx-auto mb-2" />
-          <div className="text-2xl font-bold text-white">{pendingMissions}</div>
-          <div className="text-sm text-dark-400">Oczekujących</div>
-        </Card>
-      </div>
-
-      {/* Card Collection */}
-      <Link href="/cards">
-        <Card className="relative overflow-hidden hover:border-purple-500/50 transition-colors">
-          <div className="absolute top-0 right-0 w-24 h-24 bg-purple-500/10 rounded-full blur-2xl" />
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-xl bg-purple-500/20 flex items-center justify-center">
-              <Layers className="w-7 h-7 text-purple-500" />
-            </div>
-            <div className="flex-1">
-              <h3 className="font-semibold text-white">Kolekcja Kart</h3>
-              <div className="flex items-center gap-2 mt-1">
-                {(() => {
-                  const stats = getCollectionStats();
-                  return (
-                    <>
-                      <span className="text-sm text-dark-400">
-                        {stats.collected}/{stats.total} kart
-                      </span>
-                      <div className="flex gap-1">
-                        {stats.byRarity.legendary.collected > 0 && (
-                          <span className="text-yellow-400">🌟{stats.byRarity.legendary.collected}</span>
-                        )}
-                        {stats.byRarity.epic.collected > 0 && (
-                          <span className="text-purple-400">🟣{stats.byRarity.epic.collected}</span>
-                        )}
-                      </div>
-                    </>
-                  );
-                })()}
-              </div>
-            </div>
-            <ChevronRight className="w-5 h-5 text-dark-400" />
-          </div>
-        </Card>
-      </Link>
-
-      {/* Rewards */}
-      <Link href="/rewards">
-        <Card className="relative overflow-hidden hover:border-yellow-500/50 transition-colors">
-          <div className="absolute top-0 right-0 w-24 h-24 bg-yellow-500/10 rounded-full blur-2xl" />
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-xl bg-yellow-500/20 flex items-center justify-center">
-              <Gift className="w-7 h-7 text-yellow-500" />
-            </div>
-            <div className="flex-1">
-              <h3 className="font-semibold text-white">Nagrody do zdobycia</h3>
-              <p className="text-sm text-dark-400 mt-1">
-                Sprawdz co mozesz wygrac!
-              </p>
-            </div>
-            <ChevronRight className="w-5 h-5 text-dark-400" />
-          </div>
-        </Card>
-      </Link>
-
-      {/* App Info */}
-      <Card
-        className="relative overflow-hidden hover:border-turbo-500/50 transition-colors cursor-pointer"
-        onClick={() => setShowAppInfo(true)}
-      >
-        <div className="absolute top-0 right-0 w-24 h-24 bg-turbo-500/10 rounded-full blur-2xl" />
-        <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-xl bg-turbo-500/20 flex items-center justify-center">
-            <HelpCircle className="w-7 h-7 text-turbo-500" />
-          </div>
-          <div className="flex-1">
-            <h3 className="font-semibold text-white">Informacje o aplikacji</h3>
-            <p className="text-sm text-dark-400 mt-1">
-              Jak grać w Turbo Challenge?
-            </p>
-          </div>
-          <ChevronRight className="w-5 h-5 text-dark-400" />
-        </div>
-      </Card>
-
       {/* Account Info */}
       <Card>
         <h2 className="text-lg font-semibold text-white mb-4">Informacje o koncie</h2>
@@ -610,9 +488,6 @@ export default function ProfilePage() {
           isSaving={isUploadingAvatar}
         />
       )}
-
-      {/* App Info Modal */}
-      <AppInfoModal isOpen={showAppInfo} onClose={() => setShowAppInfo(false)} />
     </div>
   );
 }
