@@ -294,7 +294,9 @@ export function BattlesContent() {
     if (result.success) {
       success('Wyzwanie wystawione!', 'Czekaj az ktos je podejmie');
       setShowPostTuningModal(false);
-      refreshMyChallenges();
+      // Directly re-fetch to ensure immediate display
+      const updated = await fetchMyChallenges();
+      setMyChallenges(updated);
     } else {
       showError('Blad', result.error || 'Nie udalo sie wystawic wyzwania');
     }
@@ -306,7 +308,8 @@ export function BattlesContent() {
     const result = await cancelTuningChallenge(challengeId);
     if (result.success) {
       success('Anulowano', 'Wyzwanie zostalo anulowane');
-      refreshMyChallenges();
+      const updated = await fetchMyChallenges();
+      setMyChallenges(updated);
     } else {
       showError('Blad', result.error || 'Nie udalo sie anulowac');
     }
@@ -340,14 +343,25 @@ export function BattlesContent() {
 
   const loading = battlesLoading || tuningLoading;
 
-  // ========== COMBINED HISTORY ==========
+  // ========== ACTIVE BATTLES (Bitwy tab) ==========
+  // Outgoing pending card battles (I challenged someone, waiting for response)
+  const outgoingPendingBattles = cardBattles.filter(
+    b => b.status === 'pending' && b.challenger_id === profile.id
+  );
+
+  // Total active battles count for badge
+  const activeBattlesCount = incomingChallenges.length + outgoingPendingBattles.length;
+
+  // ========== COMBINED HISTORY (only completed/declined) ==========
 
   const combinedHistory: HistoryItem[] = [
-    ...cardBattles.map(b => ({
-      type: 'card_battle' as const,
-      data: b,
-      date: b.completed_at || b.created_at,
-    })),
+    ...cardBattles
+      .filter(b => b.status === 'completed' || b.status === 'declined')
+      .map(b => ({
+        type: 'card_battle' as const,
+        data: b,
+        date: b.completed_at || b.created_at,
+      })),
     ...tuningBattles.map(b => ({
       type: 'tuning_challenge' as const,
       data: b,
@@ -358,8 +372,8 @@ export function BattlesContent() {
   // ========== TABS ==========
 
   const tabs: { value: Tab; label: string; icon: React.ElementType; count?: number }[] = [
-    { value: 'battles', label: 'Bitwy', icon: Swords, count: incomingChallenges.length },
-    { value: 'tuning_challenges', label: 'Wyzwania', icon: Car, count: tuningOpenChallenges.length },
+    { value: 'battles', label: 'Bitwy', icon: Swords, count: activeBattlesCount || undefined },
+    { value: 'tuning_challenges', label: 'Wyzwania', icon: Car, count: tuningOpenChallenges.length || undefined },
     { value: 'history', label: 'Historia', icon: History },
   ];
 
@@ -419,64 +433,101 @@ export function BattlesContent() {
       ) : activeTab === 'battles' ? (
         /* ========== TAB: BITWY (Card Battles) ========== */
         <div className="space-y-4">
-          {incomingChallenges.length === 0 ? (
+          {/* Przychodzace wyzwania (ktos mnie wyzwal) */}
+          {incomingChallenges.length > 0 && (
+            <div>
+              <h3 className="text-sm font-medium text-dark-400 mb-2">Do rozegrania</h3>
+              <div className="space-y-3">
+                {incomingChallenges.map(battle => (
+                  <Card key={battle.id} className="border-turbo-500/30">
+                    <div className="flex items-center gap-3 mb-3">
+                      <Avatar
+                        src={battle.challenger?.avatar_url}
+                        fallback={battle.challenger?.nick || '?'}
+                        size="md"
+                      />
+                      <div className="flex-1">
+                        <p className="font-medium text-white">{battle.challenger?.nick}</p>
+                        <p className="text-sm text-turbo-400">
+                          Turbo Bitwa: 3 rundy
+                        </p>
+                      </div>
+                      <Badge variant="turbo">
+                        Best of 3
+                      </Badge>
+                    </div>
+
+                    <div className="flex items-center gap-4 mb-3 text-xs text-dark-400">
+                      <span className="flex items-center gap-1">⚡ Moc</span>
+                      <span className="flex items-center gap-1">🔧 Moment</span>
+                      <span className="flex items-center gap-1">💨 Predkosc</span>
+                    </div>
+
+                    <div className="flex items-center gap-2 mb-3 text-sm text-dark-400">
+                      <Clock className="w-4 h-4" />
+                      <span>Wygasa: {new Date(battle.expires_at).toLocaleDateString('pl-PL')}</span>
+                    </div>
+
+                    <div className="flex gap-2">
+                      <Button
+                        variant="secondary"
+                        className="flex-1"
+                        onClick={() => handleDeclineChallenge(battle.id)}
+                      >
+                        <X className="w-4 h-4 mr-1" />
+                        Odrzuc
+                      </Button>
+                      <Button
+                        className="flex-1"
+                        onClick={() => handleStartAccept(battle.id)}
+                      >
+                        <Check className="w-4 h-4 mr-1" />
+                        Akceptuj
+                      </Button>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Wyslane wyzwania (ja wyslam komus) */}
+          {outgoingPendingBattles.length > 0 && (
+            <div>
+              <h3 className="text-sm font-medium text-dark-400 mb-2">Oczekujace na odpowiedz</h3>
+              <div className="space-y-2">
+                {outgoingPendingBattles.map(battle => (
+                  <Card key={battle.id} className="border-yellow-500/30">
+                    <div className="flex items-center gap-3">
+                      <Avatar
+                        src={battle.opponent?.avatar_url}
+                        fallback={battle.opponent?.nick || '?'}
+                        size="md"
+                      />
+                      <div className="flex-1">
+                        <p className="font-medium text-white">{battle.opponent?.nick}</p>
+                        <p className="text-xs text-dark-500">Oczekuje na odpowiedz...</p>
+                      </div>
+                      <div className="text-right text-xs text-dark-500">
+                        <Clock className="w-3.5 h-3.5 inline mr-1" />
+                        {new Date(battle.expires_at).toLocaleDateString('pl-PL')}
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Puste stany */}
+          {incomingChallenges.length === 0 && outgoingPendingBattles.length === 0 && (
             <Card className="text-center py-12">
               <Swords className="w-12 h-12 text-dark-600 mx-auto mb-3" />
-              <p className="text-dark-400 font-medium">Brak wyzwan</p>
+              <p className="text-dark-400 font-medium">Brak aktywnych bitew</p>
               <p className="text-sm text-dark-500 mt-1">
-                Nikt Cie jeszcze nie wyzwal na pojedynek
+                Wyzwij kogos na pojedynek!
               </p>
             </Card>
-          ) : (
-            incomingChallenges.map(battle => (
-              <Card key={battle.id} className="border-turbo-500/30">
-                <div className="flex items-center gap-3 mb-3">
-                  <Avatar
-                    src={battle.challenger?.avatar_url}
-                    fallback={battle.challenger?.nick || '?'}
-                    size="md"
-                  />
-                  <div className="flex-1">
-                    <p className="font-medium text-white">{battle.challenger?.nick}</p>
-                    <p className="text-sm text-turbo-400">
-                      Turbo Bitwa: 3 rundy
-                    </p>
-                  </div>
-                  <Badge variant="turbo">
-                    Best of 3
-                  </Badge>
-                </div>
-
-                <div className="flex items-center gap-4 mb-3 text-xs text-dark-400">
-                  <span className="flex items-center gap-1">⚡ Moc</span>
-                  <span className="flex items-center gap-1">🔧 Moment</span>
-                  <span className="flex items-center gap-1">💨 Predkosc</span>
-                </div>
-
-                <div className="flex items-center gap-2 mb-3 text-sm text-dark-400">
-                  <Clock className="w-4 h-4" />
-                  <span>Wygasa: {new Date(battle.expires_at).toLocaleDateString('pl-PL')}</span>
-                </div>
-
-                <div className="flex gap-2">
-                  <Button
-                    variant="secondary"
-                    className="flex-1"
-                    onClick={() => handleDeclineChallenge(battle.id)}
-                  >
-                    <X className="w-4 h-4 mr-1" />
-                    Odrzuc
-                  </Button>
-                  <Button
-                    className="flex-1"
-                    onClick={() => handleStartAccept(battle.id)}
-                  >
-                    <Check className="w-4 h-4 mr-1" />
-                    Akceptuj
-                  </Button>
-                </div>
-              </Card>
-            ))
           )}
 
           {/* Wyzwij gracza */}

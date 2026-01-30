@@ -38,14 +38,11 @@ export function ArenaRankings() {
   return (
     <div className="py-4 space-y-6">
       {/* Header */}
-      <div className="text-center">
-        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-yellow-500/20 mb-3">
-          <Trophy className="w-8 h-8 text-yellow-500" />
-        </div>
-        <h1 className="text-2xl font-bold text-white">Rankingi Areny</h1>
-        <p className="text-dark-400 mt-1">
-          Wygrane bitwy i wyzwania tuningu
-        </p>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+          <Trophy className="w-7 h-7 text-yellow-500" />
+          Rankingi Areny
+        </h1>
       </div>
 
       {/* Personal Stats (combined) */}
