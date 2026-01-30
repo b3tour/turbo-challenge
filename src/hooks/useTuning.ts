@@ -114,12 +114,16 @@ export function useTuning({ userId }: UseTuningProps) {
   const fetchMyChallenges = useCallback(async () => {
     if (!userId) return [];
 
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('tuning_challenges')
-      .select('*, tuned_car:tuned_cars(*, card:cards(*))')
+      .select('*, tuned_car:tuned_cars!tuning_challenges_tuned_car_id_fkey(*, card:cards(*))')
       .eq('challenger_id', userId)
       .eq('status', 'open')
       .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching my challenges:', error);
+    }
 
     const result = (data || []) as unknown as TuningChallenge[];
     setMyChallenges(result);
