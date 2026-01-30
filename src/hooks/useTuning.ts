@@ -95,7 +95,9 @@ export function useTuning({ userId }: UseTuningProps) {
       .select(`
         *,
         challenger:users!tuning_challenges_challenger_id_fkey(id, nick, avatar_url),
-        opponent:users!tuning_challenges_opponent_id_fkey(id, nick, avatar_url)
+        opponent:users!tuning_challenges_opponent_id_fkey(id, nick, avatar_url),
+        tuned_car:tuned_cars!tuning_challenges_tuned_car_id_fkey(*, card:cards(*)),
+        opponent_tuned_car:tuned_cars!tuning_challenges_opponent_tuned_car_id_fkey(*, card:cards(*))
       `)
       .eq('status', 'completed')
       .or(`challenger_id.eq.${userId},opponent_id.eq.${userId}`)

@@ -121,6 +121,8 @@ export function BattlesContent() {
     category: TuningCategory;
   } | null>(null);
   const [tuningActionLoading, setTuningActionLoading] = useState(false);
+  const [showTuningDetailModal, setShowTuningDetailModal] = useState(false);
+  const [detailTuningBattle, setDetailTuningBattle] = useState<TuningChallenge | null>(null);
 
   // ========== EFFECTS ==========
 
@@ -743,9 +745,18 @@ export function BattlesContent() {
                 const theirScore = isChallenger ? battle.opponent_score : battle.challenger_score;
 
                 return (
-                  <Card key={`tc-${battle.id}`}>
+                  <Card
+                    key={`tc-${battle.id}`}
+                    className={`cursor-pointer hover:bg-dark-700/50 transition-colors ${
+                      draw ? 'border-yellow-500/30' : won ? 'border-green-500/30' : 'border-red-500/30'
+                    }`}
+                    onClick={() => {
+                      setDetailTuningBattle(battle);
+                      setShowTuningDetailModal(true);
+                    }}
+                  >
                     <div className="flex items-center gap-3">
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
                         won ? 'bg-green-500/20' : draw ? 'bg-yellow-500/20' : 'bg-red-500/20'
                       }`}>
                         {won ? (
@@ -771,9 +782,7 @@ export function BattlesContent() {
                           <span>{myScore} : {theirScore}</span>
                         </div>
                       </div>
-                      {won && (
-                        <Badge variant="turbo" className="text-xs">+30 XP</Badge>
-                      )}
+                      <ChevronRight className="w-4 h-4 text-dark-500 flex-shrink-0" />
                     </div>
                   </Card>
                 );
@@ -1556,6 +1565,145 @@ export function BattlesContent() {
             </Button>
           </div>
         )}
+      </Modal>
+
+      {/* TUNING CHALLENGE DETAIL MODAL */}
+      <Modal
+        isOpen={showTuningDetailModal}
+        onClose={() => {
+          setShowTuningDetailModal(false);
+          setDetailTuningBattle(null);
+        }}
+        title="Szczegoly wyzwania"
+      >
+        {detailTuningBattle && (() => {
+          const b = detailTuningBattle;
+          const iAmChallenger = b.challenger_id === profile.id;
+          const won = b.winner_id === profile.id;
+          const draw = !b.winner_id;
+          const myScore = iAmChallenger ? b.challenger_score : b.opponent_score;
+          const theirScore = iAmChallenger ? b.opponent_score : b.challenger_score;
+          const opponentUser = iAmChallenger ? b.opponent : b.challenger;
+          const myCar = iAmChallenger ? b.tuned_car : b.opponent_tuned_car;
+          const theirCar = iAmChallenger ? b.opponent_tuned_car : b.tuned_car;
+          const category = b.category as TuningCategory;
+          const catLabel = CATEGORY_LABELS[category];
+          const weights = CATEGORY_WEIGHTS[category];
+
+          return (
+            <div className="space-y-4">
+              {/* Result banner */}
+              <div className={`text-center py-3 rounded-xl ${
+                draw ? 'bg-yellow-500/20' : won ? 'bg-green-500/20' : 'bg-red-500/20'
+              }`}>
+                <div className="flex items-center justify-center gap-2 mb-1">
+                  {draw ? (
+                    <Minus className="w-6 h-6 text-yellow-400" />
+                  ) : won ? (
+                    <Crown className="w-6 h-6 text-yellow-400" />
+                  ) : (
+                    <X className="w-6 h-6 text-red-400" />
+                  )}
+                  <span className={`text-lg font-bold ${
+                    draw ? 'text-yellow-400' : won ? 'text-green-400' : 'text-red-400'
+                  }`}>
+                    {draw ? 'Remis!' : won ? 'Wygrana!' : 'Przegrana'}
+                  </span>
+                </div>
+                <p className="text-sm text-dark-300">
+                  {won ? '+30 XP' : draw ? 'Brak XP' : 'Brak XP'}
+                </p>
+              </div>
+
+              {/* Category */}
+              <div className="text-center text-sm text-dark-400">
+                {catLabel?.icon} {catLabel?.name}
+              </div>
+
+              {/* Score comparison */}
+              <div className="flex items-center justify-center gap-6">
+                <div className="text-center">
+                  <p className="text-xs text-dark-500 mb-1">Ty</p>
+                  <div className={`text-2xl font-bold ${draw ? 'text-yellow-400' : won ? 'text-green-400' : 'text-red-400'}`}>
+                    {myScore}
+                  </div>
+                </div>
+                <div className="text-dark-600 font-bold">VS</div>
+                <div className="text-center">
+                  <p className="text-xs text-dark-500 mb-1">{(opponentUser as unknown as { nick: string })?.nick || 'Przeciwnik'}</p>
+                  <div className={`text-2xl font-bold ${draw ? 'text-yellow-400' : !won ? 'text-green-400' : 'text-red-400'}`}>
+                    {theirScore}
+                  </div>
+                </div>
+              </div>
+
+              {/* Cars comparison */}
+              <div className="space-y-3">
+                {/* My car */}
+                <div className="p-3 rounded-xl bg-dark-700">
+                  <p className="text-[10px] uppercase tracking-wider text-dark-500 mb-2">Twoje auto</p>
+                  <div className="flex items-center gap-3">
+                    <div className="w-14 h-10 rounded-lg overflow-hidden flex-shrink-0 bg-dark-800">
+                      {myCar?.card?.image_url ? (
+                        <img src={myCar.card.image_url} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <Car className="w-5 h-5 text-dark-500" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-white truncate">
+                        {myCar?.card?.car_brand} {myCar?.card?.car_model}
+                      </p>
+                      <div className="flex items-center gap-3 mt-0.5 text-xs text-dark-400">
+                        <span className="flex items-center gap-1"><Zap className="w-3 h-3 text-yellow-500" />{myCar?.card?.car_horsepower || '?'}</span>
+                        <span className="flex items-center gap-1"><Gauge className="w-3 h-3 text-blue-500" />{myCar?.card?.car_torque || '?'}</span>
+                        <span className="flex items-center gap-1"><Timer className="w-3 h-3 text-red-500" />{myCar?.card?.car_max_speed || '?'}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Their car */}
+                <div className="p-3 rounded-xl bg-dark-700">
+                  <p className="text-[10px] uppercase tracking-wider text-dark-500 mb-2">Auto przeciwnika</p>
+                  <div className="flex items-center gap-3">
+                    <div className="w-14 h-10 rounded-lg overflow-hidden flex-shrink-0 bg-dark-800">
+                      {theirCar?.card?.image_url ? (
+                        <img src={theirCar.card.image_url} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <Car className="w-5 h-5 text-dark-500" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-white truncate">
+                        {theirCar?.card?.car_brand} {theirCar?.card?.car_model}
+                      </p>
+                      <div className="flex items-center gap-3 mt-0.5 text-xs text-dark-400">
+                        <span className="flex items-center gap-1"><Zap className="w-3 h-3 text-yellow-500" />{theirCar?.card?.car_horsepower || '?'}</span>
+                        <span className="flex items-center gap-1"><Gauge className="w-3 h-3 text-blue-500" />{theirCar?.card?.car_torque || '?'}</span>
+                        <span className="flex items-center gap-1"><Timer className="w-3 h-3 text-red-500" />{theirCar?.card?.car_max_speed || '?'}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Category weights */}
+              <div className="p-3 rounded-xl bg-dark-700 text-xs text-dark-400">
+                <p className="mb-1 text-dark-500">Wagi kategorii</p>
+                <div className="flex items-center gap-4">
+                  <span className="flex items-center gap-1"><Zap className="w-3 h-3 text-yellow-500" />x{weights.hp}</span>
+                  <span className="flex items-center gap-1"><Gauge className="w-3 h-3 text-blue-500" />x{weights.torque}</span>
+                  <span className="flex items-center gap-1"><Timer className="w-3 h-3 text-red-500" />x{weights.speed}</span>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
       </Modal>
     </div>
   );
