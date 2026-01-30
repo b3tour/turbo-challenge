@@ -23,6 +23,7 @@ import {
   Zap,
   Gauge,
   Timer,
+  Info,
 } from 'lucide-react';
 import { CollectibleCard, BattleSlotAssignment, BattleRoundCategory, BattleRoundResult, User, TunedCar, TuningCategory, TuningChallenge } from '@/types';
 import {
@@ -417,6 +418,15 @@ export function BattlesContent() {
       ) : activeTab === 'battles' ? (
         /* ========== TAB: BITWY (Card Battles) ========== */
         <div className="space-y-4">
+          {/* Info */}
+          <div className="flex gap-2.5 p-3 rounded-xl bg-dark-700/50 border border-dark-600">
+            <Info className="w-4 h-4 text-turbo-400 flex-shrink-0 mt-0.5" />
+            <p className="text-xs text-dark-300 leading-relaxed">
+              System losuje 3 karty z Twojej kolekcji. Przydziel je do kategorii: Moc, Moment i Predkosc.
+              Wygrywa karta z wyzsza wartoscia w danej rundzie. Zwyciezca best-of-3 zdobywa <span className="text-turbo-400 font-medium">+30 XP</span>.
+            </p>
+          </div>
+
           {/* Przychodzace wyzwania (ktos mnie wyzwal) */}
           {incomingChallenges.length > 0 && (
             <div>
@@ -536,6 +546,16 @@ export function BattlesContent() {
       ) : activeTab === 'tuning_challenges' ? (
         /* ========== TAB: WYZWANIA (Tuning Challenges) ========== */
         <div className="space-y-4">
+          {/* Info */}
+          <div className="flex gap-2.5 p-3 rounded-xl bg-dark-700/50 border border-dark-600">
+            <Info className="w-4 h-4 text-cyan-400 flex-shrink-0 mt-0.5" />
+            <p className="text-xs text-dark-300 leading-relaxed">
+              Wybierz tunowane auto i kategorie (np. Drag Race, Track Day).
+              Twoj wynik to suma statystyk auta pomnozona przez wagi kategorii.
+              Przeciwnik podejmuje wyzwanie swoim autem — wygrywa wyzszy score i zdobywa <span className="text-turbo-400 font-medium">+30 XP</span>.
+            </p>
+          </div>
+
           {/* Moje otwarte wyzwania */}
           {myChallenges.length > 0 && (
             <div>
