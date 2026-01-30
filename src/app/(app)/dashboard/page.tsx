@@ -12,10 +12,8 @@ import { useLevels } from '@/hooks/useLevels';
 import {
   Target,
   Trophy,
-  Heart,
   ChevronRight,
   Zap,
-  Medal,
   Layers,
   Swords,
   Package,
@@ -57,16 +55,6 @@ export default function DashboardPage() {
   // Misja priorytetowa — najwyższe XP
   const priorityMission = [...availableMissions]
     .sort((a, b) => (b.xp_reward || 0) - (a.xp_reward || 0))[0] || null;
-
-  // Liczba ukończonych misji
-  const completedMissionIds = userSubmissions
-    .filter(s => s.status === 'approved')
-    .map(s => s.mission_id);
-
-  const completedCount = completedMissionIds.length;
-  const totalXpEarned = userSubmissions
-    .filter(s => s.status === 'approved')
-    .reduce((sum, s) => sum + (s.xp_awarded || 0), 0);
 
   return (
     <div className="space-y-6 py-4">
@@ -138,33 +126,17 @@ export default function DashboardPage() {
         </div>
       </Card>
 
-      {/* Quick Stats */}
-      <div className="grid grid-cols-3 gap-3">
-        <Card padding="sm" className="text-center">
-          <Target className="w-6 h-6 text-turbo-500 mx-auto mb-1" />
-          <div className="text-xl font-bold text-white">{completedCount}</div>
-          <div className="text-xs text-dark-400">Misji</div>
-        </Card>
-
-        <Card padding="sm" className="text-center">
-          <Heart className="w-6 h-6 text-red-500 mx-auto mb-1" />
-          <div className="text-xl font-bold text-white">{formatNumber(totalXpEarned)}</div>
-          <div className="text-xs text-dark-400">XP zdobyte</div>
-        </Card>
-
-        <Card padding="sm" className="text-center">
-          <Medal className="w-6 h-6 text-blue-500 mx-auto mb-1" />
-          <div className="text-xl font-bold text-white">{level.id}</div>
-          <div className="text-xs text-dark-400">Poziom</div>
-        </Card>
-      </div>
-
       {/* Available Missions */}
       <div>
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-lg font-semibold text-white flex items-center gap-2">
             <Zap className="w-5 h-5 text-turbo-500" />
             Dostępne misje
+            {availableMissions.length > 0 && (
+              <span className="w-5 h-5 bg-red-500 rounded-full flex items-center justify-center">
+                <span className="text-[11px] font-bold text-white leading-none">{availableMissions.length}</span>
+              </span>
+            )}
           </h2>
           <Link
             href="/missions"
@@ -217,7 +189,7 @@ export default function DashboardPage() {
               return (
                 <>
                   <div className="flex items-center justify-between mb-3">
-                    <span className="text-dark-400">Postęp kolekcji</span>
+                    <span className="text-dark-400">Twoje samochody</span>
                     <span className="text-purple-400 font-bold">{stats.collected}/{stats.total}</span>
                   </div>
 
@@ -250,35 +222,35 @@ export default function DashboardPage() {
       </div>
 
       {/* Action Grid */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 gap-3">
         <Link href="/arena">
-          <Card className="relative text-center py-4 border-turbo-500/30 bg-gradient-to-b from-turbo-500/10 to-transparent hover:border-turbo-500/50 transition-colors">
-            <div className="relative inline-block">
-              <Swords className="w-7 h-7 text-turbo-500 mx-auto mb-2" />
-              {incomingChallenges.length > 0 && (
-                <span className="absolute -top-1 -right-3 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center animate-pulse">
-                  <span className="text-[9px] font-bold text-white">{incomingChallenges.length}</span>
-                </span>
-              )}
+          <Card className="relative py-4 px-4 border-turbo-500/30 bg-gradient-to-b from-turbo-500/10 to-transparent hover:border-turbo-500/50 transition-colors">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="relative">
+                <Swords className="w-6 h-6 text-turbo-500" />
+                {incomingChallenges.length > 0 && (
+                  <span className="absolute -top-1 -right-2 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center animate-pulse">
+                    <span className="text-[9px] font-bold text-white">{incomingChallenges.length}</span>
+                  </span>
+                )}
+              </div>
+              <p className="text-sm font-semibold text-white">Arena</p>
             </div>
-            <p className="text-sm font-semibold text-white">Arena</p>
-            <p className="text-[11px] text-dark-400 mt-0.5">Bitwy i Tuning</p>
+            <p className="text-xs text-dark-400 leading-relaxed">
+              Walcz kartami z innymi graczami lub rywalizuj tunowanymi autami
+            </p>
           </Card>
         </Link>
 
         <Link href="/mystery">
-          <Card className="text-center py-4 hover:border-emerald-500/50 transition-colors">
-            <Package className="w-7 h-7 text-emerald-500 mx-auto mb-2" />
-            <p className="text-sm font-semibold text-white">Mystery</p>
-            <p className="text-[11px] text-dark-400 mt-0.5">Pakiety kart</p>
-          </Card>
-        </Link>
-
-        <Link href="/leaderboard">
-          <Card className="text-center py-4 hover:border-yellow-500/50 transition-colors">
-            <Trophy className="w-7 h-7 text-yellow-500 mx-auto mb-2" />
-            <p className="text-sm font-semibold text-white">Ranking</p>
-            <p className="text-[11px] text-dark-400 mt-0.5">Top gracze</p>
+          <Card className="py-4 px-4 border-emerald-500/30 bg-gradient-to-b from-emerald-500/10 to-transparent hover:border-emerald-500/50 transition-colors">
+            <div className="flex items-center gap-2 mb-2">
+              <Package className="w-6 h-6 text-emerald-500" />
+              <p className="text-sm font-semibold text-white">Mystery Garage</p>
+            </div>
+            <p className="text-xs text-dark-400 leading-relaxed">
+              Otwórz pakiet losowych kart i odkryj rzadkie auta
+            </p>
           </Card>
         </Link>
       </div>
