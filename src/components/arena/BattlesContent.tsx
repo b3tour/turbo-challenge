@@ -424,8 +424,9 @@ export function BattlesContent() {
           <div className="flex gap-2.5 p-3 rounded-xl bg-dark-700/50 border border-dark-600">
             <Info className="w-4 h-4 text-turbo-400 flex-shrink-0 mt-0.5" />
             <p className="text-xs text-dark-300 leading-relaxed">
-              System losuje 3 karty z Twojej kolekcji. Przydziel je do kategorii: Moc, Moment i Predkosc.
-              Wygrywa karta z wyzsza wartoscia w danej rundzie. Zwyciezca best-of-3 zdobywa <span className="text-turbo-400 font-medium">+30 XP</span>.
+              Wybierasz gracza z którym chcesz się zmierzyć.
+              System losuje 3 karty z Twojej kolekcji. Przydziel je do kategorii: Moc, Moment i Prędkość.
+              Wygrywa karta z wyższą wartością w danej rundzie. Zwycięzca Best-Of-3 zdobywa <span className="text-turbo-400 font-medium">+30 XP</span>.
             </p>
           </div>
 
@@ -552,9 +553,9 @@ export function BattlesContent() {
           <div className="flex gap-2.5 p-3 rounded-xl bg-dark-700/50 border border-dark-600">
             <Info className="w-4 h-4 text-cyan-400 flex-shrink-0 mt-0.5" />
             <p className="text-xs text-dark-300 leading-relaxed">
-              Wybierz tunowane auto i kategorie (np. Drag Race, Track Day).
-              Twoj wynik to suma statystyk auta pomnozona przez wagi kategorii.
-              Przeciwnik podejmuje wyzwanie swoim autem — wygrywa wyzszy score i zdobywa <span className="text-turbo-400 font-medium">+30 XP</span>.
+              Wybierz auto z wcześniej dodanych do Strefy Tuningu i kategorię (np. Drag Race, Track Day).
+              Wystaw wyzwanie i czekaj na przeciwnika.
+              Twój wynik to suma statystyk auta pomnożona przez wagi kategorii. Wyższy score zdobywa <span className="text-turbo-400 font-medium">+30 XP</span>.
             </p>
           </div>
 
