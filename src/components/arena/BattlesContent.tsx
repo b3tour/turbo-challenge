@@ -62,13 +62,13 @@ export function BattlesContent() {
   const {
     tunedCars,
     openChallenges: tuningOpenChallenges,
+    myChallenges,
     myBattles: tuningBattles,
     loading: tuningLoading,
     calculateScore,
     postChallenge: postTuningChallenge,
     cancelChallenge: cancelTuningChallenge,
     acceptChallenge: acceptTuningChallenge,
-    fetchMyChallenges,
   } = useTuning({ userId: profile?.id });
 
   const { success, error: showError } = useToast();
@@ -111,7 +111,6 @@ export function BattlesContent() {
   const [showTuningResultModal, setShowTuningResultModal] = useState(false);
   const [selectedTuningChallenge, setSelectedTuningChallenge] = useState<TuningChallenge | null>(null);
   const [selectedAcceptCar, setSelectedAcceptCar] = useState<TunedCar | null>(null);
-  const [myChallenges, setMyChallenges] = useState<TuningChallenge[]>([]);
   const [tuningBattleResult, setTuningBattleResult] = useState<{
     challengerScore: number;
     opponentScore: number;
@@ -121,9 +120,6 @@ export function BattlesContent() {
     category: TuningCategory;
   } | null>(null);
   const [tuningActionLoading, setTuningActionLoading] = useState(false);
-  const [challengeRefresh, setChallengeRefresh] = useState(0);
-
-  const refreshMyChallenges = () => setChallengeRefresh(c => c + 1);
 
   // ========== EFFECTS ==========
 
@@ -140,13 +136,6 @@ export function BattlesContent() {
       getChallengablePlayers(20).then(setAvailablePlayers);
     }
   }, [showNewChallengeModal, profile?.id, getChallengablePlayers]);
-
-  // Load my tuning challenges
-  useEffect(() => {
-    if (profile?.id) {
-      fetchMyChallenges().then(setMyChallenges);
-    }
-  }, [profile?.id, fetchMyChallenges, tuningOpenChallenges, challengeRefresh]);
 
   // ========== CARD BATTLE HANDLERS ==========
 
@@ -294,9 +283,6 @@ export function BattlesContent() {
     if (result.success) {
       success('Wyzwanie wystawione!', 'Czekaj az ktos je podejmie');
       setShowPostTuningModal(false);
-      // Directly re-fetch to ensure immediate display
-      const updated = await fetchMyChallenges();
-      setMyChallenges(updated);
     } else {
       showError('Blad', result.error || 'Nie udalo sie wystawic wyzwania');
     }
@@ -308,8 +294,6 @@ export function BattlesContent() {
     const result = await cancelTuningChallenge(challengeId);
     if (result.success) {
       success('Anulowano', 'Wyzwanie zostalo anulowane');
-      const updated = await fetchMyChallenges();
-      setMyChallenges(updated);
     } else {
       showError('Blad', result.error || 'Nie udalo sie anulowac');
     }
@@ -389,8 +373,8 @@ export function BattlesContent() {
         </h1>
         <div className="text-right">
           <div className="text-sm text-dark-400">Wyzwania w tygodniu</div>
-          <div className={`text-lg font-bold ${challengesSentThisWeek >= 3 ? 'text-red-400' : 'text-turbo-400'}`}>
-            {challengesSentThisWeek}/3
+          <div className={`text-lg font-bold ${challengesSentThisWeek >= 30 ? 'text-red-400' : 'text-turbo-400'}`}>
+            {challengesSentThisWeek}/30
           </div>
         </div>
       </div>
@@ -533,14 +517,14 @@ export function BattlesContent() {
           {/* Wyzwij gracza */}
           <button
             onClick={() => {
-              if (challengesSentThisWeek >= 3) {
-                showError('Limit', 'Osiagnales limit 3 wyzwan na tydzien');
+              if (challengesSentThisWeek >= 30) {
+                showError('Limit', 'Osiagnales limit 30 wyzwan na tydzien');
                 return;
               }
               setShowNewChallengeModal(true);
             }}
             className={`w-full py-3 border-2 border-dashed rounded-xl flex items-center justify-center gap-2 transition-colors ${
-              challengesSentThisWeek >= 3
+              challengesSentThisWeek >= 30
                 ? 'border-dark-700 text-dark-500 cursor-not-allowed'
                 : 'border-dark-600 text-dark-400 hover:border-turbo-500/50 hover:text-turbo-400'
             }`}

@@ -18,6 +18,7 @@ interface UseTuningProps {
 export function useTuning({ userId }: UseTuningProps) {
   const [tunedCars, setTunedCars] = useState<TunedCar[]>([]);
   const [openChallenges, setOpenChallenges] = useState<TuningChallenge[]>([]);
+  const [myChallenges, setMyChallenges] = useState<TuningChallenge[]>([]);
   const [myBattles, setMyBattles] = useState<TuningChallenge[]>([]);
   const [availableXP, setAvailableXP] = useState(0);
   const [totalXP, setTotalXP] = useState(0);
@@ -109,6 +110,22 @@ export function useTuning({ userId }: UseTuningProps) {
     setMyBattles((data || []) as unknown as TuningChallenge[]);
   }, [userId]);
 
+  // Pobierz moje otwarte wyzwania
+  const fetchMyChallenges = useCallback(async () => {
+    if (!userId) return [];
+
+    const { data } = await supabase
+      .from('tuning_challenges')
+      .select('*, tuned_car:tuned_cars(*, card:cards(*))')
+      .eq('challenger_id', userId)
+      .eq('status', 'open')
+      .order('created_at', { ascending: false });
+
+    const result = (data || []) as unknown as TuningChallenge[];
+    setMyChallenges(result);
+    return result;
+  }, [userId]);
+
   // Laduj wszystkie dane
   const fetchAll = useCallback(async () => {
     setLoading(true);
@@ -116,10 +133,11 @@ export function useTuning({ userId }: UseTuningProps) {
       fetchAvailableXP(),
       fetchMyTunedCars(),
       fetchOpenChallenges(),
+      fetchMyChallenges(),
       fetchMyBattles(),
     ]);
     setLoading(false);
-  }, [fetchAvailableXP, fetchMyTunedCars, fetchOpenChallenges, fetchMyBattles]);
+  }, [fetchAvailableXP, fetchMyTunedCars, fetchOpenChallenges, fetchMyChallenges, fetchMyBattles]);
 
   useEffect(() => {
     fetchAll();
@@ -136,6 +154,7 @@ export function useTuning({ userId }: UseTuningProps) {
         { event: '*', schema: 'public', table: 'tuning_challenges' },
         () => {
           fetchOpenChallenges();
+          fetchMyChallenges();
           fetchMyBattles();
         }
       )
@@ -144,7 +163,7 @@ export function useTuning({ userId }: UseTuningProps) {
     return () => {
       supabase.removeChannel(challengesChannel);
     };
-  }, [userId, fetchOpenChallenges, fetchMyBattles]);
+  }, [userId, fetchOpenChallenges, fetchMyChallenges, fetchMyBattles]);
 
   // Dodaj auto do tuningu
   const addCarToTuning = async (cardId: string) => {
@@ -329,7 +348,7 @@ export function useTuning({ userId }: UseTuningProps) {
       return { success: false, error: error.message };
     }
 
-    await fetchOpenChallenges();
+    await Promise.all([fetchOpenChallenges(), fetchMyChallenges()]);
     return { success: true, error: null };
   };
 
@@ -348,7 +367,7 @@ export function useTuning({ userId }: UseTuningProps) {
       return { success: false, error: error.message };
     }
 
-    await fetchOpenChallenges();
+    await Promise.all([fetchOpenChallenges(), fetchMyChallenges()]);
     return { success: true, error: null };
   };
 
@@ -507,23 +526,10 @@ export function useTuning({ userId }: UseTuningProps) {
     };
   };
 
-  // Pobierz moje otwarte wyzwania
-  const fetchMyChallenges = useCallback(async () => {
-    if (!userId) return [];
-
-    const { data } = await supabase
-      .from('tuning_challenges')
-      .select('*, tuned_car:tuned_cars(*, card:cards(*))')
-      .eq('challenger_id', userId)
-      .eq('status', 'open')
-      .order('created_at', { ascending: false });
-
-    return (data || []) as unknown as TuningChallenge[];
-  }, [userId]);
-
   return {
     tunedCars,
     openChallenges,
+    myChallenges,
     myBattles,
     availableXP,
     totalXP,

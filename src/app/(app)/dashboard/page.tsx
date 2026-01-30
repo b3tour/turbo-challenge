@@ -20,7 +20,6 @@ import {
   Package,
   Gift,
   HelpCircle,
-  Star,
 } from 'lucide-react';
 import { useCards } from '@/hooks/useCards';
 import { useBattles } from '@/hooks/useBattles';
@@ -178,14 +177,13 @@ export default function DashboardPage() {
                 key={mission.id}
                 hover
                 onClick={() => router.push('/missions')}
-                className="py-3 px-3"
+                className="py-3 px-3 relative"
               >
-                <div className="text-2xl mb-2">{missionTypeIcons[mission.type]}</div>
-                <p className="text-sm font-medium text-white line-clamp-2 mb-1">{mission.title}</p>
-                <p className="text-xs text-turbo-400 font-medium flex items-center gap-1">
-                  <Star className="w-3 h-3" />
+                <span className="absolute top-2 right-2 text-[10px] font-bold text-turbo-400">
                   {formatNumber(mission.xp_reward)} XP
-                </p>
+                </span>
+                <div className="text-2xl mb-2">{missionTypeIcons[mission.type]}</div>
+                <p className="text-sm font-medium text-white line-clamp-2">{mission.title}</p>
               </Card>
             ))}
           </div>

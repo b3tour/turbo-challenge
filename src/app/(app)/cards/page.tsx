@@ -35,7 +35,6 @@ import {
   Weight,
   Activity,
   Cog,
-  Swords,
   Grid2X2,
   Grid3X3,
 } from 'lucide-react';
@@ -504,27 +503,6 @@ export default function CardsPage() {
           <p className="text-dark-400">Zbieraj karty i wspieraj Turbo Pomoc!</p>
         </div>
       </div>
-
-      {/* Turbo Bitwy Link */}
-      <Link href="/battles">
-        <Card className="mb-4 border-orange-500/50 hover:border-orange-400 transition-colors">
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-xl bg-orange-500/20 flex items-center justify-center flex-shrink-0">
-              <Swords className="w-7 h-7 text-orange-500" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <h3 className="font-bold text-white text-lg">Turbo Bitwy</h3>
-              <p className="text-sm text-dark-300">
-                Wyzwij gracza i walcz o XP!
-              </p>
-              <p className="text-xs text-orange-400 mt-1">
-                Postaw swoje karty
-              </p>
-            </div>
-            <ChevronRight className="w-5 h-5 text-orange-400 flex-shrink-0" />
-          </div>
-        </Card>
-      </Link>
 
       {/* Mystery Garage Link */}
       <Link href="/mystery">

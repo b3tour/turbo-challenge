@@ -246,8 +246,8 @@ export function useBattles(options: UseBattlesOptions = {}) {
 
     // Sprawdź limit tygodniowy
     const sentThisWeek = await getChallengesSentThisWeek();
-    if (sentThisWeek >= 3) {
-      return { success: false, error: 'Osiągnąłeś limit 3 wyzwań na tydzień' };
+    if (sentThisWeek >= 30) {
+      return { success: false, error: 'Osiągnąłeś limit 30 wyzwań na tydzień' };
     }
 
     // Sprawdź czy nie wyzywasz siebie
