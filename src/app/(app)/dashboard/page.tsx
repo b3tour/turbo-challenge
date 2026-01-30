@@ -191,7 +191,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Kolekcja kart — uproszczony box */}
-      <Link href="/cards">
+      <Link href="/cards" className="block">
         <Card className="py-4 px-4 border-purple-500/30 bg-gradient-to-b from-purple-500/10 to-transparent hover:border-purple-500/50 transition-colors">
           <div className="flex items-center gap-2 mb-2">
             <Layers className="w-6 h-6 text-purple-500" />
