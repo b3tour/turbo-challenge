@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useBattles, getCategoryName, getCategoryIcon } from '@/hooks/useBattles';
+import { useTuning } from '@/hooks/useTuning';
 import { Card, Button, Avatar, Badge, Modal } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
 import {
@@ -17,36 +18,65 @@ import {
   Minus,
   Shuffle,
   ArrowRight,
+  History,
+  Car,
+  Zap,
+  Gauge,
+  Timer,
 } from 'lucide-react';
-import { CollectibleCard, BattleSlotAssignment, BattleRoundCategory, BattleRoundResult, User } from '@/types';
+import { CollectibleCard, BattleSlotAssignment, BattleRoundCategory, BattleRoundResult, User, TunedCar, TuningCategory, TuningChallenge } from '@/types';
+import {
+  CATEGORY_LABELS,
+  CATEGORY_WEIGHTS,
+  MOD_DEFINITIONS,
+  getCumulativeBonus,
+} from '@/config/tuningConfig';
 
-type Tab = 'challenges' | 'my_battles' | 'new';
+type Tab = 'battles' | 'tuning_challenges' | 'history';
 
-// Kroki tworzenia wyzwania
+// Kroki tworzenia wyzwania (card battle)
 type ChallengeStep = 'select_opponent' | 'dealing' | 'assign_slots' | 'confirm';
 
-// Kroki akceptowania wyzwania
+// Kroki akceptowania wyzwania (card battle)
 type AcceptStep = 'dealing' | 'assign_slots' | 'revealing' | 'done';
+
+// Combined history item
+type HistoryItem =
+  | { type: 'card_battle'; data: any; date: string }
+  | { type: 'tuning_challenge'; data: TuningChallenge; date: string };
 
 export function BattlesContent() {
   const { profile } = useAuth();
   const {
-    myBattles,
+    myBattles: cardBattles,
     incomingChallenges,
-    loading,
+    loading: battlesLoading,
     createChallenge,
-    acceptChallenge,
+    acceptChallenge: acceptCardChallenge,
     declineChallenge,
     getChallengablePlayers,
     dealRandomCards,
     getChallengesSentThisWeek,
   } = useBattles({ userId: profile?.id });
+
+  const {
+    tunedCars,
+    openChallenges: tuningOpenChallenges,
+    myBattles: tuningBattles,
+    loading: tuningLoading,
+    calculateScore,
+    postChallenge: postTuningChallenge,
+    cancelChallenge: cancelTuningChallenge,
+    acceptChallenge: acceptTuningChallenge,
+    fetchMyChallenges,
+  } = useTuning({ userId: profile?.id });
+
   const { success, error: showError } = useToast();
 
-  const [activeTab, setActiveTab] = useState<Tab>('challenges');
+  const [activeTab, setActiveTab] = useState<Tab>('battles');
   const [challengesSentThisWeek, setChallengesSentThisWeek] = useState(0);
 
-  // Create challenge state
+  // ========== CARD BATTLE STATE ==========
   const [showNewChallengeModal, setShowNewChallengeModal] = useState(false);
   const [challengeStep, setChallengeStep] = useState<ChallengeStep>('select_opponent');
   const [availablePlayers, setAvailablePlayers] = useState<User[]>([]);
@@ -56,7 +86,7 @@ export function BattlesContent() {
   const [selectedCardForSlot, setSelectedCardForSlot] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Accept challenge state
+  // Accept card challenge state
   const [showAcceptModal, setShowAcceptModal] = useState(false);
   const [acceptStep, setAcceptStep] = useState<AcceptStep>('dealing');
   const [selectedBattleId, setSelectedBattleId] = useState<string | null>(null);
@@ -64,43 +94,71 @@ export function BattlesContent() {
   const [acceptSlotAssignment, setAcceptSlotAssignment] = useState<Partial<BattleSlotAssignment>>({});
   const [acceptSelectedCard, setAcceptSelectedCard] = useState<string | null>(null);
 
-  // Reveal state
+  // Reveal state (card battle)
   const [revealResults, setRevealResults] = useState<BattleRoundResult[] | null>(null);
   const [revealedRound, setRevealedRound] = useState(0);
   const [revealWinnerId, setRevealWinnerId] = useState<string | null | undefined>(undefined);
 
-  // Detail modal
+  // Detail modal (card battle)
   const [showDetailModal, setShowDetailModal] = useState(false);
-  const [detailBattle, setDetailBattle] = useState<typeof myBattles[0] | null>(null);
+  const [detailBattle, setDetailBattle] = useState<typeof cardBattles[0] | null>(null);
 
-  // Load stats
+  // ========== TUNING CHALLENGE STATE ==========
+  const [selectedTunedCar, setSelectedTunedCar] = useState<TunedCar | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<TuningCategory>('drag');
+  const [showPostTuningModal, setShowPostTuningModal] = useState(false);
+  const [showAcceptTuningModal, setShowAcceptTuningModal] = useState(false);
+  const [showTuningResultModal, setShowTuningResultModal] = useState(false);
+  const [selectedTuningChallenge, setSelectedTuningChallenge] = useState<TuningChallenge | null>(null);
+  const [selectedAcceptCar, setSelectedAcceptCar] = useState<TunedCar | null>(null);
+  const [myChallenges, setMyChallenges] = useState<TuningChallenge[]>([]);
+  const [tuningBattleResult, setTuningBattleResult] = useState<{
+    challengerScore: number;
+    opponentScore: number;
+    winnerId: string | null;
+    challengerCar: TunedCar;
+    opponentCar: TunedCar;
+    category: TuningCategory;
+  } | null>(null);
+  const [tuningActionLoading, setTuningActionLoading] = useState(false);
+  const [challengeRefresh, setChallengeRefresh] = useState(0);
+
+  const refreshMyChallenges = () => setChallengeRefresh(c => c + 1);
+
+  // ========== EFFECTS ==========
+
+  // Load card battle stats
   useEffect(() => {
     if (profile?.id) {
       getChallengesSentThisWeek().then(setChallengesSentThisWeek);
     }
   }, [profile?.id, getChallengesSentThisWeek]);
 
-  // Load players when opening new challenge modal
+  // Load players when opening new card challenge modal
   useEffect(() => {
     if (showNewChallengeModal && profile?.id) {
       getChallengablePlayers(20).then(setAvailablePlayers);
     }
   }, [showNewChallengeModal, profile?.id, getChallengablePlayers]);
 
-  // --- CHALLENGE CREATION ---
+  // Load my tuning challenges
+  useEffect(() => {
+    if (profile?.id) {
+      fetchMyChallenges().then(setMyChallenges);
+    }
+  }, [profile?.id, fetchMyChallenges, tuningOpenChallenges, challengeRefresh]);
+
+  // ========== CARD BATTLE HANDLERS ==========
 
   const handleSelectOpponent = async (opponent: User) => {
     setSelectedOpponent(opponent);
     setChallengeStep('dealing');
-
-    // Losuj karty
     try {
       const cards = await dealRandomCards(profile!.id);
       setDealtCards(cards);
-      // Po krótkim "losowaniu" przejdź do przydziału
       setTimeout(() => setChallengeStep('assign_slots'), 1500);
     } catch (e: any) {
-      showError('Błąd', e.message || 'Nie udało się wylosować kart');
+      showError('Blad', e.message || 'Nie udalo sie wylosowac kart');
       setChallengeStep('select_opponent');
     }
   };
@@ -108,14 +166,11 @@ export function BattlesContent() {
   const handleAssignCardToSlot = (cardId: string, slot: BattleRoundCategory) => {
     setSlotAssignment(prev => {
       const updated = { ...prev };
-      // Jeśli karta jest już gdzieś przypisana, usuń ją stamtąd
       for (const key of ['power', 'torque', 'speed'] as BattleRoundCategory[]) {
         if (updated[key] === cardId) {
           delete updated[key];
         }
       }
-      // Jeśli slot jest zajęty przez inną kartę, cofnij ją
-      // (karta wraca do puli nieprzydzielonych)
       updated[slot] = cardId;
       return updated;
     });
@@ -124,23 +179,21 @@ export function BattlesContent() {
 
   const handleSendChallenge = async () => {
     if (!selectedOpponent || !slotAssignment.power || !slotAssignment.torque || !slotAssignment.speed) {
-      showError('Błąd', 'Przydziel karty do wszystkich slotów');
+      showError('Blad', 'Przydziel karty do wszystkich slotow');
       return;
     }
-
     setIsSubmitting(true);
     const result = await createChallenge(
       selectedOpponent.id,
       dealtCards,
       slotAssignment as BattleSlotAssignment
     );
-
     if (result.success) {
-      success('Wyzwanie wysłane!', `${selectedOpponent.nick} otrzymał Twoje wyzwanie`);
+      success('Wyzwanie wyslane!', `${selectedOpponent.nick} otrzymal Twoje wyzwanie`);
       closeNewChallengeModal();
       getChallengesSentThisWeek().then(setChallengesSentThisWeek);
     } else {
-      showError('Błąd', result.error || 'Nie udało się wysłać wyzwania');
+      showError('Blad', result.error || 'Nie udalo sie wyslac wyzwania');
     }
     setIsSubmitting(false);
   };
@@ -154,8 +207,6 @@ export function BattlesContent() {
     setSelectedCardForSlot(null);
   };
 
-  // --- ACCEPTING CHALLENGE ---
-
   const handleStartAccept = async (battleId: string) => {
     setSelectedBattleId(battleId);
     setAcceptStep('dealing');
@@ -163,13 +214,12 @@ export function BattlesContent() {
     setAcceptSlotAssignment({});
     setAcceptSelectedCard(null);
     setShowAcceptModal(true);
-
     try {
       const cards = await dealRandomCards(profile!.id);
       setAcceptDealtCards(cards);
       setTimeout(() => setAcceptStep('assign_slots'), 1500);
     } catch (e: any) {
-      showError('Błąd', e.message || 'Nie udało się wylosować kart');
+      showError('Blad', e.message || 'Nie udalo sie wylosowac kart');
       setShowAcceptModal(false);
     }
   };
@@ -190,32 +240,26 @@ export function BattlesContent() {
 
   const handleFight = async () => {
     if (!selectedBattleId || !acceptSlotAssignment.power || !acceptSlotAssignment.torque || !acceptSlotAssignment.speed) {
-      showError('Błąd', 'Przydziel karty do wszystkich slotów');
+      showError('Blad', 'Przydziel karty do wszystkich slotow');
       return;
     }
-
     setIsSubmitting(true);
-    const result = await acceptChallenge(
+    const result = await acceptCardChallenge(
       selectedBattleId,
       acceptDealtCards,
       acceptSlotAssignment as BattleSlotAssignment
     );
-
     if (result.success && result.results) {
-      // Przejdź do animacji odsłonięcia
       setRevealResults(result.results);
       setRevealWinnerId(result.winnerId);
       setRevealedRound(0);
       setAcceptStep('revealing');
-
-      // Odsłaniaj rundy po kolei
       setTimeout(() => setRevealedRound(1), 800);
       setTimeout(() => setRevealedRound(2), 1800);
       setTimeout(() => setRevealedRound(3), 2800);
       setTimeout(() => setAcceptStep('done'), 3600);
-
     } else {
-      showError('Błąd', result.error || 'Nie udało się rozstrzygnąć bitwy');
+      showError('Blad', result.error || 'Nie udalo sie rozstrzygnac bitwy');
     }
     setIsSubmitting(false);
   };
@@ -223,9 +267,9 @@ export function BattlesContent() {
   const handleDeclineChallenge = async (battleId: string) => {
     const result = await declineChallenge(battleId);
     if (result.success) {
-      success('Wyzwanie odrzucone', 'Odmówiłeś udziału w bitwie');
+      success('Wyzwanie odrzucone', 'Odmowiles udzialu w bitwie');
     } else {
-      showError('Błąd', result.error || 'Nie udało się odrzucić wyzwania');
+      showError('Blad', result.error || 'Nie udalo sie odrzucic wyzwania');
     }
   };
 
@@ -241,7 +285,49 @@ export function BattlesContent() {
     setAcceptStep('dealing');
   };
 
-  // --- HELPERS ---
+  // ========== TUNING CHALLENGE HANDLERS ==========
+
+  const handlePostTuningChallenge = async () => {
+    if (!selectedTunedCar) return;
+    setTuningActionLoading(true);
+    const result = await postTuningChallenge(selectedTunedCar.id, selectedCategory);
+    if (result.success) {
+      success('Wyzwanie wystawione!', 'Czekaj az ktos je podejmie');
+      setShowPostTuningModal(false);
+      refreshMyChallenges();
+    } else {
+      showError('Blad', result.error || 'Nie udalo sie wystawic wyzwania');
+    }
+    setTuningActionLoading(false);
+  };
+
+  const handleCancelTuningChallenge = async (challengeId: string) => {
+    setTuningActionLoading(true);
+    const result = await cancelTuningChallenge(challengeId);
+    if (result.success) {
+      success('Anulowano', 'Wyzwanie zostalo anulowane');
+      refreshMyChallenges();
+    } else {
+      showError('Blad', result.error || 'Nie udalo sie anulowac');
+    }
+    setTuningActionLoading(false);
+  };
+
+  const handleAcceptTuningChallenge = async () => {
+    if (!selectedTuningChallenge || !selectedAcceptCar) return;
+    setTuningActionLoading(true);
+    const result = await acceptTuningChallenge(selectedTuningChallenge.id, selectedAcceptCar.id);
+    if (result.success && result.result) {
+      setTuningBattleResult(result.result);
+      setShowAcceptTuningModal(false);
+      setShowTuningResultModal(true);
+    } else {
+      showError('Blad', result.error || 'Nie udalo sie przyjac wyzwania');
+    }
+    setTuningActionLoading(false);
+  };
+
+  // ========== HELPERS ==========
 
   const getUnassignedCards = (cards: CollectibleCard[], assignment: Partial<BattleSlotAssignment>) => {
     const assignedIds = new Set(Object.values(assignment).filter(Boolean));
@@ -252,12 +338,32 @@ export function BattlesContent() {
 
   if (!profile) return null;
 
-  // --- RENDER ---
+  const loading = battlesLoading || tuningLoading;
+
+  // ========== COMBINED HISTORY ==========
+
+  const combinedHistory: HistoryItem[] = [
+    ...cardBattles.map(b => ({
+      type: 'card_battle' as const,
+      data: b,
+      date: b.completed_at || b.created_at,
+    })),
+    ...tuningBattles.map(b => ({
+      type: 'tuning_challenge' as const,
+      data: b,
+      date: b.completed_at || b.created_at,
+    })),
+  ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+  // ========== TABS ==========
 
   const tabs: { value: Tab; label: string; icon: React.ElementType; count?: number }[] = [
-    { value: 'challenges', label: 'Wyzwania', icon: Swords, count: incomingChallenges.length },
-    { value: 'my_battles', label: 'Historia', icon: Trophy },
+    { value: 'battles', label: 'Bitwy', icon: Swords, count: incomingChallenges.length },
+    { value: 'tuning_challenges', label: 'Wyzwania', icon: Car, count: tuningOpenChallenges.length },
+    { value: 'history', label: 'Historia', icon: History },
   ];
+
+  // ========== RENDER ==========
 
   return (
     <div className="py-4 space-y-4">
@@ -310,15 +416,15 @@ export function BattlesContent() {
             <Card key={i} className="h-24 animate-pulse bg-dark-700" />
           ))}
         </div>
-      ) : activeTab === 'challenges' ? (
-        /* === INCOMING CHALLENGES === */
+      ) : activeTab === 'battles' ? (
+        /* ========== TAB: BITWY (Card Battles) ========== */
         <div className="space-y-4">
           {incomingChallenges.length === 0 ? (
             <Card className="text-center py-12">
               <Swords className="w-12 h-12 text-dark-600 mx-auto mb-3" />
-              <p className="text-dark-400 font-medium">Brak wyzwań</p>
+              <p className="text-dark-400 font-medium">Brak wyzwan</p>
               <p className="text-sm text-dark-500 mt-1">
-                Nikt Cię jeszcze nie wyzwał na pojedynek
+                Nikt Cie jeszcze nie wyzwal na pojedynek
               </p>
             </Card>
           ) : (
@@ -344,7 +450,7 @@ export function BattlesContent() {
                 <div className="flex items-center gap-4 mb-3 text-xs text-dark-400">
                   <span className="flex items-center gap-1">⚡ Moc</span>
                   <span className="flex items-center gap-1">🔧 Moment</span>
-                  <span className="flex items-center gap-1">💨 Prędkość</span>
+                  <span className="flex items-center gap-1">💨 Predkosc</span>
                 </div>
 
                 <div className="flex items-center gap-2 mb-3 text-sm text-dark-400">
@@ -359,7 +465,7 @@ export function BattlesContent() {
                     onClick={() => handleDeclineChallenge(battle.id)}
                   >
                     <X className="w-4 h-4 mr-1" />
-                    Odrzuć
+                    Odrzuc
                   </Button>
                   <Button
                     className="flex-1"
@@ -377,7 +483,7 @@ export function BattlesContent() {
           <button
             onClick={() => {
               if (challengesSentThisWeek >= 3) {
-                showError('Limit', 'Osiągnąłeś limit 3 wyzwań na tydzień');
+                showError('Limit', 'Osiagnales limit 3 wyzwan na tydzien');
                 return;
               }
               setShowNewChallengeModal(true);
@@ -392,82 +498,239 @@ export function BattlesContent() {
             Wyzwij gracza
           </button>
         </div>
-      ) : (
-        /* === BATTLE HISTORY === */
+      ) : activeTab === 'tuning_challenges' ? (
+        /* ========== TAB: WYZWANIA (Tuning Challenges) ========== */
         <div className="space-y-4">
-          {myBattles.length === 0 ? (
+          {/* Moje otwarte wyzwania */}
+          {myChallenges.length > 0 && (
+            <div>
+              <h3 className="text-sm font-medium text-dark-400 mb-2">Twoje wyzwania</h3>
+              <div className="space-y-2">
+                {myChallenges.map(ch => (
+                  <Card key={ch.id} className="border-cyan-500/30">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-cyan-500/20 flex items-center justify-center flex-shrink-0">
+                        <Swords className="w-4 h-4 text-cyan-400" />
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium text-white">
+                            {CATEGORY_LABELS[ch.category as TuningCategory]?.icon}{' '}
+                            {CATEGORY_LABELS[ch.category as TuningCategory]?.name}
+                          </span>
+                        </div>
+                        <span className="text-xs text-dark-500">Oczekuje na przeciwnika...</span>
+                      </div>
+                      <button
+                        onClick={() => handleCancelTuningChallenge(ch.id)}
+                        disabled={tuningActionLoading}
+                        className="px-3 py-1.5 text-xs font-medium text-red-400 hover:text-red-300 bg-red-500/10 rounded-lg hover:bg-red-500/20 transition-colors"
+                      >
+                        Anuluj
+                      </button>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Wyzwania od innych graczy */}
+          {tuningOpenChallenges.length > 0 ? (
+            <div>
+              {myChallenges.length > 0 && (
+                <h3 className="text-sm font-medium text-dark-400 mb-2">Wyzwania do podjecia</h3>
+              )}
+              <div className="space-y-2">
+                {tuningOpenChallenges.map(ch => (
+                  <Card key={ch.id} className="hover:border-orange-500/50 transition-colors cursor-pointer"
+                    onClick={() => {
+                      setSelectedTuningChallenge(ch);
+                      setSelectedAcceptCar(null);
+                      setShowAcceptTuningModal(true);
+                    }}
+                  >
+                    <div className="flex items-center gap-3">
+                      <Avatar
+                        src={(ch.challenger as unknown as { avatar_url?: string })?.avatar_url}
+                        fallback={(ch.challenger as unknown as { nick: string })?.nick || '?'}
+                        size="sm"
+                      />
+                      <div className="flex-1">
+                        <h3 className="font-medium text-white text-sm">
+                          {(ch.challenger as unknown as { nick: string })?.nick || 'Gracz'}
+                        </h3>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-400">
+                            {CATEGORY_LABELS[ch.category as TuningCategory]?.icon}{' '}
+                            {CATEGORY_LABELS[ch.category as TuningCategory]?.name}
+                          </span>
+                        </div>
+                      </div>
+                      <Button size="sm" variant="primary">
+                        Podejmij
+                      </Button>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          ) : myChallenges.length === 0 ? (
+            <Card className="text-center py-12">
+              <Swords className="w-12 h-12 text-dark-600 mx-auto mb-3" />
+              <p className="text-dark-400">Brak otwartych wyzwan</p>
+              <p className="text-sm text-dark-500 mt-1">Wystaw wlasne wyzwanie ponizej!</p>
+            </Card>
+          ) : null}
+
+          {/* Wystaw wyzwanie tuningowe */}
+          {tunedCars.length > 0 ? (
+            <button
+              onClick={() => {
+                setSelectedTunedCar(null);
+                setSelectedCategory('drag');
+                setShowPostTuningModal(true);
+              }}
+              className="w-full py-3 border-2 border-dashed border-dark-600 rounded-xl text-dark-400 hover:border-turbo-500/50 hover:text-turbo-400 transition-colors flex items-center justify-center gap-2"
+            >
+              <Swords className="w-5 h-5" />
+              Wystaw wyzwanie
+            </button>
+          ) : (
+            <Card className="text-center py-4">
+              <p className="text-sm text-dark-500">Dodaj auto w Strefie Tuningu aby wystawiac wyzwania</p>
+            </Card>
+          )}
+        </div>
+      ) : (
+        /* ========== TAB: HISTORIA (Combined) ========== */
+        <div className="space-y-3">
+          {combinedHistory.length === 0 ? (
             <Card className="text-center py-12">
               <Trophy className="w-12 h-12 text-dark-600 mx-auto mb-3" />
               <p className="text-dark-400 font-medium">Brak historii bitew</p>
               <p className="text-sm text-dark-500 mt-1">
-                Wyzwij kogoś na pojedynek!
+                Wyzwij kogos na pojedynek!
               </p>
             </Card>
           ) : (
-            myBattles.map(battle => {
-              const isWinner = battle.winner_id === profile.id;
-              const isDraw = battle.status === 'completed' && !battle.winner_id;
-              const isPending = battle.status === 'pending';
-              const isDeclined = battle.status === 'declined';
-              const isCompleted = battle.status === 'completed';
-              const opponent = battle.challenger_id === profile.id ? battle.opponent : battle.challenger;
+            combinedHistory.map(item => {
+              if (item.type === 'card_battle') {
+                const battle = item.data;
+                const isWinner = battle.winner_id === profile.id;
+                const isDraw = battle.status === 'completed' && !battle.winner_id;
+                const isPending = battle.status === 'pending';
+                const isDeclined = battle.status === 'declined';
+                const isCompleted = battle.status === 'completed';
+                const opponent = battle.challenger_id === profile.id ? battle.opponent : battle.challenger;
 
-              return (
-                <Card
-                  key={battle.id}
-                  className={`${
-                    isPending ? 'border-yellow-500/30' :
-                    isDeclined ? 'border-dark-500/30' :
-                    isDraw ? 'border-blue-500/30' :
-                    isWinner ? 'border-green-500/30' : 'border-red-500/30'
-                  } ${isCompleted ? 'cursor-pointer hover:bg-dark-700/50 transition-colors' : ''}`}
-                  onClick={isCompleted ? () => {
-                    setDetailBattle(battle);
-                    setShowDetailModal(true);
-                  } : undefined}
-                >
-                  <div className="flex items-center gap-3">
-                    <Avatar
-                      src={opponent?.avatar_url}
-                      fallback={opponent?.nick || '?'}
-                      size="md"
-                    />
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <p className="font-medium text-white">{opponent?.nick}</p>
-                        {isPending && <Badge variant="warning">Oczekuje</Badge>}
-                        {isDeclined && <Badge variant="default">Odrzucone</Badge>}
-                        {isDraw && <Badge variant="info">Remis</Badge>}
-                        {isCompleted && !isDraw && (
-                          <Badge variant={isWinner ? 'success' : 'danger'}>
-                            {isWinner ? 'Wygrana' : 'Przegrana'}
-                          </Badge>
+                return (
+                  <Card
+                    key={`cb-${battle.id}`}
+                    className={`${
+                      isPending ? 'border-yellow-500/30' :
+                      isDeclined ? 'border-dark-500/30' :
+                      isDraw ? 'border-blue-500/30' :
+                      isWinner ? 'border-green-500/30' : 'border-red-500/30'
+                    } ${isCompleted ? 'cursor-pointer hover:bg-dark-700/50 transition-colors' : ''}`}
+                    onClick={isCompleted ? () => {
+                      setDetailBattle(battle);
+                      setShowDetailModal(true);
+                    } : undefined}
+                  >
+                    <div className="flex items-center gap-3">
+                      <Avatar
+                        src={opponent?.avatar_url}
+                        fallback={opponent?.nick || '?'}
+                        size="md"
+                      />
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium text-white">{opponent?.nick}</p>
+                          {isPending && <Badge variant="warning">Oczekuje</Badge>}
+                          {isDeclined && <Badge variant="default">Odrzucone</Badge>}
+                          {isDraw && <Badge variant="info">Remis</Badge>}
+                          {isCompleted && !isDraw && (
+                            <Badge variant={isWinner ? 'success' : 'danger'}>
+                              {isWinner ? 'Wygrana' : 'Przegrana'}
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-sm text-dark-400">
+                          <span className="text-xs px-1.5 py-0.5 rounded bg-dark-600 text-dark-300 mr-1">Bitwa</span>
+                          Best of 3: ⚡ / 🔧 / 💨
+                        </p>
+                      </div>
+                      {isCompleted && (
+                        <div className="flex items-center gap-3">
+                          <div className="text-right">
+                            <div className={`font-bold ${isDraw ? 'text-blue-400' : isWinner ? 'text-green-400' : 'text-red-400'}`}>
+                              {battle.challenger_id === profile.id ? battle.challenger_score : battle.opponent_score}
+                            </div>
+                            <div className="text-xs text-dark-500">vs {battle.challenger_id === profile.id ? battle.opponent_score : battle.challenger_score}</div>
+                          </div>
+                          <ChevronRight className="w-4 h-4 text-dark-500" />
+                        </div>
+                      )}
+                    </div>
+                  </Card>
+                );
+              } else {
+                // Tuning challenge
+                const battle = item.data;
+                const isChallenger = battle.challenger_id === profile.id;
+                const won = battle.winner_id === profile.id;
+                const draw = !battle.winner_id;
+                const opponentNick = isChallenger
+                  ? (battle.opponent as unknown as { nick: string })?.nick || 'Gracz'
+                  : (battle.challenger as unknown as { nick: string })?.nick || 'Gracz';
+                const myScore = isChallenger ? battle.challenger_score : battle.opponent_score;
+                const theirScore = isChallenger ? battle.opponent_score : battle.challenger_score;
+
+                return (
+                  <Card key={`tc-${battle.id}`}>
+                    <div className="flex items-center gap-3">
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                        won ? 'bg-green-500/20' : draw ? 'bg-yellow-500/20' : 'bg-red-500/20'
+                      }`}>
+                        {won ? (
+                          <Trophy className="w-5 h-5 text-green-500" />
+                        ) : draw ? (
+                          <Minus className="w-5 h-5 text-yellow-500" />
+                        ) : (
+                          <X className="w-5 h-5 text-red-500" />
                         )}
                       </div>
-                      <p className="text-sm text-dark-400">
-                        Best of 3: ⚡ Moc / 🔧 Moment / 💨 Prędkość
-                      </p>
-                    </div>
-                    {isCompleted && (
-                      <div className="flex items-center gap-3">
-                        <div className="text-right">
-                          <div className={`font-bold ${isDraw ? 'text-blue-400' : isWinner ? 'text-green-400' : 'text-red-400'}`}>
-                            {battle.challenger_id === profile.id ? battle.challenger_score : battle.opponent_score}
-                          </div>
-                          <div className="text-xs text-dark-500">vs {battle.challenger_id === profile.id ? battle.opponent_score : battle.challenger_score}</div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <h3 className={`text-sm font-medium ${
+                            won ? 'text-green-400' : draw ? 'text-yellow-400' : 'text-red-400'
+                          }`}>
+                            {won ? 'Wygrana' : draw ? 'Remis' : 'Przegrana'}
+                          </h3>
+                          <span className="text-xs text-dark-500">vs {opponentNick}</span>
                         </div>
-                        <ChevronRight className="w-4 h-4 text-dark-500" />
+                        <div className="flex items-center gap-2 mt-0.5 text-xs text-dark-400">
+                          <span className="px-1.5 py-0.5 rounded bg-dark-600 text-dark-300">Wyzwanie</span>
+                          <span>{CATEGORY_LABELS[battle.category as TuningCategory]?.icon} {CATEGORY_LABELS[battle.category as TuningCategory]?.name}</span>
+                          <span>{myScore} : {theirScore}</span>
+                        </div>
                       </div>
-                    )}
-                  </div>
-                </Card>
-              );
+                      {won && (
+                        <Badge variant="turbo" className="text-xs">+30 XP</Badge>
+                      )}
+                    </div>
+                  </Card>
+                );
+              }
             })
           )}
         </div>
       )}
 
-      {/* ========== NEW CHALLENGE MODAL ========== */}
+      {/* ========== CARD BATTLE MODALS ========== */}
+
+      {/* NEW CHALLENGE MODAL */}
       <Modal
         isOpen={showNewChallengeModal}
         onClose={closeNewChallengeModal}
@@ -480,7 +743,7 @@ export function BattlesContent() {
               <div className="max-h-64 overflow-y-auto space-y-2">
                 {availablePlayers.length === 0 ? (
                   <p className="text-center text-dark-500 py-4">
-                    Brak graczy z wystarczającą liczbą kart (min. 3)
+                    Brak graczy z wystarczajaca liczba kart (min. 3)
                   </p>
                 ) : (
                   availablePlayers.map(player => (
@@ -532,7 +795,6 @@ export function BattlesContent() {
                         if (selectedCardForSlot) {
                           handleAssignCardToSlot(selectedCardForSlot, cat);
                         } else if (assignedCardId) {
-                          // Cofnij kartę z slotu
                           setSlotAssignment(prev => {
                             const updated = { ...prev };
                             delete updated[cat];
@@ -617,14 +879,14 @@ export function BattlesContent() {
                 onClick={handleSendChallenge}
               >
                 <Swords className="w-4 h-4 mr-2" />
-                Wyślij wyzwanie
+                Wyslij wyzwanie
               </Button>
             </>
           )}
         </div>
       </Modal>
 
-      {/* ========== ACCEPT CHALLENGE MODAL ========== */}
+      {/* ACCEPT CARD CHALLENGE MODAL */}
       <Modal
         isOpen={showAcceptModal}
         onClose={closeAcceptModal}
@@ -643,7 +905,6 @@ export function BattlesContent() {
             <>
               <p className="text-dark-400 text-sm">Przydziel karty do kategorii:</p>
 
-              {/* Sloty */}
               <div className="space-y-2">
                 {(['power', 'torque', 'speed'] as BattleRoundCategory[]).map(cat => {
                   const assignedCardId = acceptSlotAssignment[cat];
@@ -694,7 +955,6 @@ export function BattlesContent() {
                 })}
               </div>
 
-              {/* Nieprzydzielone karty */}
               {getUnassignedCards(acceptDealtCards, acceptSlotAssignment).length > 0 && (
                 <>
                   <p className="text-dark-400 text-sm mt-2">Twoje wylosowane karty:</p>
@@ -768,7 +1028,7 @@ export function BattlesContent() {
                     }`}>
                       <div className="flex-1 text-center">
                         <div className="text-lg font-bold text-white">{round.challenger_value}</div>
-                        <div className="text-xs text-dark-400">Wyzywający</div>
+                        <div className="text-xs text-dark-400">Wyzywajacy</div>
                       </div>
                       <div className="text-dark-500 font-bold text-sm">VS</div>
                       <div className="flex-1 text-center">
@@ -828,14 +1088,14 @@ export function BattlesContent() {
         </div>
       </Modal>
 
-      {/* ========== BATTLE DETAIL MODAL ========== */}
+      {/* BATTLE DETAIL MODAL */}
       <Modal
         isOpen={showDetailModal}
         onClose={() => {
           setShowDetailModal(false);
           setDetailBattle(null);
         }}
-        title="Szczegóły bitwy"
+        title="Szczegoly bitwy"
       >
         {detailBattle && (() => {
           const iAmChallenger = detailBattle.challenger_id === profile.id;
@@ -846,10 +1106,9 @@ export function BattlesContent() {
           const opponent = iAmChallenger ? detailBattle.opponent : detailBattle.challenger;
           const rounds = (detailBattle.round_results || []) as BattleRoundResult[];
 
-          // Map kart z obu stron
           const allCards = new Map<string, CollectibleCard>();
-          (detailBattle.challenger_cards || []).forEach(c => allCards.set(c.id, c));
-          (detailBattle.opponent_cards || []).forEach(c => allCards.set(c.id, c));
+          (detailBattle.challenger_cards || []).forEach((c: CollectibleCard) => allCards.set(c.id, c));
+          (detailBattle.opponent_cards || []).forEach((c: CollectibleCard) => allCards.set(c.id, c));
 
           return (
             <div className="space-y-4">
@@ -948,6 +1207,300 @@ export function BattlesContent() {
             </div>
           );
         })()}
+      </Modal>
+
+      {/* ========== TUNING CHALLENGE MODALS ========== */}
+
+      {/* POST TUNING CHALLENGE MODAL */}
+      <Modal
+        isOpen={showPostTuningModal}
+        onClose={() => setShowPostTuningModal(false)}
+        title="Wystaw wyzwanie"
+      >
+        <div className="space-y-4">
+          {/* Wybor auta */}
+          <div>
+            <h4 className="text-sm font-medium text-dark-300 mb-2">Wybierz auto</h4>
+            <div className="space-y-2 max-h-40 overflow-y-auto">
+              {tunedCars.map(tc => {
+                const card = tc.card;
+                if (!card) return null;
+                const isSelected = selectedTunedCar?.id === tc.id;
+                return (
+                  <button
+                    key={tc.id}
+                    onClick={() => setSelectedTunedCar(tc)}
+                    className={`w-full flex items-center gap-3 p-3 rounded-xl text-left transition-colors ${
+                      isSelected
+                        ? 'bg-turbo-500/20 border border-turbo-500/50'
+                        : 'bg-dark-700 border border-transparent hover:border-dark-600'
+                    }`}
+                  >
+                    <div className="w-12 h-9 rounded-lg overflow-hidden flex-shrink-0 bg-dark-800">
+                      {card.image_url ? (
+                        <img src={card.image_url} alt={card.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <Car className="w-4 h-4 text-dark-500" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="text-sm font-medium text-white truncate">
+                        {card.car_brand} {card.car_model}
+                      </h4>
+                      <div className="flex items-center gap-2 text-xs text-dark-400 mt-0.5">
+                        <span className="flex items-center gap-1">
+                          <Zap className="w-3 h-3 text-yellow-500" />
+                          {(card.car_horsepower || 0) + getCumulativeBonus(MOD_DEFINITIONS[0], tc.engine_stage)}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Gauge className="w-3 h-3 text-blue-500" />
+                          {(card.car_torque || 0) + getCumulativeBonus(MOD_DEFINITIONS[1], tc.turbo_stage)}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Timer className="w-3 h-3 text-red-500" />
+                          {(card.car_max_speed || 0) + getCumulativeBonus(MOD_DEFINITIONS[2], tc.weight_stage)}
+                        </span>
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Wybor kategorii */}
+          <div>
+            <h4 className="text-sm font-medium text-dark-300 mb-2">Wybierz kategorie</h4>
+            <div className="grid grid-cols-2 gap-2">
+              {(Object.entries(CATEGORY_LABELS) as [TuningCategory, typeof CATEGORY_LABELS[TuningCategory]][]).map(([key, cat]) => {
+                const score = selectedTunedCar ? calculateScore(selectedTunedCar, key) : 0;
+                return (
+                  <button
+                    key={key}
+                    onClick={() => setSelectedCategory(key)}
+                    className={`p-3 rounded-xl text-left transition-colors ${
+                      selectedCategory === key
+                        ? 'bg-turbo-500/20 border border-turbo-500/50'
+                        : 'bg-dark-700 border border-transparent hover:border-dark-600'
+                    }`}
+                  >
+                    <div className="text-lg mb-1">{cat.icon}</div>
+                    <div className="text-sm font-medium text-white">{cat.name}</div>
+                    <div className="text-xs text-dark-400 mt-0.5">{cat.description}</div>
+                    {selectedTunedCar && (
+                      <div className="text-xs text-turbo-400 mt-1 font-medium">Score: {score}</div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Podglad statow */}
+          <div className="p-3 rounded-xl bg-dark-700">
+            <h4 className="text-xs text-dark-400 mb-2">Wagi kategorii</h4>
+            <div className="flex items-center gap-4 text-xs">
+              <span className="flex items-center gap-1">
+                <Zap className="w-3 h-3 text-yellow-500" />
+                x{CATEGORY_WEIGHTS[selectedCategory].hp}
+              </span>
+              <span className="flex items-center gap-1">
+                <Gauge className="w-3 h-3 text-blue-500" />
+                x{CATEGORY_WEIGHTS[selectedCategory].torque}
+              </span>
+              <span className="flex items-center gap-1">
+                <Timer className="w-3 h-3 text-red-500" />
+                x{CATEGORY_WEIGHTS[selectedCategory].speed}
+              </span>
+            </div>
+          </div>
+
+          <Button
+            variant="primary"
+            fullWidth
+            onClick={handlePostTuningChallenge}
+            disabled={tuningActionLoading || !selectedTunedCar}
+          >
+            <Swords className="w-4 h-4 mr-2" />
+            Wystaw wyzwanie
+          </Button>
+        </div>
+      </Modal>
+
+      {/* ACCEPT TUNING CHALLENGE MODAL */}
+      <Modal
+        isOpen={showAcceptTuningModal}
+        onClose={() => setShowAcceptTuningModal(false)}
+        title="Podejmij wyzwanie"
+      >
+        {selectedTuningChallenge && (
+          <div className="space-y-4">
+            {/* Info o wyzwaniu */}
+            <div className="p-3 rounded-xl bg-dark-700">
+              <div className="flex items-center gap-3">
+                <Avatar
+                  src={(selectedTuningChallenge.challenger as unknown as { avatar_url?: string })?.avatar_url}
+                  fallback={(selectedTuningChallenge.challenger as unknown as { nick: string })?.nick || '?'}
+                  size="sm"
+                />
+                <div>
+                  <h4 className="text-sm font-medium text-white">
+                    {(selectedTuningChallenge.challenger as unknown as { nick: string })?.nick || 'Gracz'}
+                  </h4>
+                  <span className="text-xs text-orange-400">
+                    {CATEGORY_LABELS[selectedTuningChallenge.category as TuningCategory]?.icon}{' '}
+                    {CATEGORY_LABELS[selectedTuningChallenge.category as TuningCategory]?.name}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Wybor swojego auta */}
+            <div>
+              <h4 className="text-sm font-medium text-dark-300 mb-2">Wybierz swoje auto</h4>
+              {tunedCars.length > 0 ? (
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {tunedCars.map(tc => {
+                    const card = tc.card;
+                    if (!card) return null;
+                    const score = calculateScore(tc, selectedTuningChallenge.category as TuningCategory);
+                    const isSelected = selectedAcceptCar?.id === tc.id;
+
+                    return (
+                      <button
+                        key={tc.id}
+                        onClick={() => setSelectedAcceptCar(tc)}
+                        className={`w-full flex items-center gap-3 p-3 rounded-xl text-left transition-colors ${
+                          isSelected
+                            ? 'bg-turbo-500/20 border border-turbo-500/50'
+                            : 'bg-dark-700 border border-transparent hover:border-dark-600'
+                        }`}
+                      >
+                        <div className="w-12 h-9 rounded-lg overflow-hidden flex-shrink-0 bg-dark-800">
+                          {card.image_url ? (
+                            <img src={card.image_url} alt={card.name} className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <Car className="w-4 h-4 text-dark-500" />
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h4 className="text-sm font-medium text-white truncate">
+                            {card.car_brand} {card.car_model}
+                          </h4>
+                        </div>
+                        <span className="text-sm font-bold text-turbo-400">{score}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="text-center py-4 text-dark-400 text-sm">
+                  Brak tuningowanych aut. Dodaj auto w Strefie Tuningu!
+                </div>
+              )}
+            </div>
+
+            <Button
+              variant="primary"
+              fullWidth
+              onClick={handleAcceptTuningChallenge}
+              disabled={tuningActionLoading || !selectedAcceptCar}
+            >
+              <Swords className="w-4 h-4 mr-2" />
+              Walcz!
+            </Button>
+          </div>
+        )}
+      </Modal>
+
+      {/* TUNING RESULT MODAL */}
+      <Modal
+        isOpen={showTuningResultModal}
+        onClose={() => {
+          setShowTuningResultModal(false);
+          setTuningBattleResult(null);
+        }}
+        title="Wynik bitwy"
+      >
+        {tuningBattleResult && (
+          <div className="space-y-4 text-center">
+            {/* Win/Lose/Draw */}
+            <div className={`py-4 rounded-xl ${
+              tuningBattleResult.winnerId === profile.id
+                ? 'bg-green-500/20'
+                : !tuningBattleResult.winnerId
+                  ? 'bg-yellow-500/20'
+                  : 'bg-red-500/20'
+            }`}>
+              {tuningBattleResult.winnerId === profile.id ? (
+                <>
+                  <Crown className="w-12 h-12 text-green-400 mx-auto mb-2" />
+                  <h3 className="text-xl font-bold text-green-400">WYGRANA!</h3>
+                  <p className="text-sm text-green-300 mt-1">+30 XP</p>
+                </>
+              ) : !tuningBattleResult.winnerId ? (
+                <>
+                  <Minus className="w-12 h-12 text-yellow-400 mx-auto mb-2" />
+                  <h3 className="text-xl font-bold text-yellow-400">REMIS</h3>
+                </>
+              ) : (
+                <>
+                  <X className="w-12 h-12 text-red-400 mx-auto mb-2" />
+                  <h3 className="text-xl font-bold text-red-400">PRZEGRANA</h3>
+                </>
+              )}
+            </div>
+
+            {/* Kategoria */}
+            <div className="text-sm text-dark-400">
+              {CATEGORY_LABELS[tuningBattleResult.category]?.icon}{' '}
+              {CATEGORY_LABELS[tuningBattleResult.category]?.name}
+            </div>
+
+            {/* Scores */}
+            <div className="flex items-center justify-center gap-4">
+              <div className="text-center">
+                <p className="text-xs text-dark-500 mb-1">Ty</p>
+                <div className="text-2xl font-bold text-white">
+                  {tuningBattleResult.challengerCar.user_id === profile.id
+                    ? tuningBattleResult.challengerScore
+                    : tuningBattleResult.opponentScore}
+                </div>
+              </div>
+              <ArrowRight className="w-5 h-5 text-dark-600 rotate-0" />
+              <div className="text-center">
+                <p className="text-xs text-dark-500 mb-1">Przeciwnik</p>
+                <div className="text-2xl font-bold text-white">
+                  {tuningBattleResult.challengerCar.user_id === profile.id
+                    ? tuningBattleResult.opponentScore
+                    : tuningBattleResult.challengerScore}
+                </div>
+              </div>
+            </div>
+
+            {/* Szczegoly */}
+            <div className="p-3 rounded-xl bg-dark-700 text-xs text-dark-400">
+              <div className="flex items-center justify-between">
+                <span>Wagi: KM x{CATEGORY_WEIGHTS[tuningBattleResult.category].hp}, Nm x{CATEGORY_WEIGHTS[tuningBattleResult.category].torque}, km/h x{CATEGORY_WEIGHTS[tuningBattleResult.category].speed}</span>
+              </div>
+            </div>
+
+            <Button
+              variant="primary"
+              fullWidth
+              onClick={() => {
+                setShowTuningResultModal(false);
+                setTuningBattleResult(null);
+              }}
+            >
+              Zamknij
+            </Button>
+          </div>
+        )}
       </Modal>
     </div>
   );
