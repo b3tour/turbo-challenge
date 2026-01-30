@@ -16,12 +16,14 @@ import {
   Clock,
   Megaphone,
   ChevronRight,
+  X,
+  Trash2,
 } from 'lucide-react';
 
 const typeConfig: Record<UnifiedNotification['type'], { icon: React.ElementType; color: string; bgColor: string; label: string }> = {
   info: { icon: Info, color: 'text-blue-400', bgColor: 'bg-blue-500/20', label: 'Informacja' },
   success: { icon: CheckCircle, color: 'text-green-400', bgColor: 'bg-green-500/20', label: 'Sukces' },
-  warning: { icon: AlertTriangle, color: 'text-yellow-400', bgColor: 'bg-yellow-500/20', label: 'Ostrzeżenie' },
+  warning: { icon: AlertTriangle, color: 'text-yellow-400', bgColor: 'bg-yellow-500/20', label: 'Ostrzezenie' },
   urgent: { icon: AlertCircle, color: 'text-red-400', bgColor: 'bg-red-500/20', label: 'Pilne' },
 };
 
@@ -29,11 +31,22 @@ type FilterType = 'all' | 'unread' | 'read';
 
 export default function AnnouncementsPage() {
   const { profile } = useAuth();
-  const { notifications, unreadCount, loading, markAsRead, markAllAsRead } = useAnnouncements(profile?.id);
+  const {
+    notifications,
+    unreadCount,
+    loading,
+    markAsRead,
+    markAllAsRead,
+    dismissNotification,
+    clearReadNotifications,
+  } = useAnnouncements(profile?.id);
   const router = useRouter();
   const [filter, setFilter] = useState<FilterType>('all');
 
   if (!profile) return null;
+
+  const readCount = notifications.filter(n => n.is_read).length;
+  const hasReadPersonalNotifs = notifications.some(n => n.is_read && n.source === 'notification');
 
   const filters: { value: FilterType; label: string; icon: React.ElementType }[] = [
     { value: 'all', label: 'Wszystkie', icon: Megaphone },
@@ -51,10 +64,14 @@ export default function AnnouncementsPage() {
     if (!notification.is_read) {
       markAsRead(notification.id, notification.source);
     }
-    // Nawiguj do odpowiedniej strony
     if (notification.link) {
       router.push(notification.link);
     }
+  };
+
+  const handleDismiss = (e: React.MouseEvent, notification: UnifiedNotification) => {
+    e.stopPropagation();
+    dismissNotification(notification.id);
   };
 
   return (
@@ -80,7 +97,7 @@ export default function AnnouncementsPage() {
             ? notifications.length
             : f.value === 'unread'
               ? unreadCount
-              : notifications.length - unreadCount;
+              : readCount;
 
           return (
             <button
@@ -104,18 +121,29 @@ export default function AnnouncementsPage() {
         })}
       </div>
 
-      {/* Mark all as read button */}
-      {unreadCount > 0 && filter !== 'read' && (
-        <button
-          onClick={markAllAsRead}
-          className="flex items-center gap-2 text-sm text-turbo-400 hover:text-turbo-300 mb-4"
-        >
-          <CheckCheck className="w-4 h-4" />
-          Oznacz wszystkie jako przeczytane
-        </button>
-      )}
+      {/* Action buttons */}
+      <div className="flex items-center gap-4 mb-4">
+        {unreadCount > 0 && filter !== 'read' && (
+          <button
+            onClick={markAllAsRead}
+            className="flex items-center gap-2 text-sm text-turbo-400 hover:text-turbo-300"
+          >
+            <CheckCheck className="w-4 h-4" />
+            Oznacz wszystkie jako przeczytane
+          </button>
+        )}
+        {hasReadPersonalNotifs && (filter === 'all' || filter === 'read') && (
+          <button
+            onClick={clearReadNotifications}
+            className="flex items-center gap-2 text-sm text-dark-400 hover:text-red-400"
+          >
+            <Trash2 className="w-4 h-4" />
+            Wyczysc przeczytane
+          </button>
+        )}
+      </div>
 
-      {/* Announcements List */}
+      {/* Notifications List */}
       {loading ? (
         <div className="space-y-3">
           {[1, 2, 3].map(i => (
@@ -171,12 +199,21 @@ export default function AnnouncementsPage() {
                     </div>
                   </div>
 
-                  {/* Strzałka nawigacji */}
-                  {notification.link && (
-                    <div className="flex-shrink-0 self-center">
+                  {/* Dismiss / Navigation */}
+                  <div className="flex-shrink-0 self-center flex items-center gap-1">
+                    {notification.source === 'notification' && (
+                      <button
+                        onClick={(e) => handleDismiss(e, notification)}
+                        className="p-1.5 hover:bg-dark-600 rounded transition-colors text-dark-500 hover:text-red-400"
+                        title="Usun powiadomienie"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    )}
+                    {notification.link && (
                       <ChevronRight className="w-5 h-5 text-dark-500" />
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
               </Card>
             );
@@ -187,10 +224,10 @@ export default function AnnouncementsPage() {
           <Bell className="w-12 h-12 text-dark-600 mx-auto mb-3" />
           <p className="text-dark-400">
             {filter === 'unread'
-              ? 'Brak nieprzeczytanych powiadomień'
+              ? 'Brak nieprzeczytanych powiadomien'
               : filter === 'read'
-                ? 'Brak przeczytanych powiadomień'
-                : 'Brak powiadomień'
+                ? 'Brak przeczytanych powiadomien'
+                : 'Brak powiadomien'
             }
           </p>
           {filter !== 'all' && (
@@ -198,7 +235,7 @@ export default function AnnouncementsPage() {
               onClick={() => setFilter('all')}
               className="text-sm text-turbo-400 hover:text-turbo-300 mt-2"
             >
-              Pokaż wszystkie
+              Pokaz wszystkie
             </button>
           )}
         </Card>

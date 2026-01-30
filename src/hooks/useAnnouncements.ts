@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 
-// Typ dla ogłoszeń globalnych (announcements)
+// Typ dla ogloszen globalnych (announcements)
 export interface Announcement {
   id: string;
   title: string;
@@ -17,7 +17,7 @@ export interface Announcement {
   source?: 'announcement' | 'notification';
 }
 
-// Typ dla powiadomień indywidualnych (notifications)
+// Typ dla powiadomien indywidualnych (notifications)
 export interface UserNotification {
   id: string;
   user_id: string;
@@ -29,7 +29,7 @@ export interface UserNotification {
   created_at: string;
 }
 
-// Zunifikowany typ do wyświetlania
+// Zunifikowany typ do wyswietlania
 export interface UnifiedNotification {
   id: string;
   title: string;
@@ -66,7 +66,7 @@ function getNotificationLink(type: UserNotification['type']): string | null {
   }
 }
 
-// Mapowanie typów powiadomień na typy wizualne
+// Mapowanie typow powiadomien na typy wizualne
 const notificationTypeMap: Record<UserNotification['type'], Announcement['type']> = {
   xp_gain: 'success',
   level_up: 'success',
@@ -80,10 +80,34 @@ const notificationTypeMap: Record<UserNotification['type'], Announcement['type']
   system: 'info',
 };
 
-export function useAnnouncements(userId?: string) {
+// Etykiety grupowania dla dropdown
+export function getGroupLabel(type: UserNotification['type'], count: number): string {
+  switch (type) {
+    case 'battle_result': return `${count} wynikow bitew`;
+    case 'battle_challenge': return `${count} wyzwan do bitwy`;
+    case 'tuning_result': return `${count} wynikow wyzwan tuningu`;
+    case 'card_received': return `${count} nowych kart`;
+    case 'mission_approved': return `${count} zatwierdzonych misji`;
+    case 'mission_rejected': return `${count} odrzuconych misji`;
+    case 'xp_gain': return `${count} nagrod XP`;
+    case 'level_up': return `${count} nowych poziomow`;
+    case 'achievement': return `${count} osiagniec`;
+    default: return `${count} powiadomien`;
+  }
+}
+
+interface UseAnnouncementsOptions {
+  onNewNotification?: (notification: UnifiedNotification) => void;
+}
+
+export function useAnnouncements(userId?: string, options?: UseAnnouncementsOptions) {
   const [notifications, setNotifications] = useState<UnifiedNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
+
+  // Ref for callback - avoids stale closure / dependency loop
+  const onNewRef = useRef(options?.onNewNotification);
+  onNewRef.current = options?.onNewNotification;
 
   const fetchAll = useCallback(async () => {
     if (!userId) {
@@ -92,7 +116,7 @@ export function useAnnouncements(userId?: string) {
     }
 
     try {
-      // Pobierz ogłoszenia globalne
+      // Pobierz ogloszenia globalne
       const { data: announcements, error: annError } = await supabase
         .from('announcements')
         .select('*')
@@ -102,7 +126,7 @@ export function useAnnouncements(userId?: string) {
 
       if (annError) console.error('Error fetching announcements:', annError);
 
-      // Pobierz przeczytane ogłoszenia
+      // Pobierz przeczytane ogloszenia
       const { data: reads, error: readsError } = await supabase
         .from('announcement_reads')
         .select('announcement_id')
@@ -122,7 +146,7 @@ export function useAnnouncements(userId?: string) {
 
       if (notifError) console.error('Error fetching notifications:', notifError);
 
-      // Zunifikuj ogłoszenia
+      // Zunifikuj ogloszenia
       const unifiedAnnouncements: UnifiedNotification[] = (announcements || []).map(a => ({
         id: a.id,
         title: a.title,
@@ -149,7 +173,7 @@ export function useAnnouncements(userId?: string) {
         };
       });
 
-      // Połącz i posortuj
+      // Polacz i posortuj
       const all = [...unifiedAnnouncements, ...unifiedNotifications]
         .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
@@ -165,7 +189,7 @@ export function useAnnouncements(userId?: string) {
   useEffect(() => {
     fetchAll();
 
-    // Subskrybuj nowe ogłoszenia
+    // Subskrybuj nowe ogloszenia
     const announcementsChannel = supabase
       .channel('announcements_channel')
       .on(
@@ -185,7 +209,7 @@ export function useAnnouncements(userId?: string) {
       )
       .subscribe();
 
-    // Subskrybuj nowe powiadomienia dla tego użytkownika
+    // Subskrybuj powiadomienia dla tego uzytkownika
     const notificationsChannel = supabase
       .channel(`notifications_${userId}`)
       .on(
@@ -196,6 +220,43 @@ export function useAnnouncements(userId?: string) {
           table: 'notifications',
           filter: `user_id=eq.${userId}`
         },
+        (payload) => {
+          // Bezposredni update stanu z payloadu realtime (bez refetch)
+          const newNotif = payload.new as UserNotification;
+          const origType = newNotif.type as UserNotification['type'];
+          const unified: UnifiedNotification = {
+            id: newNotif.id,
+            title: newNotif.title,
+            message: newNotif.message,
+            type: notificationTypeMap[origType] || 'info',
+            created_at: newNotif.created_at,
+            is_read: false,
+            source: 'notification',
+            originalType: origType,
+            link: getNotificationLink(origType),
+          };
+
+          // Dodaj na poczatek listy (deduplikacja)
+          setNotifications(prev => {
+            if (prev.some(n => n.id === unified.id && n.source === 'notification')) return prev;
+            return [unified, ...prev];
+          });
+          setUnreadCount(prev => prev + 1);
+
+          // Callback dla toast
+          if (onNewRef.current) {
+            onNewRef.current(unified);
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'notifications', filter: `user_id=eq.${userId}` },
+        () => fetchAll()
+      )
+      .on(
+        'postgres_changes',
+        { event: 'DELETE', schema: 'public', table: 'notifications', filter: `user_id=eq.${userId}` },
         () => fetchAll()
       )
       .subscribe();
@@ -206,6 +267,7 @@ export function useAnnouncements(userId?: string) {
     };
   }, [fetchAll, userId]);
 
+  // Oznacz pojedyncze jako przeczytane
   const markAsRead = async (notificationId: string, source: 'announcement' | 'notification') => {
     if (!userId) return;
 
@@ -235,27 +297,16 @@ export function useAnnouncements(userId?: string) {
     setUnreadCount(prev => Math.max(0, prev - 1));
   };
 
+  // Batch: oznacz wszystkie jako przeczytane (1-2 zapytania zamiast N)
   const markAllAsRead = async () => {
     if (!userId) return;
 
     const unread = notifications.filter(n => !n.is_read);
+    if (unread.length === 0) return;
 
-    // Oznacz ogłoszenia
-    const unreadAnnouncements = unread.filter(n => n.source === 'announcement');
-    for (const ann of unreadAnnouncements) {
-      await supabase
-        .from('announcement_reads')
-        .upsert({
-          announcement_id: ann.id,
-          user_id: userId
-        }, {
-          onConflict: 'announcement_id,user_id'
-        });
-    }
-
-    // Oznacz powiadomienia
-    const unreadNotifications = unread.filter(n => n.source === 'notification');
-    if (unreadNotifications.length > 0) {
+    // Batch: oznacz wszystkie powiadomienia jednym UPDATE
+    const hasUnreadNotifs = unread.some(n => n.source === 'notification');
+    if (hasUnreadNotifs) {
       await supabase
         .from('notifications')
         .update({ read: true })
@@ -263,22 +314,86 @@ export function useAnnouncements(userId?: string) {
         .eq('read', false);
     }
 
+    // Batch: upsert wszystkich announcement_reads naraz
+    const unreadAnnouncements = unread.filter(n => n.source === 'announcement');
+    if (unreadAnnouncements.length > 0) {
+      const readsToInsert = unreadAnnouncements.map(a => ({
+        announcement_id: a.id,
+        user_id: userId,
+      }));
+      await supabase
+        .from('announcement_reads')
+        .upsert(readsToInsert, { onConflict: 'announcement_id,user_id' });
+    }
+
     setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
     setUnreadCount(0);
   };
 
+  // Usun (dismiss) powiadomienie indywidualne
+  const dismissNotification = async (notificationId: string) => {
+    // Optimistic update
+    const target = notifications.find(n => n.id === notificationId && n.source === 'notification');
+    setNotifications(prev => prev.filter(n => !(n.id === notificationId && n.source === 'notification')));
+    if (target && !target.is_read) {
+      setUnreadCount(prev => Math.max(0, prev - 1));
+    }
+
+    const { error } = await supabase
+      .from('notifications')
+      .delete()
+      .eq('id', notificationId);
+
+    if (error) {
+      console.error('Error dismissing notification:', error);
+      // Revert on error
+      if (target) {
+        setNotifications(prev =>
+          [target, ...prev].sort((a, b) =>
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+          )
+        );
+        if (!target.is_read) setUnreadCount(prev => prev + 1);
+      }
+    }
+  };
+
+  // Usun wszystkie przeczytane powiadomienia indywidualne
+  const clearReadNotifications = async () => {
+    if (!userId) return;
+
+    const readNotifs = notifications.filter(n => n.is_read && n.source === 'notification');
+    if (readNotifs.length === 0) return;
+
+    // Optimistic update
+    setNotifications(prev => prev.filter(n => !(n.is_read && n.source === 'notification')));
+
+    const { error } = await supabase
+      .from('notifications')
+      .delete()
+      .eq('user_id', userId)
+      .eq('read', true);
+
+    if (error) {
+      console.error('Error clearing read notifications:', error);
+      fetchAll(); // Revert by refetching
+    }
+  };
+
   return {
-    announcements: notifications, // zachowaj starą nazwę dla kompatybilności
+    announcements: notifications,
     notifications,
     unreadCount,
     loading,
     markAsRead,
     markAllAsRead,
+    dismissNotification,
+    clearReadNotifications,
     refresh: fetchAll
   };
 }
 
-// Hook dla admina - zarządzanie ogłoszeniami
+// Hook dla admina - zarzadzanie ogloszeniami
 export function useAnnouncementsAdmin() {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [loading, setLoading] = useState(true);
@@ -366,7 +481,7 @@ export function useAnnouncementsAdmin() {
   };
 }
 
-// Funkcja pomocnicza do wysyłania powiadomień indywidualnych
+// Funkcja pomocnicza do wysylania powiadomien indywidualnych
 export async function sendUserNotification(
   userId: string,
   title: string,
