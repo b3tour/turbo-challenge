@@ -1,13 +1,14 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { useMissions } from '@/hooks/useMissions';
 import { useLeaderboard } from '@/hooks/useLeaderboard';
-import { Card, ProgressBar, Avatar } from '@/components/ui';
+import { Card, ProgressBar, Avatar, AppInfoModal } from '@/components/ui';
 import { MissionCard } from '@/components/missions';
-import { formatNumber } from '@/lib/utils';
+import { formatNumber, missionTypeIcons } from '@/lib/utils';
 import { useLevels } from '@/hooks/useLevels';
 import {
   Target,
@@ -17,8 +18,11 @@ import {
   Layers,
   Swords,
   Package,
+  Gift,
+  HelpCircle,
+  Star,
 } from 'lucide-react';
-import { useCards, RARITY_CONFIG } from '@/hooks/useCards';
+import { useCards } from '@/hooks/useCards';
 import { useBattles } from '@/hooks/useBattles';
 
 export default function DashboardPage() {
@@ -32,6 +36,8 @@ export default function DashboardPage() {
   const { getCollectionStats } = useCards({ userId: profile?.id });
   const { calculateLevel, calculateLevelProgress, xpToNextLevel, getNextLevel } = useLevels();
   const { incomingChallenges } = useBattles({ userId: profile?.id });
+
+  const [showAppInfo, setShowAppInfo] = useState(false);
 
   if (!profile) return null;
 
@@ -52,9 +58,13 @@ export default function DashboardPage() {
   const availableMissions = missions
     .filter(m => !busyMissionIds.includes(m.id));
 
-  // Misja priorytetowa — najwyższe XP
-  const priorityMission = [...availableMissions]
-    .sort((a, b) => (b.xp_reward || 0) - (a.xp_reward || 0))[0] || null;
+  // Top misje posortowane po XP (max 3)
+  const topMissions = [...availableMissions]
+    .sort((a, b) => (b.xp_reward || 0) - (a.xp_reward || 0))
+    .slice(0, 3);
+
+  // Kolekcja stats
+  const collectionStats = getCollectionStats();
 
   return (
     <div className="space-y-6 py-4">
@@ -149,79 +159,54 @@ export default function DashboardPage() {
 
         {missionsLoading ? (
           <Card className="h-20 animate-pulse bg-dark-700" />
-        ) : priorityMission ? (
+        ) : availableMissions.length === 0 ? (
+          <Card className="text-center py-6">
+            <Target className="w-10 h-10 text-dark-600 mx-auto mb-2" />
+            <p className="text-dark-400 text-sm">Gratulacje! Wszystkie misje ukończone.</p>
+            <p className="text-dark-500 text-xs mt-1">Oczekuj na kolejne wyzwania!</p>
+          </Card>
+        ) : availableMissions.length === 1 ? (
           <MissionCard
-            mission={priorityMission}
+            mission={topMissions[0]}
             compact
             onClick={() => router.push('/missions')}
           />
         ) : (
-          <Card className="text-center py-6">
-            <Target className="w-10 h-10 text-dark-600 mx-auto mb-2" />
-            <p className="text-dark-400 text-sm">Wszystkie misje ukończone!</p>
-          </Card>
+          <div className={`grid gap-3 ${topMissions.length === 2 ? 'grid-cols-2' : 'grid-cols-3'}`}>
+            {topMissions.map(mission => (
+              <Card
+                key={mission.id}
+                hover
+                onClick={() => router.push('/missions')}
+                className="py-3 px-3"
+              >
+                <div className="text-2xl mb-2">{missionTypeIcons[mission.type]}</div>
+                <p className="text-sm font-medium text-white line-clamp-2 mb-1">{mission.title}</p>
+                <p className="text-xs text-turbo-400 font-medium flex items-center gap-1">
+                  <Star className="w-3 h-3" />
+                  {formatNumber(mission.xp_reward)} XP
+                </p>
+              </Card>
+            ))}
+          </div>
         )}
       </div>
 
-      {/* Cards Collection Preview */}
-      <div>
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-            <Layers className="w-5 h-5 text-purple-500" />
-            Kolekcja kart
-          </h2>
-          <Link
-            href="/cards"
-            className="text-sm text-accent-400 flex items-center px-2 py-1 -mr-2 rounded-lg active:bg-dark-700/50"
-          >
-            Zobacz wszystkie
-            <ChevronRight className="w-4 h-4" />
-          </Link>
-        </div>
-
-        <Card className="relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/10 rounded-full blur-3xl" />
-          <div className="relative">
-            {(() => {
-              const stats = getCollectionStats();
-              const progress = stats.total > 0 ? Math.round((stats.collected / stats.total) * 100) : 0;
-
-              return (
-                <>
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-dark-400">Twoje samochody</span>
-                    <span className="text-purple-400 font-bold">{stats.collected}/{stats.total}</span>
-                  </div>
-
-                  <div className="h-2 bg-dark-700 rounded-full overflow-hidden mb-4">
-                    <div
-                      className="h-full bg-gradient-to-r from-purple-500 to-pink-500 rounded-full transition-all"
-                      style={{ width: `${progress}%` }}
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-4 gap-2">
-                    {(['common', 'rare', 'epic', 'legendary'] as const).map(rarity => {
-                      const config = RARITY_CONFIG[rarity];
-                      const rarityStats = stats.byRarity[rarity];
-                      return (
-                        <div key={rarity} className={`text-center p-2 rounded-lg ${config.bgColor}`}>
-                          <div className="text-xl">{config.icon}</div>
-                          <div className={`text-xs font-medium ${config.color}`}>
-                            {rarityStats.collected}/{rarityStats.total}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </>
-              );
-            })()}
+      {/* Kolekcja kart — uproszczony box */}
+      <Link href="/cards">
+        <Card className="py-4 px-4 border-purple-500/30 bg-gradient-to-b from-purple-500/10 to-transparent hover:border-purple-500/50 transition-colors">
+          <div className="flex items-center gap-2 mb-2">
+            <Layers className="w-6 h-6 text-purple-500" />
+            <p className="text-sm font-semibold text-white">Kolekcja kart</p>
+            <span className="text-sm font-bold text-purple-400 ml-auto">{collectionStats.collected}/{collectionStats.total}</span>
           </div>
+          <p className="text-xs text-dark-400 leading-relaxed">
+            Zbieraj karty samochodów i odkrywaj ich unikalne osiągi
+          </p>
         </Card>
-      </div>
+      </Link>
 
-      {/* Action Grid */}
+      {/* Action Grid 2x2 */}
       <div className="grid grid-cols-2 gap-3">
         <Link href="/arena">
           <Card className="relative py-4 px-4 border-turbo-500/30 bg-gradient-to-b from-turbo-500/10 to-transparent hover:border-turbo-500/50 transition-colors">
@@ -253,22 +238,49 @@ export default function DashboardPage() {
             </p>
           </Card>
         </Link>
+
+        <Link href="/leaderboard">
+          <Card className="py-4 px-4 border-yellow-500/30 bg-gradient-to-b from-yellow-500/10 to-transparent hover:border-yellow-500/50 transition-colors">
+            <div className="flex items-center gap-2 mb-2">
+              <Trophy className="w-6 h-6 text-yellow-500" />
+              <p className="text-sm font-semibold text-white">Ranking</p>
+              <span className="text-sm font-bold text-turbo-400 ml-auto">#{userRank || '?'}</span>
+            </div>
+            <p className="text-xs text-dark-400 leading-relaxed">
+              Twoja pozycja w rankingu najlepszych graczy
+            </p>
+          </Card>
+        </Link>
+
+        <Link href="/rewards">
+          <Card className="py-4 px-4 border-amber-500/30 bg-gradient-to-b from-amber-500/10 to-transparent hover:border-amber-500/50 transition-colors">
+            <div className="flex items-center gap-2 mb-2">
+              <Gift className="w-6 h-6 text-amber-500" />
+              <p className="text-sm font-semibold text-white">Nagrody</p>
+            </div>
+            <p className="text-xs text-dark-400 leading-relaxed">
+              Sprawdź nagrody dla najlepszych w rankingu
+            </p>
+          </Card>
+        </Link>
       </div>
 
-      {/* Ranking Widget */}
-      <Link href="/leaderboard">
-        <Card padding="sm" className="flex items-center gap-3 hover:border-yellow-500/50 transition-colors">
-          <Trophy className="w-5 h-5 text-yellow-500 flex-shrink-0" />
+      {/* Informacje o aplikacji */}
+      <Card
+        hover
+        className="cursor-pointer"
+        onClick={() => setShowAppInfo(true)}
+      >
+        <div className="flex items-center gap-3">
+          <HelpCircle className="w-5 h-5 text-turbo-500 flex-shrink-0" />
           <div className="flex-1">
-            <span className="text-sm text-dark-300">Twoja pozycja w rankingu</span>
+            <span className="text-sm text-dark-300">Informacje o aplikacji</span>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="text-lg font-bold text-turbo-400">#{userRank || '?'}</span>
-            <ChevronRight className="w-4 h-4 text-dark-500" />
-          </div>
-        </Card>
-      </Link>
+          <ChevronRight className="w-4 h-4 text-dark-500" />
+        </div>
+      </Card>
 
+      <AppInfoModal isOpen={showAppInfo} onClose={() => setShowAppInfo(false)} />
     </div>
   );
 }
