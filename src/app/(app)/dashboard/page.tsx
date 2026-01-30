@@ -179,7 +179,7 @@ export default function DashboardPage() {
                 onClick={() => router.push('/missions')}
                 className="py-3 px-3 relative"
               >
-                <span className="absolute top-2 right-2 text-[10px] font-bold text-turbo-400">
+                <span className="absolute top-2 right-2 text-xs font-bold text-turbo-400">
                   {formatNumber(mission.xp_reward)} XP
                 </span>
                 <div className="text-2xl mb-2">{missionTypeIcons[mission.type]}</div>
