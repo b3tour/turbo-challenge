@@ -22,7 +22,7 @@ export const Card = forwardRef<HTMLDivElement, CardProps>(
     ref
   ) => {
     const variants = {
-      default: 'bg-white/[0.05] backdrop-blur-sm border border-white/[0.07]',
+      default: 'bg-surface-1 border border-white/10',
       glass: 'glass',
       outlined: 'bg-transparent border border-dark-700',
     };
@@ -42,7 +42,7 @@ export const Card = forwardRef<HTMLDivElement, CardProps>(
           variants[variant],
           paddings[padding],
           hover &&
-            'transition-all duration-200 hover:bg-white/[0.08] hover:border-white/[0.12] cursor-pointer',
+            'transition-all duration-200 hover:bg-surface-2 hover:border-white/[0.15] cursor-pointer',
           className
         )}
         {...props}

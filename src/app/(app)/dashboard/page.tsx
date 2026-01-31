@@ -157,9 +157,9 @@ export default function DashboardPage() {
           </div>
 
           {/* Donation Card */}
-          <div className="mt-5 rounded-xl bg-[#131316] p-4">
+          <div className="mt-5 rounded-xl bg-surface-0 p-4">
             <div className="flex items-center gap-2.5">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white/[0.06] flex-shrink-0">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-surface-3 flex-shrink-0">
                 <Heart className="h-5 w-5 text-red-500 fill-red-500" />
               </div>
               <div className="flex-1 min-w-0">
@@ -223,7 +223,7 @@ export default function DashboardPage() {
                 <Link
                   key={mission.id}
                   href="/missions"
-                  className="animate-slide-up group flex w-32 flex-shrink-0 flex-col items-center gap-3 rounded-xl border border-white/[0.07] bg-white/[0.05] p-4 text-center transition-all hover:border-turbo-500/50 hover:bg-white/[0.08]"
+                  className="animate-slide-up group flex w-32 flex-shrink-0 flex-col items-center gap-3 rounded-xl border border-white/10 bg-surface-1 p-4 text-center transition-all hover:border-turbo-500/50 hover:bg-surface-2"
                   style={{ animationDelay: `${index * 0.1}s`, animationFillMode: 'backwards' }}
                 >
                   {/* Ikona z badge XP */}
@@ -250,7 +250,7 @@ export default function DashboardPage() {
       {/* Kolekcja kart — Minimal Clean */}
       <Link
         href="/cards"
-        className="group flex animate-slide-up items-center gap-4 rounded-2xl border border-white/[0.07] bg-white/[0.05] p-4 transition-all hover:border-turbo-500/50 hover:bg-white/[0.08]"
+        className="group flex animate-slide-up items-center gap-4 rounded-2xl border border-white/10 bg-surface-1 p-4 transition-all hover:border-turbo-500/50 hover:bg-surface-2"
       >
         {/* Icon */}
         <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-turbo-500/20 to-accent-400/20">
@@ -268,7 +268,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Progress Bar */}
-          <div className="mt-3 h-3 overflow-hidden rounded-full bg-white/[0.06]">
+          <div className="mt-3 h-3 overflow-hidden rounded-full bg-surface-3">
             <div
               className="h-full rounded-full bg-gradient-to-r from-turbo-500 via-turbo-500 to-accent-400 transition-all duration-700 group-hover:shadow-[0_0_10px_rgba(217,70,239,0.5)]"
               style={{ width: `${collectionStats.total > 0 ? Math.round((collectionStats.collected / collectionStats.total) * 100) : 0}%` }}
@@ -288,7 +288,7 @@ export default function DashboardPage() {
         {/* Arena */}
         <Link
           href="/arena"
-          className="group relative animate-slide-up overflow-hidden rounded-2xl border border-red-500/30 bg-white/[0.05] p-4 transition-all duration-300 hover:border-red-500/60 hover:shadow-[0_0_30px_rgba(239,68,68,0.15)]"
+          className="group relative animate-slide-up overflow-hidden rounded-2xl border border-red-500/30 bg-surface-1 p-4 transition-all duration-300 hover:border-red-500/60 hover:shadow-[0_0_30px_rgba(239,68,68,0.15)]"
           style={{ animationDelay: '0.3s', animationFillMode: 'backwards' }}
         >
           <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-red-500/10 opacity-30 blur-2xl transition-opacity group-hover:opacity-50" />
@@ -316,7 +316,7 @@ export default function DashboardPage() {
         {/* Mystery Garage */}
         <Link
           href="/mystery"
-          className="group relative animate-slide-up overflow-hidden rounded-2xl border border-green-500/30 bg-white/[0.05] p-4 transition-all duration-300 hover:border-green-500/60 hover:shadow-[0_0_30px_rgba(34,197,94,0.15)]"
+          className="group relative animate-slide-up overflow-hidden rounded-2xl border border-green-500/30 bg-surface-1 p-4 transition-all duration-300 hover:border-green-500/60 hover:shadow-[0_0_30px_rgba(34,197,94,0.15)]"
           style={{ animationDelay: '0.35s', animationFillMode: 'backwards' }}
         >
           <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-green-500/10 opacity-30 blur-2xl transition-opacity group-hover:opacity-50" />
@@ -339,7 +339,7 @@ export default function DashboardPage() {
         {/* Ranking */}
         <Link
           href="/leaderboard"
-          className="group relative animate-slide-up overflow-hidden rounded-2xl border border-amber-500/30 bg-white/[0.05] p-4 transition-all duration-300 hover:border-amber-500/60 hover:shadow-[0_0_30px_rgba(245,158,11,0.15)]"
+          className="group relative animate-slide-up overflow-hidden rounded-2xl border border-amber-500/30 bg-surface-1 p-4 transition-all duration-300 hover:border-amber-500/60 hover:shadow-[0_0_30px_rgba(245,158,11,0.15)]"
           style={{ animationDelay: '0.4s', animationFillMode: 'backwards' }}
         >
           <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-amber-500/10 opacity-30 blur-2xl transition-opacity group-hover:opacity-50" />
@@ -365,7 +365,7 @@ export default function DashboardPage() {
         {/* Nagrody */}
         <Link
           href="/rewards"
-          className="group relative animate-slide-up overflow-hidden rounded-2xl border border-cyan-500/30 bg-white/[0.05] p-4 transition-all duration-300 hover:border-cyan-500/60 hover:shadow-[0_0_30px_rgba(6,182,212,0.15)]"
+          className="group relative animate-slide-up overflow-hidden rounded-2xl border border-cyan-500/30 bg-surface-1 p-4 transition-all duration-300 hover:border-cyan-500/60 hover:shadow-[0_0_30px_rgba(6,182,212,0.15)]"
           style={{ animationDelay: '0.45s', animationFillMode: 'backwards' }}
         >
           <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-cyan-500/10 opacity-30 blur-2xl transition-opacity group-hover:opacity-50" />

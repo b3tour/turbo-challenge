@@ -99,7 +99,7 @@ export function ArenaRankings() {
                   </span>
 
                   {isSelected && (
-                    <div className="absolute -bottom-12 left-1/2 -translate-x-1/2 z-50 px-2 py-1.5 rounded-lg bg-white/[0.03] border border-dark-600 shadow-xl whitespace-nowrap">
+                    <div className="absolute -bottom-12 left-1/2 -translate-x-1/2 z-50 px-2 py-1.5 rounded-lg bg-surface-2 border border-dark-600 shadow-xl whitespace-nowrap">
                       <p className="text-[10px] text-dark-300">{badge.description}</p>
                     </div>
                   )}
@@ -233,7 +233,7 @@ export function ArenaRankings() {
                 <div
                   key={entry.user_id}
                   className={`flex items-center gap-3 px-4 py-2.5 rounded-xl transition-colors ${
-                    isMe ? 'bg-turbo-500/10 border border-turbo-500/30' : 'hover:bg-white/[0.05]'
+                    isMe ? 'bg-turbo-500/10 border border-turbo-500/30' : 'hover:bg-surface-2'
                   }`}
                 >
                   <div className="w-8 text-center text-sm font-medium text-dark-400">

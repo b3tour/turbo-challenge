@@ -36,9 +36,9 @@ export function Sidebar({ user }: SidebarProps) {
   const pathname = usePathname();
 
   return (
-    <aside className="fixed left-0 top-0 bottom-0 w-64 bg-dark-900/90 backdrop-blur-xl border-r border-white/[0.06] flex flex-col z-40">
+    <aside className="fixed left-0 top-0 bottom-0 w-64 bg-dark-900/90 backdrop-blur-xl border-r border-white/[0.08] flex flex-col z-40">
       {/* Logo */}
-      <div className="flex items-center gap-2 px-6 h-16 border-b border-dark-800">
+      <div className="flex items-center gap-2 px-6 h-16 border-b border-dark-700/50">
         <Image
           src="/heart-icon.png"
           alt="Turbo Challenge"
@@ -83,7 +83,7 @@ export function Sidebar({ user }: SidebarProps) {
 
       {/* User section */}
       {user && (
-        <div className="px-3 py-4 border-t border-dark-800 space-y-2">
+        <div className="px-3 py-4 border-t border-dark-700/50 space-y-2">
           <div className="flex items-center justify-between px-3">
             <NotificationBell userId={user.id} />
           </div>

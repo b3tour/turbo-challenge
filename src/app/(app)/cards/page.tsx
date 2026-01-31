@@ -542,7 +542,7 @@ export default function CardsPage() {
       )}
 
       {/* Tabs */}
-      <div className="bg-dark-800/50 rounded-xl p-1 flex gap-1 mb-6">
+      <div className="bg-surface-1 rounded-xl p-1 flex gap-1 mb-6">
         <button
           onClick={() => setActiveTab('car')}
           className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium transition-all ${

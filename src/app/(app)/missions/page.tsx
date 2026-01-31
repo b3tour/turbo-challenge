@@ -298,7 +298,7 @@ export default function MissionsPage() {
       </div>
 
       {/* Filters — segmented control */}
-      <div className="bg-dark-800/50 rounded-xl p-1 flex gap-1 mb-4 overflow-x-auto">
+      <div className="bg-surface-1 rounded-xl p-1 flex gap-1 mb-4 overflow-x-auto">
         {filters.map(f => (
           <button
             key={f.value}

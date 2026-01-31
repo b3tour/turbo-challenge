@@ -20,7 +20,7 @@ export default function ArenaPage() {
   return (
     <div className="space-y-6">
       {/* Arena Tabs */}
-      <div className="bg-dark-800/50 rounded-xl p-1 flex gap-1 overflow-x-auto pt-4">
+      <div className="bg-surface-1 rounded-xl p-1 flex gap-1 overflow-x-auto pt-4">
         {tabs.map(t => {
           const Icon = t.icon;
           return (

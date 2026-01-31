@@ -384,7 +384,7 @@ export function BattlesContent() {
       </div>
 
       {/* Tabs */}
-      <div className="bg-dark-800/50 rounded-xl p-1 flex gap-1 overflow-x-auto">
+      <div className="bg-surface-1 rounded-xl p-1 flex gap-1 overflow-x-auto">
         {tabs.map(t => {
           const Icon = t.icon;
           return (
