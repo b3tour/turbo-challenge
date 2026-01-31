@@ -29,9 +29,9 @@ export function Header({ user }: HeaderProps) {
               className="object-contain flex-shrink-0"
               priority
             />
-            <div className="flex items-center gap-1 sm:gap-1.5 min-w-0">
-              <span className="text-lg sm:text-2xl font-bold text-white">TURBO</span>
-              <span className="text-lg sm:text-2xl font-bold gradient-text truncate">CHALLENGE</span>
+            <div className="flex items-baseline gap-1 min-w-0">
+              <span className="text-base font-bold tracking-tight text-white">TURBO</span>
+              <span className="text-base font-bold tracking-tight text-turbo-500">CHALLENGE</span>
             </div>
           </Link>
 

@@ -157,10 +157,10 @@ export default function DashboardPage() {
           </div>
 
           {/* Donation Card */}
-          <div className="mt-5 rounded-xl bg-surface-0 p-4">
+          <div className="mt-5 rounded-xl bg-surface-2 p-4">
             <div className="flex items-center gap-2.5">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-surface-3 flex-shrink-0">
-                <Heart className="h-5 w-5 text-red-500 fill-red-500" />
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-red-500/20 flex-shrink-0">
+                <Heart className="h-5 w-5 text-red-400" />
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-white">Wsparcie Turbo Pomoc</p>
@@ -173,7 +173,7 @@ export default function DashboardPage() {
               <p className="text-lg font-bold text-green-400 flex-shrink-0">
                 {(profile.donation_total || 0).toFixed(2)} zł
               </p>
-              <ChevronRight className="h-5 w-5 text-dark-500 flex-shrink-0" />
+              <ChevronRight className="h-5 w-5 text-dark-400 transition-all" />
             </div>
           </div>
         </div>
@@ -246,7 +246,7 @@ export default function DashboardPage() {
       {/* Kolekcja kart — Minimal Clean */}
       <Link
         href="/cards"
-        className="group flex animate-slide-up items-center gap-4 rounded-2xl border border-white/10 bg-surface-1 p-4 transition-all hover:border-turbo-500/50 hover:bg-surface-2"
+        className="group flex animate-slide-up items-center gap-4 rounded-2xl border border-dark-700/50 bg-surface-1 p-4 transition-all hover:border-turbo-500/50 hover:bg-surface-2"
       >
         {/* Icon */}
         <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-turbo-500/20 to-accent-400/20">
@@ -276,7 +276,7 @@ export default function DashboardPage() {
           </p>
         </div>
 
-        <ChevronRight className="h-5 w-5 flex-shrink-0 text-dark-500 transition-all group-hover:translate-x-1 group-hover:text-turbo-500" />
+        <ChevronRight className="h-5 w-5 flex-shrink-0 text-dark-400 transition-all group-hover:translate-x-1" />
       </Link>
 
       {/* Action Grid 2x2 — Glow Cards */}
@@ -383,19 +383,17 @@ export default function DashboardPage() {
       </div>
 
       {/* Informacje o aplikacji */}
-      <Card
-        hover
-        className="cursor-pointer"
+      <button
+        type="button"
         onClick={() => setShowAppInfo(true)}
+        className="group flex w-full items-center justify-between rounded-2xl border border-dark-700/50 bg-surface-1 px-5 py-4 transition-all hover:border-dark-700 hover:bg-surface-2"
       >
         <div className="flex items-center gap-3">
-          <HelpCircle className="w-5 h-5 text-turbo-500 flex-shrink-0" />
-          <div className="flex-1">
-            <span className="text-sm text-dark-300">Informacje o aplikacji</span>
-          </div>
-          <ChevronRight className="w-4 h-4 text-dark-500" />
+          <HelpCircle className="h-5 w-5 text-dark-400" />
+          <span className="text-sm font-medium text-dark-300">Informacje o aplikacji</span>
         </div>
-      </Card>
+        <ChevronRight className="h-5 w-5 text-dark-400 transition-all group-hover:translate-x-1" />
+      </button>
 
       <AppInfoModal isOpen={showAppInfo} onClose={() => setShowAppInfo(false)} />
     </div>
