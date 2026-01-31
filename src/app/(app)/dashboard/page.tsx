@@ -164,14 +164,14 @@ export default function DashboardPage() {
             <Zap className="w-5 h-5 text-red-500" />
             Dostępne misje
             {availableMissions.length > 0 && (
-              <span className="inline-flex items-center justify-center w-6 h-6 bg-red-500 rounded-full text-[11px] font-bold text-white">
+              <span className="inline-flex items-center justify-center w-6 h-6 bg-red-500 rounded-full text-[11px] font-bold text-white leading-none text-center">
                 {availableMissions.length}
               </span>
             )}
           </h2>
           <Link
             href="/missions"
-            className="flex items-center gap-1 text-sm font-medium text-red-400 hover:text-red-300"
+            className="flex items-center gap-1 text-sm font-medium bg-gradient-to-r from-red-400 to-orange-400 bg-clip-text text-transparent hover:from-red-300 hover:to-orange-300"
           >
             Zobacz wszystkie
             <ChevronRight className="w-4 h-4" />
