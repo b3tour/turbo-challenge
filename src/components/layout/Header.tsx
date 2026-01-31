@@ -2,8 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
-import { HelpCircle } from 'lucide-react';
+import { Heart, HelpCircle } from 'lucide-react';
 import { User } from '@/types';
 import { Avatar, AppInfoModal } from '@/components/ui';
 import NotificationBell from './NotificationBell';
@@ -20,18 +19,11 @@ export function Header({ user }: HeaderProps) {
       <header className="fixed top-0 left-0 right-0 z-40 bg-gradient-to-b from-[#0a0a0f]/90 to-transparent backdrop-blur-xl pt-safe">
         <div className="flex items-center justify-between h-16 px-4 sm:px-6 max-w-content mx-auto">
           {/* Logo */}
-          <Link href="/dashboard" className="flex items-center gap-1.5 sm:gap-2 min-w-0">
-            <Image
-              src="/heart-icon.png"
-              alt="Turbo Challenge"
-              width={28}
-              height={28}
-              className="object-contain flex-shrink-0"
-              priority
-            />
+          <Link href="/dashboard" className="flex items-center gap-1.5 min-w-0">
+            <Heart className="w-[18px] h-[18px] text-turbo-500 fill-turbo-500 flex-shrink-0" />
             <div className="flex items-baseline gap-1 min-w-0">
-              <span className="text-base font-bold tracking-tight text-white">TURBO</span>
-              <span className="text-base font-bold tracking-tight text-turbo-500">CHALLENGE</span>
+              <span className="text-base font-extrabold tracking-tight text-white">TURBO</span>
+              <span className="text-base font-extrabold tracking-tight text-turbo-500">CHALLENGE</span>
             </div>
           </Link>
 
