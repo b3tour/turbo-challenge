@@ -89,7 +89,7 @@ export default function DashboardPage() {
   const collectionStats = getCollectionStats();
 
   return (
-    <div className="space-y-8 py-6">
+    <div className="space-y-8 pt-2 pb-6">
       {/* Profile Card */}
       <Card variant="glass" className="relative overflow-hidden p-5 animate-slide-up">
         {/* Background Effects */}
