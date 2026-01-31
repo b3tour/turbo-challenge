@@ -39,7 +39,7 @@ export function BottomNav() {
                 {isActive && (
                   <div className="absolute -top-2.5 w-6 h-1 bg-turbo-500 rounded-full" />
                 )}
-                <Icon className={cn('w-5 h-5 mb-0.5', isActive && 'drop-shadow-[0_0_6px_rgba(217,70,239,0.5)]')} />
+                <Icon className={cn('w-5 h-5 mb-0.5', isActive && 'drop-shadow-[0_0_6px_rgba(139,92,246,0.5)]')} />
                 <span className="text-[10px] font-medium">{item.label}</span>
               </Link>
             );

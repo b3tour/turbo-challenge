@@ -270,7 +270,7 @@ export default function DashboardPage() {
           {/* Progress Bar */}
           <div className="mt-3 h-3 overflow-hidden rounded-full bg-surface-3">
             <div
-              className="h-full rounded-full bg-gradient-to-r from-turbo-500 via-turbo-500 to-accent-400 transition-all duration-700 group-hover:shadow-[0_0_10px_rgba(217,70,239,0.5)]"
+              className="h-full rounded-full bg-gradient-to-r from-turbo-500 via-turbo-500 to-accent-400 transition-all duration-700 group-hover:shadow-[0_0_10px_rgba(139,92,246,0.5)]"
               style={{ width: `${collectionStats.total > 0 ? Math.round((collectionStats.collected / collectionStats.total) * 100) : 0}%` }}
             />
           </div>
