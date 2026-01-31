@@ -1,7 +1,6 @@
 'use client';
 
 import Link from 'next/link';
-import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { User as UserType } from '@/types';
@@ -9,6 +8,7 @@ import { Avatar } from '@/components/ui';
 import NotificationBell from './NotificationBell';
 import {
   Home,
+  Heart,
   Target,
   Layers,
   Swords,
@@ -39,17 +39,10 @@ export function Sidebar({ user }: SidebarProps) {
     <aside className="fixed left-0 top-0 bottom-0 w-64 bg-dark-900/90 backdrop-blur-xl border-r border-white/[0.08] flex flex-col z-40">
       {/* Logo */}
       <div className="flex items-center gap-2 px-6 h-16 border-b border-dark-700/50">
-        <Image
-          src="/heart-icon.png"
-          alt="Turbo Challenge"
-          width={28}
-          height={28}
-          className="object-contain"
-          priority
-        />
-        <div className="flex items-center gap-1">
-          <span className="text-lg font-bold text-white">TURBO</span>
-          <span className="text-lg font-bold gradient-text">CHALLENGE</span>
+        <Heart className="w-6 h-6 text-turbo-500 fill-turbo-500 flex-shrink-0" />
+        <div className="flex items-baseline gap-1">
+          <span className="text-lg font-semibold tracking-tight text-white">TURBO</span>
+          <span className="text-lg font-extrabold tracking-tight text-turbo-500">CHALLENGE</span>
         </div>
       </div>
 
@@ -65,16 +58,19 @@ export function Sidebar({ user }: SidebarProps) {
               key={item.href}
               href={item.href}
               className={cn(
-                'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150',
+                'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 relative',
                 isActive
-                  ? 'bg-turbo-500/10 text-turbo-400'
+                  ? 'text-[#22d3ee]'
                   : 'text-dark-400 hover:text-white hover:bg-dark-800'
               )}
             >
-              <Icon className="w-5 h-5" />
-              {item.label}
               {isActive && (
-                <div className="ml-auto w-1.5 h-1.5 rounded-full bg-turbo-500" />
+                <div className="absolute inset-0 rounded-xl bg-[#22d3ee]/10 pointer-events-none" />
+              )}
+              <Icon className={cn('w-5 h-5 relative', isActive && 'drop-shadow-[0_0_8px_rgba(34,211,238,0.6)]')} />
+              <span className="relative">{item.label}</span>
+              {isActive && (
+                <div className="ml-auto w-1.5 h-1.5 rounded-full bg-[#22d3ee] shadow-[0_0_6px_#22d3ee] relative" />
               )}
             </Link>
           );
@@ -92,7 +88,7 @@ export function Sidebar({ user }: SidebarProps) {
             className={cn(
               'flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-150',
               pathname === '/profile'
-                ? 'bg-turbo-500/10'
+                ? 'bg-[#22d3ee]/10'
                 : 'hover:bg-dark-800'
             )}
           >
