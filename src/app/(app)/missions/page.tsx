@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useMissions } from '@/hooks/useMissions';
 import { Card, Badge, Button, Modal } from '@/components/ui';
+import { SkeletonCard } from '@/components/ui/Skeleton';
 import { useToast } from '@/components/ui/Toast';
 import { MissionCard, QRScanner, PhotoUpload, Quiz, GPSChecker } from '@/components/missions';
 import { Mission, MissionType } from '@/types';
@@ -271,7 +272,7 @@ export default function MissionsPage() {
   };
 
   return (
-    <div className="py-4">
+    <div className="py-6">
       {/* Header */}
       <div className="flex items-center gap-4 mb-6">
         <div className="w-14 h-14 rounded-xl bg-turbo-500/20 flex items-center justify-center flex-shrink-0">
@@ -308,7 +309,7 @@ export default function MissionsPage() {
       {loading ? (
         <div className="space-y-3">
           {[1, 2, 3, 4].map(i => (
-            <Card key={i} className="h-32 animate-pulse bg-dark-700" />
+            <SkeletonCard key={i} />
           ))}
         </div>
       ) : filteredMissions.length > 0 ? (

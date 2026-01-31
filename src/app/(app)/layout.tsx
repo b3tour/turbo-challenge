@@ -3,7 +3,7 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
-import { Header, BottomNav, LoadingScreen } from '@/components/layout';
+import { Header, BottomNav, Sidebar, LoadingScreen } from '@/components/layout';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -104,9 +104,27 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen">
-      <Header user={profile} />
-      <main className="pt-16 pb-20 px-3 sm:px-4 max-w-lg mx-auto">{children}</main>
-      <BottomNav />
+      {/* Mobile: top header */}
+      <div className="lg:hidden">
+        <Header user={profile} />
+      </div>
+
+      <div className="lg:flex">
+        {/* Desktop: sidebar */}
+        <div className="hidden lg:block">
+          <Sidebar user={profile} />
+        </div>
+
+        {/* Main content */}
+        <main className="pt-16 lg:pt-6 pb-20 lg:pb-6 px-4 sm:px-6 lg:px-8 max-w-content mx-auto lg:ml-64 lg:mx-0 lg:max-w-content-lg lg:flex-1 page-animate">
+          {children}
+        </main>
+      </div>
+
+      {/* Mobile: bottom nav */}
+      <div className="lg:hidden">
+        <BottomNav />
+      </div>
     </div>
   );
 }

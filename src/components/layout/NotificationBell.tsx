@@ -202,7 +202,7 @@ export default function NotificationBell({ userId }: NotificationBellProps) {
 
       {/* Dropdown */}
       {isOpen && (
-        <div className="absolute right-0 top-12 w-80 max-h-[28rem] bg-dark-800 border border-dark-700 rounded-xl shadow-xl overflow-hidden z-50">
+        <div className="absolute right-0 top-12 w-80 max-h-[28rem] bg-dark-800 shadow-surface-lg rounded-2xl overflow-hidden z-50">
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-dark-700 bg-dark-850">
             <h3 className="font-medium text-white">Powiadomienia</h3>

@@ -54,7 +54,7 @@ export const ProgressBar = forwardRef<HTMLDivElement, ProgressBarProps>(
         )}
         <div
           className={cn(
-            'w-full bg-dark-700 rounded-full overflow-hidden',
+            'w-full bg-dark-800 rounded-full overflow-hidden',
             sizes[size]
           )}
         >

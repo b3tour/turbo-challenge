@@ -22,15 +22,15 @@ export const Card = forwardRef<HTMLDivElement, CardProps>(
     ref
   ) => {
     const variants = {
-      default: 'bg-dark-800 border border-dark-700',
+      default: 'bg-dark-800 shadow-surface',
       glass: 'glass',
-      outlined: 'bg-transparent border border-dark-600',
+      outlined: 'bg-transparent border border-dark-700',
     };
 
     const paddings = {
       none: '',
       sm: 'p-3',
-      md: 'p-4',
+      md: 'p-5',
       lg: 'p-6',
     };
 
@@ -42,7 +42,7 @@ export const Card = forwardRef<HTMLDivElement, CardProps>(
           variants[variant],
           paddings[padding],
           hover &&
-            'transition-all duration-200 hover:border-turbo-500/50 hover:shadow-lg hover:shadow-turbo-500/10 cursor-pointer',
+            'transition-all duration-200 hover:shadow-surface-md hover:bg-surface-raised cursor-pointer',
           className
         )}
         {...props}

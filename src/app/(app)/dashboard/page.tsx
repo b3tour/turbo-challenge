@@ -7,6 +7,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useMissions } from '@/hooks/useMissions';
 import { useLeaderboard } from '@/hooks/useLeaderboard';
 import { Card, ProgressBar, Avatar, AppInfoModal } from '@/components/ui';
+import { SkeletonCard } from '@/components/ui/Skeleton';
 import { MissionCard } from '@/components/missions';
 import { formatNumber, missionTypeIcons } from '@/lib/utils';
 import { useLevels } from '@/hooks/useLevels';
@@ -66,10 +67,10 @@ export default function DashboardPage() {
   const collectionStats = getCollectionStats();
 
   return (
-    <div className="space-y-6 py-4">
+    <div className="space-y-8 py-6">
       {/* Welcome Card */}
       <Card variant="glass" className="relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-32 h-32 bg-turbo-500/10 rounded-full blur-3xl" />
+        <div className="absolute top-0 right-0 w-32 h-32 bg-turbo-500/5 rounded-full blur-3xl" />
 
         <div className="flex items-center gap-4 mb-4">
           <Avatar
@@ -157,7 +158,7 @@ export default function DashboardPage() {
         </div>
 
         {missionsLoading ? (
-          <Card className="h-20 animate-pulse bg-dark-700" />
+          <SkeletonCard />
         ) : availableMissions.length === 0 ? (
           <Card className="text-center py-6">
             <Target className="w-10 h-10 text-dark-600 mx-auto mb-2" />

@@ -199,10 +199,10 @@ export default function ProfilePage() {
   };
 
   return (
-    <div className="py-4 space-y-6">
+    <div className="py-6 space-y-8">
       {/* Profile Header */}
       <Card variant="glass" className="relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-40 h-40 bg-turbo-500/10 rounded-full blur-3xl" />
+        <div className="absolute top-0 right-0 w-40 h-40 bg-turbo-500/5 rounded-full blur-3xl" />
 
         <div className="flex items-start gap-4 mb-6">
           <div className="relative group">

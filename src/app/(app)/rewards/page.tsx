@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Card } from '@/components/ui';
+import { SkeletonCard } from '@/components/ui/Skeleton';
 import { Reward } from '@/types';
 import { Trophy, Gift, Star, Crown, Medal, Award, Heart, Zap } from 'lucide-react';
 
@@ -143,11 +144,10 @@ export default function RewardsPage() {
   if (loading) {
     return (
       <div className="min-h-screen p-4 pb-24">
-        <div className="animate-pulse space-y-4">
-          <div className="h-8 bg-dark-700 rounded w-1/3 mx-auto" />
-          <div className="h-64 bg-dark-700 rounded-2xl" />
-          <div className="h-48 bg-dark-700 rounded-2xl" />
-          <div className="h-48 bg-dark-700 rounded-2xl" />
+        <div className="space-y-4">
+          {[1, 2, 3].map(i => (
+            <SkeletonCard key={i} />
+          ))}
         </div>
       </div>
     );

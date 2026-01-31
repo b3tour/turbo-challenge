@@ -5,6 +5,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useLeaderboard } from '@/hooks/useLeaderboard';
 import { useMissions } from '@/hooks/useMissions';
 import { Card, Avatar, Badge } from '@/components/ui';
+import { SkeletonCard } from '@/components/ui/Skeleton';
 import { formatNumber } from '@/lib/utils';
 import { useLevels } from '@/hooks/useLevels';
 import { Trophy, Medal, Crown, TrendingUp, Users, Zap, Timer, ChevronDown, ChevronUp, Heart, Layers } from 'lucide-react';
@@ -119,7 +120,7 @@ export default function LeaderboardPage() {
   };
 
   return (
-    <div className="py-4">
+    <div className="py-6">
       {/* Header */}
       <div className="flex items-center gap-4 mb-6">
         <div className="w-14 h-14 rounded-xl bg-yellow-500/20 flex items-center justify-center flex-shrink-0">
@@ -290,7 +291,7 @@ export default function LeaderboardPage() {
         {loading ? (
           <div className="space-y-3">
             {[1, 2, 3, 4, 5].map(i => (
-              <div key={i} className="h-16 bg-dark-700 rounded-xl animate-pulse" />
+              <SkeletonCard key={i} className="h-16" />
             ))}
           </div>
         ) : (
@@ -493,7 +494,7 @@ export default function LeaderboardPage() {
             {loadingDonation ? (
               <div className="space-y-3">
                 {[1, 2, 3, 4, 5].map(i => (
-                  <div key={i} className="h-16 bg-dark-700 rounded-xl animate-pulse" />
+                  <SkeletonCard key={i} className="h-16" />
                 ))}
               </div>
             ) : donationData.length === 0 ? (
@@ -619,7 +620,7 @@ export default function LeaderboardPage() {
                     {loadingSpeedrun ? (
                       <div className="space-y-2">
                         {[1, 2, 3].map(i => (
-                          <div key={i} className="h-12 bg-dark-700 rounded-lg animate-pulse" />
+                          <SkeletonCard key={i} className="h-12" />
                         ))}
                       </div>
                     ) : speedrunData[quiz.id]?.length === 0 ? (

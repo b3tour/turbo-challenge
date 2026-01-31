@@ -18,7 +18,7 @@ export default function ArenaPage() {
   ];
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {/* Arena Tabs */}
       <div className="flex gap-2 overflow-x-auto pb-1 pt-4">
         {tabs.map(t => {

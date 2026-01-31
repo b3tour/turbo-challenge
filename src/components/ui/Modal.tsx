@@ -43,7 +43,7 @@ export function Modal({
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
         <div
           className={cn(
-            'w-full bg-dark-800 border border-dark-700 rounded-2xl shadow-2xl pointer-events-auto animate-slide-up max-h-[90vh] flex flex-col',
+            'w-full bg-dark-800 rounded-2xl shadow-surface-lg pointer-events-auto animate-slide-up max-h-[90vh] flex flex-col',
             sizes[size]
           )}
           onClick={e => e.stopPropagation()}
@@ -111,7 +111,7 @@ export function AlertDialog({
         <div className="flex gap-3 justify-center">
           <button
             onClick={onClose}
-            className="px-4 py-2 bg-dark-700 text-white rounded-xl hover:bg-dark-600 transition-colors"
+            className="px-4 py-2 bg-dark-800 text-white rounded-xl hover:bg-dark-700 transition-colors"
           >
             {cancelText}
           </button>

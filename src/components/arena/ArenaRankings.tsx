@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
 import { useArenaRankings } from '@/hooks/useArenaRankings';
 import { Card, Avatar } from '@/components/ui';
+import { SkeletonCard } from '@/components/ui/Skeleton';
 import {
   Trophy, Crown, Medal, Swords, Wrench, X, Minus,
   Shield, Star, Zap, Users, Award, Gift, ChevronRight,
@@ -112,7 +113,7 @@ export function ArenaRankings() {
       {loading ? (
         <div className="space-y-3">
           {[1, 2, 3, 4, 5].map(i => (
-            <Card key={i} className="h-16 animate-pulse bg-dark-700" />
+            <SkeletonCard key={i} className="h-16" />
           ))}
         </div>
       ) : rankings.length === 0 ? (

@@ -59,7 +59,7 @@ export const Avatar = forwardRef<HTMLDivElement, AvatarProps>(
       <div
         ref={ref}
         className={cn(
-          'relative rounded-full overflow-hidden bg-dark-700 flex items-center justify-center font-semibold text-dark-300',
+          'relative rounded-full overflow-hidden bg-dark-800 flex items-center justify-center font-semibold text-dark-400',
           sizes[size],
           showBorder && `ring-2 ${borderColor}`,
           className

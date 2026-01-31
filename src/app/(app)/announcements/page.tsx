@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { useAnnouncements, UnifiedNotification } from '@/hooks/useAnnouncements';
 import { Card, Badge } from '@/components/ui';
+import { SkeletonCard } from '@/components/ui/Skeleton';
 import { formatDateTime } from '@/lib/utils';
 import {
   Bell,
@@ -75,7 +76,7 @@ export default function AnnouncementsPage() {
   };
 
   return (
-    <div className="py-4">
+    <div className="py-6">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-2xl font-bold text-white flex items-center gap-2">
@@ -147,7 +148,7 @@ export default function AnnouncementsPage() {
       {loading ? (
         <div className="space-y-3">
           {[1, 2, 3].map(i => (
-            <Card key={i} className="h-24 animate-pulse bg-dark-700" />
+            <SkeletonCard key={i} />
           ))}
         </div>
       ) : filteredNotifications.length > 0 ? (

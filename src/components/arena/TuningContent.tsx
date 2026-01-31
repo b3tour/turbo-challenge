@@ -6,6 +6,7 @@ import { useCards } from '@/hooks/useCards';
 import { useTuning } from '@/hooks/useTuning';
 import { useToast } from '@/components/ui/Toast';
 import { Card, Button, Modal } from '@/components/ui';
+import { SkeletonCard } from '@/components/ui/Skeleton';
 import { CollectibleCard, TunedCar } from '@/types';
 import {
   MOD_DEFINITIONS,
@@ -126,7 +127,7 @@ export function TuningContent() {
       {loading ? (
         <div className="space-y-3">
           {[1, 2, 3].map(i => (
-            <Card key={i} className="h-32 animate-pulse bg-dark-700" />
+            <SkeletonCard key={i} />
           ))}
         </div>
       ) : tunedCars.length > 0 ? (

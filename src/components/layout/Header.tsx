@@ -17,8 +17,8 @@ export function Header({ user }: HeaderProps) {
 
   return (
     <>
-      <header className="fixed top-0 left-0 right-0 z-40 bg-dark-900 backdrop-blur-lg border-b border-dark-800 pt-safe">
-        <div className="flex items-center justify-between h-16 px-3 sm:px-4 max-w-lg mx-auto">
+      <header className="fixed top-0 left-0 right-0 z-40 bg-dark-900/95 backdrop-blur-sm border-b border-dark-800 pt-safe">
+        <div className="flex items-center justify-between h-16 px-4 sm:px-6 max-w-content mx-auto">
           {/* Logo */}
           <Link href="/dashboard" className="flex items-center gap-1.5 sm:gap-2 min-w-0">
             <Image
@@ -44,7 +44,7 @@ export function Header({ user }: HeaderProps) {
               {/* Help icon */}
               <button
                 onClick={() => setShowAppInfo(true)}
-                className="w-8 h-8 flex items-center justify-center rounded-full bg-dark-700 hover:bg-dark-600 transition-colors"
+                className="w-8 h-8 flex items-center justify-center rounded-full bg-dark-800 hover:bg-dark-700 transition-colors"
                 aria-label="Informacje o aplikacji"
               >
                 <HelpCircle className="w-4 h-4 text-dark-300" />

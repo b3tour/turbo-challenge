@@ -5,6 +5,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useBattles, getCategoryName, getCategoryIcon } from '@/hooks/useBattles';
 import { useTuning } from '@/hooks/useTuning';
 import { Card, Button, Avatar, Badge, Modal } from '@/components/ui';
+import { SkeletonCard } from '@/components/ui/Skeleton';
 import { useToast } from '@/components/ui/Toast';
 import {
   Swords,
@@ -414,7 +415,7 @@ export function BattlesContent() {
       {loading ? (
         <div className="space-y-3">
           {[1, 2, 3].map(i => (
-            <Card key={i} className="h-24 animate-pulse bg-dark-700" />
+            <SkeletonCard key={i} />
           ))}
         </div>
       ) : activeTab === 'battles' ? (

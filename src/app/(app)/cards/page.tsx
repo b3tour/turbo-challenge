@@ -5,6 +5,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useCards, RARITY_CONFIG } from '@/hooks/useCards';
 import { useCardOrders } from '@/hooks/useCardOrders';
 import { Card, Badge, ProgressBar, Button, Modal } from '@/components/ui';
+import { SkeletonCard } from '@/components/ui/Skeleton';
 import { CardRarity, CollectibleCard, CardOrder, CardImage } from '@/types';
 import {
   Layers,
@@ -492,7 +493,7 @@ export default function CardsPage() {
   const stats = getCollectionStats(activeTab);
 
   return (
-    <div className="py-4 pb-24">
+    <div className="py-6 pb-24">
       {/* Header */}
       <div className="flex items-center gap-4 mb-6">
         <div className="w-14 h-14 rounded-xl bg-purple-500/20 flex items-center justify-center flex-shrink-0">
@@ -569,7 +570,7 @@ export default function CardsPage() {
       {loading ? (
         <div className="space-y-4">
           {[1, 2, 3].map(i => (
-            <div key={i} className="h-32 bg-dark-700 rounded-xl animate-pulse" />
+            <SkeletonCard key={i} />
           ))}
         </div>
       ) : activeTab === 'car' ? (

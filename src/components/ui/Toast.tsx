@@ -137,7 +137,7 @@ function ToastItem({ toast, onClose }: ToastItemProps) {
   return (
     <div
       className={cn(
-        'flex items-start gap-3 p-4 rounded-xl border backdrop-blur-lg animate-slide-up',
+        'flex items-start gap-3 p-4 rounded-xl shadow-surface-lg backdrop-blur-lg animate-slide-up',
         'bg-dark-800/90',
         styles[toast.type]
       )}

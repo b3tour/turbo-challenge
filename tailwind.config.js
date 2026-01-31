@@ -45,18 +45,34 @@ module.exports = {
           900: '#581c87',
         },
         dark: {
-          50: '#f8fafc',
-          100: '#f1f5f9',
-          200: '#e2e8f0',
-          300: '#cbd5e1',
-          400: '#94a3b8',
-          500: '#64748b',
-          600: '#475569',
-          700: '#334155',
-          800: '#1e293b',
-          900: '#0f172a',
-          950: '#020617',
-        }
+          50: '#fafafa',
+          100: '#f4f4f5',
+          200: '#e4e4e7',
+          300: '#d4d4d8',
+          400: '#a1a1aa',
+          500: '#71717a',
+          600: '#52525b',
+          700: '#3f3f46',
+          800: '#27272a',
+          900: '#18181b',
+          950: '#09090b',
+        },
+        surface: {
+          DEFAULT: '#1c1c22',
+          raised: '#242430',
+          overlay: '#2a2a36',
+        },
+      },
+      maxWidth: {
+        'content': '672px',
+        'content-lg': '960px',
+      },
+      boxShadow: {
+        'surface': '0 1px 3px 0 rgba(0,0,0,0.3), 0 1px 2px -1px rgba(0,0,0,0.3)',
+        'surface-md': '0 4px 6px -1px rgba(0,0,0,0.3), 0 2px 4px -2px rgba(0,0,0,0.3)',
+        'surface-lg': '0 10px 15px -3px rgba(0,0,0,0.4), 0 4px 6px -4px rgba(0,0,0,0.3)',
+        'glow-turbo': '0 0 20px rgba(217,70,239,0.15)',
+        'glow-accent': '0 0 20px rgba(34,211,238,0.15)',
       },
       animation: {
         'pulse-glow': 'pulse-glow 2s ease-in-out infinite',
@@ -67,6 +83,8 @@ module.exports = {
         'shake-soft': 'shake-soft 0.6s ease-in-out infinite',
         'wiggle': 'wiggle 1s ease-in-out infinite',
         'wiggle-intense': 'wiggle-intense 0.8s ease-in-out infinite',
+        'page-enter': 'page-enter 0.2s ease-out',
+        'skeleton': 'skeleton 1.5s ease-in-out infinite',
       },
       keyframes: {
         'pulse-glow': {
@@ -102,6 +120,14 @@ module.exports = {
         'wiggle-intense': {
           '0%, 100%': { transform: 'rotate(-7deg)' },
           '50%': { transform: 'rotate(7deg)' },
+        },
+        'page-enter': {
+          '0%': { opacity: '0', transform: 'translateY(4px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+        'skeleton': {
+          '0%': { backgroundPosition: '-200% 0' },
+          '100%': { backgroundPosition: '200% 0' },
         },
       },
     },
