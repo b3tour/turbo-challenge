@@ -266,17 +266,17 @@ export default function DashboardPage() {
         {/* Arena */}
         <Link
           href="/arena"
-          className="group relative animate-slide-up overflow-hidden rounded-2xl border border-turbo-500/30 bg-white/[0.05] p-4 transition-all duration-300 hover:border-turbo-500/60 hover:shadow-[0_0_30px_rgba(217,70,239,0.15)]"
+          className="group relative animate-slide-up overflow-hidden rounded-2xl border border-red-500/30 bg-white/[0.05] p-4 transition-all duration-300 hover:border-red-500/60 hover:shadow-[0_0_30px_rgba(239,68,68,0.15)]"
           style={{ animationDelay: '0.3s', animationFillMode: 'backwards' }}
         >
-          <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-turbo-500/10 opacity-30 blur-2xl transition-opacity group-hover:opacity-50" />
+          <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-red-500/10 opacity-30 blur-2xl transition-opacity group-hover:opacity-50" />
           <div className="relative space-y-3">
             <div className="flex items-start justify-between">
-              <div className="rounded-xl bg-turbo-500/10 p-2.5">
-                <Swords className="h-6 w-6 text-turbo-500" />
+              <div className="rounded-xl bg-red-500/10 p-2.5">
+                <Swords className="h-6 w-6 text-red-500" />
               </div>
               {incomingChallenges.length > 0 && (
-                <span className="rounded-lg bg-turbo-500/10 px-2 py-1 text-xs font-bold text-turbo-400 animate-pulse">
+                <span className="rounded-lg bg-red-500/10 px-2 py-1 text-xs font-bold text-red-400 animate-pulse">
                   {incomingChallenges.length} nowe
                 </span>
               )}
