@@ -116,7 +116,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
 
         {/* Main content */}
-        <main className="pt-16 lg:pt-6 pb-20 lg:pb-6 px-4 sm:px-6 lg:px-8 max-w-content mx-auto lg:ml-64 lg:mx-0 lg:max-w-content-lg lg:flex-1 page-animate">
+        <main className="pt-16 lg:pt-6 pb-24 lg:pb-6 px-4 sm:px-6 lg:px-8 max-w-content mx-auto lg:ml-64 lg:mx-0 lg:max-w-content-lg lg:flex-1 page-animate">
           {children}
         </main>
       </div>

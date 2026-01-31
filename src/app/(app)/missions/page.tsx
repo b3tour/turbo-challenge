@@ -287,16 +287,16 @@ export default function MissionsPage() {
         </Badge>
       </div>
 
-      {/* Filters */}
-      <div className="flex gap-2 overflow-x-auto pb-2 mb-4 -mx-4 px-4">
+      {/* Filters — segmented control */}
+      <div className="bg-dark-800/50 rounded-xl p-1 flex gap-1 mb-4 overflow-x-auto">
         {filters.map(f => (
           <button
             key={f.value}
             onClick={() => setFilter(f.value)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${
               filter === f.value
-                ? 'bg-turbo-500 text-white'
-                : 'bg-dark-700 text-dark-300 hover:bg-dark-600'
+                ? 'bg-turbo-500 text-white shadow-sm'
+                : 'bg-transparent text-dark-400 hover:text-dark-300'
             }`}
           >
             {f.icon && <span>{f.icon}</span>}

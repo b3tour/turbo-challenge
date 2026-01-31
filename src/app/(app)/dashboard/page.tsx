@@ -193,7 +193,7 @@ export default function DashboardPage() {
 
       {/* Kolekcja kart — uproszczony box */}
       <Link href="/cards" className="block">
-        <Card className="py-4 px-4 border-purple-500/30 bg-gradient-to-b from-purple-500/10 to-transparent hover:border-purple-500/50 transition-colors">
+        <Card className="py-4 px-4 border-l-[3px] border-l-purple-500 hover:bg-white/[0.08] transition-colors">
           <div className="flex items-center gap-2 mb-2">
             <Layers className="w-6 h-6 text-purple-500" />
             <p className="text-sm font-semibold text-white">Kolekcja kart</p>
@@ -208,7 +208,7 @@ export default function DashboardPage() {
       {/* Action Grid 2x2 */}
       <div className="grid grid-cols-2 gap-3">
         <Link href="/arena">
-          <Card className="relative py-4 px-4 border-turbo-500/30 bg-gradient-to-b from-turbo-500/10 to-transparent hover:border-turbo-500/50 transition-colors">
+          <Card className="relative py-4 px-4 border-l-[3px] border-l-turbo-500 hover:bg-white/[0.08] transition-colors">
             <div className="flex items-center gap-2 mb-2">
               <div className="relative">
                 <Swords className="w-6 h-6 text-turbo-500" />
@@ -227,7 +227,7 @@ export default function DashboardPage() {
         </Link>
 
         <Link href="/mystery">
-          <Card className="py-4 px-4 border-emerald-500/30 bg-gradient-to-b from-emerald-500/10 to-transparent hover:border-emerald-500/50 transition-colors">
+          <Card className="py-4 px-4 border-l-[3px] border-l-emerald-500 hover:bg-white/[0.08] transition-colors">
             <div className="flex items-center gap-2 mb-2">
               <Package className="w-6 h-6 text-emerald-500" />
               <p className="text-sm font-semibold text-white">Mystery Garage</p>
@@ -239,7 +239,7 @@ export default function DashboardPage() {
         </Link>
 
         <Link href="/leaderboard">
-          <Card className="py-4 px-4 border-yellow-500/30 bg-gradient-to-b from-yellow-500/10 to-transparent hover:border-yellow-500/50 transition-colors">
+          <Card className="py-4 px-4 border-l-[3px] border-l-yellow-500 hover:bg-white/[0.08] transition-colors">
             <div className="flex items-center gap-2 mb-2">
               <Trophy className="w-6 h-6 text-yellow-500" />
               <p className="text-sm font-semibold text-white">Ranking</p>
@@ -252,7 +252,7 @@ export default function DashboardPage() {
         </Link>
 
         <Link href="/rewards">
-          <Card className="py-4 px-4 border-amber-500/30 bg-gradient-to-b from-amber-500/10 to-transparent hover:border-amber-500/50 transition-colors">
+          <Card className="py-4 px-4 border-l-[3px] border-l-amber-500 hover:bg-white/[0.08] transition-colors">
             <div className="flex items-center gap-2 mb-2">
               <Gift className="w-6 h-6 text-amber-500" />
               <p className="text-sm font-semibold text-white">Nagrody</p>
