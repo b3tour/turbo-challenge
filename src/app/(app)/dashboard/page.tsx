@@ -247,18 +247,40 @@ export default function DashboardPage() {
         )}
       </div>
 
-      {/* Kolekcja kart — uproszczony box */}
-      <Link href="/cards" className="block">
-        <Card className="py-4 px-4 border-l-[3px] border-l-purple-500 hover:bg-white/[0.08] transition-colors">
-          <div className="flex items-center gap-2 mb-2">
-            <Layers className="w-6 h-6 text-purple-500" />
-            <p className="text-sm font-semibold text-white">Kolekcja kart</p>
-            <span className="text-sm font-bold text-purple-400 ml-auto">{collectionStats.collected}/{collectionStats.total}</span>
+      {/* Kolekcja kart — Minimal Clean */}
+      <Link
+        href="/cards"
+        className="group flex animate-slide-up items-center gap-4 rounded-2xl border border-white/[0.07] bg-white/[0.05] p-4 transition-all hover:border-turbo-500/50 hover:bg-white/[0.08]"
+      >
+        {/* Icon */}
+        <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-turbo-500/20 to-accent-400/20">
+          <Layers className="h-7 w-7 text-turbo-500" />
+        </div>
+
+        {/* Content */}
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center justify-between">
+            <h3 className="font-semibold text-white">Kolekcja kart</h3>
+            <span className="text-sm font-bold text-turbo-400">
+              {collectionStats.collected}
+              <span className="text-dark-400">/{collectionStats.total}</span>
+            </span>
           </div>
-          <p className="text-xs text-dark-400 leading-relaxed">
-            Zbieraj karty samochodów i odkrywaj ich unikalne osiągi
+
+          {/* Progress Bar */}
+          <div className="mt-3 h-3 overflow-hidden rounded-full bg-white/[0.06]">
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-turbo-500 via-turbo-500 to-accent-400 transition-all duration-700 group-hover:shadow-[0_0_10px_rgba(217,70,239,0.5)]"
+              style={{ width: `${collectionStats.total > 0 ? Math.round((collectionStats.collected / collectionStats.total) * 100) : 0}%` }}
+            />
+          </div>
+
+          <p className="mt-2 text-xs text-dark-400">
+            Zbieraj karty i wspieraj Turbo Pomoc!
           </p>
-        </Card>
+        </div>
+
+        <ChevronRight className="h-5 w-5 flex-shrink-0 text-dark-500 transition-all group-hover:translate-x-1 group-hover:text-turbo-500" />
       </Link>
 
       {/* Action Grid 2x2 — Glow Cards */}
