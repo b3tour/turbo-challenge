@@ -211,15 +211,15 @@ export default function DashboardPage() {
             <p className="text-dark-500 text-xs mt-1">Oczekuj na kolejne wyzwania!</p>
           </Card>
         ) : (
-          <div className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-2 scrollbar-hide">
-            {sortedMissions.map((mission, index) => {
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {sortedMissions.slice(0, 4).map((mission, index) => {
               const Icon = missionIconMap[mission.type] || Target;
               const colorClass = missionColorMap[mission.type] || missionColorMap.manual;
               return (
                 <Link
                   key={mission.id}
                   href="/missions"
-                  className="animate-slide-up group flex w-32 flex-shrink-0 flex-col items-center gap-3 rounded-xl border border-dark-700/50 bg-surface-1 p-4 text-center transition-all hover:border-turbo-500/50 hover:bg-surface-2"
+                  className="animate-slide-up group flex flex-col items-center gap-3 rounded-xl border border-dark-700/50 bg-surface-1 p-4 text-center transition-all hover:border-turbo-500/50 hover:bg-surface-2"
                   style={{ animationDelay: `${index * 0.1}s`, animationFillMode: 'backwards' }}
                 >
                   {/* Ikona z badge XP */}
