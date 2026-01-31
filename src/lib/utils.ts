@@ -198,11 +198,11 @@ export const missionTypeIcons: Record<string, string> = {
 
 // Konfiguracja ikon misji z kolorami (dla komponentów React)
 export const missionTypeStyles: Record<string, { icon: string; color: string; bgColor: string }> = {
-  qr_code: { icon: 'Send', color: 'text-green-400', bgColor: 'bg-green-500/15' },
-  photo: { icon: 'Camera', color: 'text-pink-400', bgColor: 'bg-pink-500/15' },
-  quiz: { icon: 'HelpCircle', color: 'text-yellow-400', bgColor: 'bg-yellow-500/15' },
-  gps: { icon: 'MapPin', color: 'text-blue-400', bgColor: 'bg-blue-500/15' },
-  manual: { icon: 'Hand', color: 'text-orange-400', bgColor: 'bg-orange-500/15' },
+  qr_code: { icon: 'Send', color: 'text-blue-400', bgColor: 'bg-blue-500/20' },
+  photo: { icon: 'Camera', color: 'text-purple-400', bgColor: 'bg-purple-500/20' },
+  quiz: { icon: 'HelpCircle', color: 'text-amber-400', bgColor: 'bg-amber-500/20' },
+  gps: { icon: 'MapPin', color: 'text-green-400', bgColor: 'bg-green-500/20' },
+  manual: { icon: 'Hand', color: 'text-orange-400', bgColor: 'bg-orange-500/20' },
 };
 
 // Nazwy typów misji

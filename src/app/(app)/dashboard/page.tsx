@@ -179,7 +179,7 @@ export default function DashboardPage() {
           </Card>
         ) : (
           <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
-            {sortedMissions.map(mission => {
+            {sortedMissions.map((mission, index) => {
               const style = missionTypeStyles[mission.type] || missionTypeStyles.manual;
               const IconComponent = missionIconMap[mission.type] || Hand;
               return (
@@ -187,13 +187,17 @@ export default function DashboardPage() {
                   key={mission.id}
                   hover
                   onClick={() => router.push('/missions')}
-                  className="relative flex-shrink-0 w-36 py-4 px-3 cursor-pointer"
+                  className="group flex-shrink-0 w-32 py-4 px-3 cursor-pointer animate-slide-up"
+                  style={{ animationDelay: `${index * 0.1}s`, animationFillMode: 'backwards' }}
                 >
-                  <span className="absolute top-2 right-2 text-[11px] font-bold text-white bg-red-500 px-2 py-0.5 rounded-full">
-                    +{formatNumber(mission.xp_reward)}
-                  </span>
-                  <div className={`w-12 h-12 rounded-xl ${style.bgColor} flex items-center justify-center mb-3`}>
-                    <IconComponent className={`w-6 h-6 ${style.color}`} />
+                  {/* Icon z floating XP badge */}
+                  <div className="relative w-fit mb-3">
+                    <div className={`w-14 h-14 rounded-xl ${style.bgColor} flex items-center justify-center transition-transform duration-200 group-hover:scale-110`}>
+                      <IconComponent className={`w-7 h-7 ${style.color}`} />
+                    </div>
+                    <span className="absolute -right-2 -top-2 text-[10px] font-bold text-white bg-red-500 px-1.5 py-0.5 rounded-full leading-none">
+                      +{formatNumber(mission.xp_reward)}
+                    </span>
                   </div>
                   <p className="text-sm font-medium text-white line-clamp-2">{mission.title}</p>
                 </Card>
