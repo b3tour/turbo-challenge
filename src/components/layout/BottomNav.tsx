@@ -9,7 +9,7 @@ import { Home, Target, User, Layers, Swords } from 'lucide-react';
 const navItems = [
   { href: '/dashboard', label: 'Start', icon: Home },
   { href: '/missions', label: 'Misje', icon: Target },
-  { href: '/cards', label: 'Karty', icon: Layers },
+  { href: '/cards', label: 'Album', icon: Layers },
   { href: '/arena', label: 'Arena', icon: Swords },
   { href: '/profile', label: 'Profil', icon: User },
 ];
