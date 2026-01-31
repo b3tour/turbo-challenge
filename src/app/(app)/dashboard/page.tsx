@@ -256,7 +256,7 @@ export default function DashboardPage() {
         {/* Content */}
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between">
-            <h3 className="font-semibold text-white">Kolekcja kart</h3>
+            <h3 className="font-semibold text-white">Turbo Album</h3>
             <span className="text-sm font-bold text-turbo-400">
               {collectionStats.collected}
               <span className="text-dark-400">/{collectionStats.total}</span>
@@ -272,7 +272,7 @@ export default function DashboardPage() {
           </div>
 
           <p className="mt-2 text-xs text-dark-400">
-            Zbieraj karty i wspieraj Turbo Pomoc!
+            Zbierz swoją kolekcję kart z samochodami
           </p>
         </div>
 
