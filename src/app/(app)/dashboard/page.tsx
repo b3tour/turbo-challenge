@@ -171,10 +171,12 @@ export default function DashboardPage() {
           </h2>
           <Link
             href="/missions"
-            className="flex items-center gap-1 text-sm font-medium bg-gradient-to-r from-red-400 to-orange-400 bg-clip-text text-transparent hover:from-red-300 hover:to-orange-300"
+            className="flex items-center gap-1 text-sm font-medium group"
           >
-            Zobacz wszystkie
-            <ChevronRight className="w-4 h-4" />
+            <span className="bg-gradient-to-r from-red-400 to-pink-400 bg-clip-text text-transparent group-hover:from-red-300 group-hover:to-pink-300">
+              Zobacz wszystkie
+            </span>
+            <ChevronRight className="w-4 h-4 text-pink-400 group-hover:text-pink-300" />
           </Link>
         </div>
 
