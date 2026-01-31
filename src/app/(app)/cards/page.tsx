@@ -501,7 +501,7 @@ export default function CardsPage() {
         </div>
         <div>
           <h1 className="text-2xl font-bold text-white">Turbo Album</h1>
-          <p className="text-dark-400">Zbierz swoją kolekcję kart z samochodami</p>
+          <p className="text-dark-400">Zbierz karty z wymarzonymi samochodami</p>
         </div>
       </div>
 
