@@ -22,8 +22,8 @@ export function Header({ user }: HeaderProps) {
           <Link href="/dashboard" className="flex items-center gap-1.5 min-w-0">
             <Heart className="w-[18px] h-[18px] text-turbo-500 fill-turbo-500 flex-shrink-0" />
             <div className="flex items-baseline gap-1 min-w-0">
-              <span className="text-base font-bold tracking-tight text-white">TURBO</span>
-              <span className="text-base font-extrabold tracking-tight text-turbo-500">CHALLENGE</span>
+              <span className="text-lg sm:text-xl font-bold tracking-tight text-white">TURBO</span>
+              <span className="text-lg sm:text-xl font-extrabold tracking-tight text-turbo-500">CHALLENGE</span>
             </div>
           </Link>
 
