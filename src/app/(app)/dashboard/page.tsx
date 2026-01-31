@@ -24,6 +24,8 @@ import {
   Camera,
   MapPin,
   Navigation,
+  TrendingUp,
+  Heart,
 } from 'lucide-react';
 
 // Mapowanie typu misji na ikonę (jak v0)
@@ -88,70 +90,100 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-8 py-6">
-      {/* Welcome Card */}
-      <Card variant="glass" className="relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-32 h-32 bg-turbo-500/5 rounded-full blur-3xl" />
+      {/* Profile Card */}
+      <Card variant="glass" className="relative overflow-hidden p-5 animate-slide-up">
+        {/* Background Effects */}
+        <div className="absolute -right-12 -top-12 h-32 w-32 rounded-full bg-turbo-500/10 blur-3xl" />
+        <div className="absolute -bottom-8 -left-8 h-24 w-24 rounded-full bg-accent-400/10 blur-3xl" />
 
-        <div className="flex items-center gap-4 mb-4">
-          <Avatar
-            src={profile.avatar_url}
-            fallback={profile.nick}
-            size="lg"
-            showBorder
-          />
-          <div className="flex-1">
-            <h1 className="text-xl font-bold text-white">{profile.nick}</h1>
-            <div className="flex items-center gap-2 mt-1">
-              <span className="text-lg">{level.badge_icon}</span>
-              <span className="text-dark-300">{level.name}</span>
+        <div className="relative">
+          {/* User Info */}
+          <div className="flex items-start gap-4">
+            {/* Avatar z Level Badge */}
+            <div className="relative">
+              <Avatar
+                src={profile.avatar_url}
+                fallback={profile.nick}
+                size="lg"
+                className="rounded-2xl ring-2 ring-turbo-500/30"
+              />
+              {/* Floating Level Badge */}
+              <div className="absolute -bottom-1.5 -right-1.5 flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-purple-500 to-indigo-500 text-xs font-bold text-white shadow-lg">
+                {level.id}
+              </div>
+            </div>
+
+            {/* Info */}
+            <div className="min-w-0 flex-1">
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <h2 className="text-xl font-bold text-white">{profile.nick}</h2>
+                  <div className="mt-0.5 flex items-center gap-1.5">
+                    <span className="text-sm">{level.badge_icon}</span>
+                    <span className="text-sm text-dark-400">{level.name}</span>
+                  </div>
+                </div>
+
+                {/* Rank Display */}
+                {userRank && (
+                  <div className="text-right">
+                    <div className="flex items-center gap-1 text-xs text-dark-400">
+                      <Trophy className="h-3 w-3" />
+                      <span>Ranking</span>
+                    </div>
+                    <div className="mt-0.5 text-2xl font-bold text-turbo-400">
+                      #{userRank}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-          {userRank && (
-            <div className="text-center">
-              <div className="text-2xl font-bold text-turbo-400">#{userRank}</div>
-              <div className="text-xs text-dark-400">Ranking</div>
+
+          {/* XP Section */}
+          <div className="mt-5">
+            <div className="mb-2 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <TrendingUp className="h-4 w-4 text-turbo-500" />
+                <span className="text-sm font-medium text-white">Poziom {level.id}</span>
+              </div>
+              <span className="rounded-lg bg-turbo-500/10 px-2 py-1 text-xs font-bold text-turbo-400">
+                {formatNumber(profile.total_xp)} XP
+              </span>
             </div>
-          )}
-        </div>
 
-        {/* XP Progress */}
-        <div className="mb-3">
-          <div className="flex justify-between text-sm mb-1">
-            <span className="text-dark-400">Poziom {level.id}</span>
-            <span className="text-turbo-400 font-medium">
-              {formatNumber(profile.total_xp)} XP
-            </span>
-          </div>
-          <ProgressBar value={progress} animated />
-          <div className="flex justify-between text-xs mt-1">
-            <span className="text-dark-500">
-              {nextLevel ? `${formatNumber(xpNeeded)} XP do poziomu ${nextLevel.id}` : 'Maksymalny poziom!'}
-            </span>
-            <span className="text-dark-500">{progress}%</span>
-          </div>
-        </div>
+            <ProgressBar value={progress} animated />
 
-        {/* Donation Progress - zawsze widoczny */}
-        <div className="pt-3 border-t border-dark-700">
-          <div className="flex justify-between text-sm mb-1">
-            <span className="text-dark-400 flex items-center gap-1">
-              <span className="text-base leading-none">❤️</span>
-              Wsparcie Turbo Pomoc
-            </span>
-            <span className="text-red-400 font-medium">
-              {(profile.donation_total || 0).toFixed(2)} zł
-            </span>
+            <div className="mt-2 flex items-center justify-between text-xs text-dark-500">
+              <span>
+                {nextLevel ? `${formatNumber(xpNeeded)} XP do poziomu ${nextLevel.id}` : 'Maksymalny poziom!'}
+              </span>
+              <span>{progress}%</span>
+            </div>
           </div>
-          <div className="h-2 bg-dark-700 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-gradient-to-r from-red-500 to-pink-500 rounded-full transition-all"
-              style={{ width: `${Math.min(100, ((profile.donation_total || 0) / 100) * 100)}%` }}
-            />
-          </div>
-          <div className="text-xs text-dark-500 mt-1">
-            {(profile.donation_total || 0) > 0
-              ? 'Dziękujemy za Twój wkład!'
-              : 'Kup kartę i wesprzyj fundację!'}
+
+          {/* Donation Card */}
+          <div className="mt-5 rounded-xl bg-white/[0.03] p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-red-500/20">
+                  <Heart className="h-5 w-5 text-red-400" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-white">Wsparcie Turbo Pomoc</p>
+                  <p className="text-xs text-dark-500">
+                    {(profile.donation_total || 0) > 0
+                      ? 'Dziękujemy za Twój wkład!'
+                      : 'Kup kartę i wesprzyj fundację!'}
+                  </p>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="text-lg font-bold text-red-400">
+                  {(profile.donation_total || 0).toFixed(2)} zł
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       </Card>
