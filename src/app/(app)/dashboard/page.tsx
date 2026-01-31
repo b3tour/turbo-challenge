@@ -205,7 +205,7 @@ export default function DashboardPage() {
                       <Icon className="h-6 w-6" />
                     </div>
                     <span className="absolute -right-2 -top-2 inline-flex items-center rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-bold leading-none text-white">
-                      +{mission.xp_reward}
+                      +{mission.xp_reward} XP
                     </span>
                   </div>
 
