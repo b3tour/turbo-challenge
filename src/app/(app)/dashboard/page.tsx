@@ -192,15 +192,17 @@ export default function DashboardPage() {
       <div className="animate-slide-up space-y-4">
         {/* Header */}
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-            <Zap className="w-5 h-5 text-pink-500" />
-            Dostępne misje
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-pink-500/20">
+              <Zap className="h-4 w-4 text-pink-500" />
+            </div>
+            <h2 className="text-lg font-semibold text-white">Dostępne misje</h2>
             {availableMissions.length > 0 && (
-              <span className="inline-flex items-center justify-center w-6 h-6 bg-gradient-to-r from-red-500 to-pink-500 rounded-full text-[11px] font-bold text-white leading-none text-center">
+              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-pink-500/20 text-xs font-bold text-pink-400">
                 {availableMissions.length}
               </span>
             )}
-          </h2>
+          </div>
           <Link
             href="/missions"
             className="flex items-center gap-1 text-sm font-medium group"
