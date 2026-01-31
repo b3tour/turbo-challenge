@@ -236,62 +236,106 @@ export default function DashboardPage() {
         </Card>
       </Link>
 
-      {/* Action Grid 2x2 */}
+      {/* Action Grid 2x2 — Glow Cards */}
       <div className="grid grid-cols-2 gap-3">
-        <Link href="/arena">
-          <Card className="relative py-4 px-4 border-l-[3px] border-l-turbo-500 hover:bg-white/[0.08] transition-colors">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="relative">
-                <Swords className="w-6 h-6 text-turbo-500" />
-                {incomingChallenges.length > 0 && (
-                  <span className="absolute -top-1 -right-2 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center animate-pulse">
-                    <span className="text-[9px] font-bold text-white">{incomingChallenges.length}</span>
-                  </span>
-                )}
+        {/* Arena */}
+        <Link
+          href="/arena"
+          className="group relative animate-slide-up overflow-hidden rounded-2xl border border-turbo-500/30 bg-white/[0.05] p-4 transition-all duration-300 hover:border-turbo-500/60 hover:shadow-[0_0_30px_rgba(217,70,239,0.15)]"
+          style={{ animationDelay: '0.3s', animationFillMode: 'backwards' }}
+        >
+          <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-turbo-500/10 opacity-30 blur-2xl transition-opacity group-hover:opacity-50" />
+          <div className="relative space-y-3">
+            <div className="flex items-start justify-between">
+              <div className="rounded-xl bg-turbo-500/10 p-2.5">
+                <Swords className="h-6 w-6 text-turbo-500" />
               </div>
-              <p className="text-sm font-semibold text-white">Arena</p>
+              {incomingChallenges.length > 0 && (
+                <span className="rounded-lg bg-turbo-500/10 px-2 py-1 text-xs font-bold text-turbo-400 animate-pulse">
+                  {incomingChallenges.length} nowe
+                </span>
+              )}
             </div>
-            <p className="text-xs text-dark-400 leading-relaxed">
-              Walcz kartami z innymi graczami lub rywalizuj tunowanymi autami
-            </p>
-          </Card>
+            <div>
+              <h4 className="font-semibold text-white">Arena</h4>
+              <p className="mt-1 text-xs leading-relaxed text-dark-400 line-clamp-2">
+                Walcz kartami z innymi graczami lub rywalizuj tunowanymi autami
+              </p>
+            </div>
+          </div>
+          <ChevronRight className="absolute bottom-4 right-3 h-5 w-5 text-dark-500 opacity-0 transition-all group-hover:translate-x-1 group-hover:opacity-100" />
         </Link>
 
-        <Link href="/mystery">
-          <Card className="py-4 px-4 border-l-[3px] border-l-emerald-500 hover:bg-white/[0.08] transition-colors">
-            <div className="flex items-center gap-2 mb-2">
-              <Package className="w-6 h-6 text-emerald-500" />
-              <p className="text-sm font-semibold text-white">Mystery Garage</p>
+        {/* Mystery Garage */}
+        <Link
+          href="/mystery"
+          className="group relative animate-slide-up overflow-hidden rounded-2xl border border-green-500/30 bg-white/[0.05] p-4 transition-all duration-300 hover:border-green-500/60 hover:shadow-[0_0_30px_rgba(34,197,94,0.15)]"
+          style={{ animationDelay: '0.35s', animationFillMode: 'backwards' }}
+        >
+          <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-green-500/10 opacity-30 blur-2xl transition-opacity group-hover:opacity-50" />
+          <div className="relative space-y-3">
+            <div className="flex items-start justify-between">
+              <div className="rounded-xl bg-green-500/10 p-2.5">
+                <Package className="h-6 w-6 text-green-400" />
+              </div>
             </div>
-            <p className="text-xs text-dark-400 leading-relaxed">
-              Otwórz pakiet losowych kart i odkryj rzadkie auta
-            </p>
-          </Card>
+            <div>
+              <h4 className="font-semibold text-white">Mystery Garage</h4>
+              <p className="mt-1 text-xs leading-relaxed text-dark-400 line-clamp-2">
+                Otwórz pakiet losowych kart i odkryj rzadkie auta
+              </p>
+            </div>
+          </div>
+          <ChevronRight className="absolute bottom-4 right-3 h-5 w-5 text-dark-500 opacity-0 transition-all group-hover:translate-x-1 group-hover:opacity-100" />
         </Link>
 
-        <Link href="/leaderboard">
-          <Card className="py-4 px-4 border-l-[3px] border-l-yellow-500 hover:bg-white/[0.08] transition-colors">
-            <div className="flex items-center gap-2 mb-2">
-              <Trophy className="w-6 h-6 text-yellow-500" />
-              <p className="text-sm font-semibold text-white">Ranking</p>
-              <span className="text-sm font-bold text-turbo-400 ml-auto">#{userRank || '?'}</span>
+        {/* Ranking */}
+        <Link
+          href="/leaderboard"
+          className="group relative animate-slide-up overflow-hidden rounded-2xl border border-amber-500/30 bg-white/[0.05] p-4 transition-all duration-300 hover:border-amber-500/60 hover:shadow-[0_0_30px_rgba(245,158,11,0.15)]"
+          style={{ animationDelay: '0.4s', animationFillMode: 'backwards' }}
+        >
+          <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-amber-500/10 opacity-30 blur-2xl transition-opacity group-hover:opacity-50" />
+          <div className="relative space-y-3">
+            <div className="flex items-start justify-between">
+              <div className="rounded-xl bg-amber-500/10 p-2.5">
+                <Trophy className="h-6 w-6 text-amber-400" />
+              </div>
+              <span className="rounded-lg bg-amber-500/10 px-2 py-1 text-xs font-bold text-amber-400">
+                #{userRank || '?'}
+              </span>
             </div>
-            <p className="text-xs text-dark-400 leading-relaxed">
-              Twoja pozycja w rankingu najlepszych graczy
-            </p>
-          </Card>
+            <div>
+              <h4 className="font-semibold text-white">Ranking</h4>
+              <p className="mt-1 text-xs leading-relaxed text-dark-400 line-clamp-2">
+                Twoja pozycja w rankingu najlepszych graczy
+              </p>
+            </div>
+          </div>
+          <ChevronRight className="absolute bottom-4 right-3 h-5 w-5 text-dark-500 opacity-0 transition-all group-hover:translate-x-1 group-hover:opacity-100" />
         </Link>
 
-        <Link href="/rewards">
-          <Card className="py-4 px-4 border-l-[3px] border-l-amber-500 hover:bg-white/[0.08] transition-colors">
-            <div className="flex items-center gap-2 mb-2">
-              <Gift className="w-6 h-6 text-amber-500" />
-              <p className="text-sm font-semibold text-white">Nagrody</p>
+        {/* Nagrody */}
+        <Link
+          href="/rewards"
+          className="group relative animate-slide-up overflow-hidden rounded-2xl border border-cyan-500/30 bg-white/[0.05] p-4 transition-all duration-300 hover:border-cyan-500/60 hover:shadow-[0_0_30px_rgba(6,182,212,0.15)]"
+          style={{ animationDelay: '0.45s', animationFillMode: 'backwards' }}
+        >
+          <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-cyan-500/10 opacity-30 blur-2xl transition-opacity group-hover:opacity-50" />
+          <div className="relative space-y-3">
+            <div className="flex items-start justify-between">
+              <div className="rounded-xl bg-cyan-500/10 p-2.5">
+                <Gift className="h-6 w-6 text-cyan-400" />
+              </div>
             </div>
-            <p className="text-xs text-dark-400 leading-relaxed">
-              Sprawdź nagrody dla najlepszych w rankingu
-            </p>
-          </Card>
+            <div>
+              <h4 className="font-semibold text-white">Nagrody</h4>
+              <p className="mt-1 text-xs leading-relaxed text-dark-400 line-clamp-2">
+                Sprawdź nagrody dla najlepszych w rankingu
+              </p>
+            </div>
+          </div>
+          <ChevronRight className="absolute bottom-4 right-3 h-5 w-5 text-dark-500 opacity-0 transition-all group-hover:translate-x-1 group-hover:opacity-100" />
         </Link>
       </div>
 
