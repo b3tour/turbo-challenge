@@ -98,20 +98,14 @@ export default function DashboardPage() {
 
         <div className="relative">
           {/* User Info */}
-          <div className="flex items-start gap-4">
-            {/* Avatar z Level Badge */}
-            <div className="relative">
-              <Avatar
-                src={profile.avatar_url}
-                fallback={profile.nick}
-                size="lg"
-                className="rounded-2xl ring-2 ring-turbo-500/30"
-              />
-              {/* Floating Level Badge */}
-              <div className="absolute -bottom-1.5 -right-1.5 flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-purple-500 to-indigo-500 text-xs font-bold text-white shadow-lg">
-                {level.id}
-              </div>
-            </div>
+          <div className="flex items-start gap-5">
+            {/* Avatar */}
+            <Avatar
+              src={profile.avatar_url}
+              fallback={profile.nick}
+              size="xl"
+              className="rounded-2xl ring-2 ring-turbo-500/30"
+            />
 
             {/* Info */}
             <div className="min-w-0 flex-1">
