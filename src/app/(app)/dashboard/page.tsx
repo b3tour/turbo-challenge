@@ -183,25 +183,21 @@ export default function DashboardPage() {
       <div className="animate-slide-up space-y-4">
         {/* Header */}
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-pink-500/20">
-              <Zap className="h-4 w-4 text-pink-500" />
-            </div>
+          <div className="flex items-center gap-2">
+            <Zap className="h-5 w-5 text-turbo-500" />
             <h2 className="text-lg font-semibold text-white">Dostępne misje</h2>
             {availableMissions.length > 0 && (
-              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-pink-500/20 text-xs font-bold text-pink-400">
+              <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-turbo-500/20 px-1.5 text-xs font-medium text-turbo-500">
                 {availableMissions.length}
               </span>
             )}
           </div>
           <Link
             href="/missions"
-            className="flex items-center gap-1 text-sm font-medium group"
+            className="flex items-center gap-1 text-sm font-medium text-turbo-500 hover:text-turbo-400"
           >
-            <span className="bg-gradient-to-r from-red-400 to-pink-400 bg-clip-text text-transparent group-hover:from-red-300 group-hover:to-pink-300">
-              Zobacz wszystkie
-            </span>
-            <ChevronRight className="w-4 h-4 text-pink-400 group-hover:text-pink-300" />
+            Zobacz wszystkie
+            <ChevronRight className="h-4 w-4" />
           </Link>
         </div>
 
@@ -223,7 +219,7 @@ export default function DashboardPage() {
                 <Link
                   key={mission.id}
                   href="/missions"
-                  className="animate-slide-up group flex w-32 flex-shrink-0 flex-col items-center gap-3 rounded-xl border border-white/10 bg-surface-1 p-4 text-center transition-all hover:border-turbo-500/50 hover:bg-surface-2"
+                  className="animate-slide-up group flex w-32 flex-shrink-0 flex-col items-center gap-3 rounded-xl border border-dark-700/50 bg-surface-1 p-4 text-center transition-all hover:border-turbo-500/50 hover:bg-surface-2"
                   style={{ animationDelay: `${index * 0.1}s`, animationFillMode: 'backwards' }}
                 >
                   {/* Ikona z badge XP */}
