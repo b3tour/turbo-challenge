@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { Home, Target, User, Layers, Swords } from 'lucide-react';
 
@@ -12,6 +13,12 @@ const navItems = [
   { href: '/arena', label: 'Arena', icon: Swords },
   { href: '/profile', label: 'Profil', icon: User },
 ];
+
+const springTransition = {
+  type: 'spring' as const,
+  stiffness: 500,
+  damping: 30,
+};
 
 export function BottomNav() {
   const pathname = usePathname();
@@ -30,17 +37,53 @@ export function BottomNav() {
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  'flex flex-col items-center justify-center rounded-xl transition-all duration-200 relative',
+                  'flex flex-col items-center justify-center rounded-xl transition-colors duration-200 relative w-12 h-10',
                   isActive
-                    ? 'text-turbo-400 w-12 h-10 bg-turbo-500/15'
-                    : 'text-dark-500 hover:text-dark-300 w-12 h-10'
+                    ? 'text-[#22d3ee]'
+                    : 'text-dark-500 hover:text-dark-300'
                 )}
               >
+                {/* Animated indicator pill */}
                 {isActive && (
-                  <div className="absolute -top-2.5 w-6 h-1 bg-turbo-500 rounded-full" />
+                  <motion.div
+                    layoutId="bottom-nav-indicator"
+                    className="absolute -top-2.5 w-8 h-[2px] rounded-full bg-[#22d3ee]"
+                    style={{
+                      boxShadow: '0 0 10px #22d3ee, 0 0 20px rgba(34, 211, 238, 0.3)',
+                    }}
+                    transition={springTransition}
+                  />
                 )}
-                <Icon className={cn('w-5 h-5 mb-0.5', isActive && 'drop-shadow-[0_0_6px_rgba(139,92,246,0.5)]')} />
-                <span className="text-[10px] font-medium">{item.label}</span>
+
+                {/* Glow effect behind active icon */}
+                {isActive && (
+                  <motion.div
+                    layoutId="bottom-nav-glow"
+                    className="absolute inset-0 rounded-xl bg-[#22d3ee]/10"
+                    transition={springTransition}
+                  />
+                )}
+
+                {/* Icon with scale animation */}
+                <motion.div
+                  animate={{
+                    scale: isActive ? 1.1 : 1,
+                  }}
+                  transition={springTransition}
+                  className="mb-0.5"
+                >
+                  <Icon className={cn(
+                    'w-5 h-5',
+                    isActive && 'drop-shadow-[0_0_8px_rgba(34,211,238,0.6)]'
+                  )} />
+                </motion.div>
+
+                <span className={cn(
+                  'text-[10px] font-medium',
+                  isActive && 'text-[#22d3ee]'
+                )}>
+                  {item.label}
+                </span>
               </Link>
             );
           })}
