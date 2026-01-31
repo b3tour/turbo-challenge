@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useMemo } from 'react';
 import { useAuth } from '@/hooks/useAuth';
@@ -542,13 +542,13 @@ export default function CardsPage() {
       )}
 
       {/* Tabs */}
-      <div className="flex gap-2 mb-6">
+      <div className="bg-dark-800/50 rounded-xl p-1 flex gap-1 mb-6">
         <button
           onClick={() => setActiveTab('car')}
-          className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-medium transition-colors ${
+          className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium transition-all ${
             activeTab === 'car'
-              ? 'bg-turbo-500 text-white'
-              : 'bg-dark-700 text-dark-300 hover:bg-dark-600'
+              ? 'bg-turbo-500 text-white shadow-sm'
+              : 'bg-transparent text-dark-400 hover:text-dark-300'
           }`}
         >
           <Car className="w-5 h-5" />
@@ -556,10 +556,10 @@ export default function CardsPage() {
         </button>
         <button
           onClick={() => setActiveTab('achievement')}
-          className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-medium transition-colors ${
+          className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium transition-all ${
             activeTab === 'achievement'
-              ? 'bg-purple-500 text-white'
-              : 'bg-dark-700 text-dark-300 hover:bg-dark-600'
+              ? 'bg-purple-500 text-white shadow-sm'
+              : 'bg-transparent text-dark-400 hover:text-dark-300'
           }`}
         >
           <Award className="w-5 h-5" />

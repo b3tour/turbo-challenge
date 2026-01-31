@@ -36,7 +36,7 @@ export function Sidebar({ user }: SidebarProps) {
   const pathname = usePathname();
 
   return (
-    <aside className="fixed left-0 top-0 bottom-0 w-64 bg-dark-900 border-r border-dark-800 flex flex-col z-40">
+    <aside className="fixed left-0 top-0 bottom-0 w-64 bg-dark-900/90 backdrop-blur-xl border-r border-white/[0.06] flex flex-col z-40">
       {/* Logo */}
       <div className="flex items-center gap-2 px-6 h-16 border-b border-dark-800">
         <Image

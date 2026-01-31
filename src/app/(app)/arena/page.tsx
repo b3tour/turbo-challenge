@@ -20,17 +20,17 @@ export default function ArenaPage() {
   return (
     <div className="space-y-6">
       {/* Arena Tabs */}
-      <div className="flex gap-2 overflow-x-auto pb-1 pt-4">
+      <div className="bg-dark-800/50 rounded-xl p-1 flex gap-1 overflow-x-auto pt-4">
         {tabs.map(t => {
           const Icon = t.icon;
           return (
             <button
               key={t.value}
               onClick={() => setActiveTab(t.value)}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium whitespace-nowrap transition-colors ${
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${
                 activeTab === t.value
-                  ? 'bg-turbo-500 text-white'
-                  : 'bg-dark-700 text-dark-300 hover:bg-dark-600'
+                  ? 'bg-turbo-500 text-white shadow-sm'
+                  : 'bg-transparent text-dark-400 hover:text-dark-300'
               }`}
             >
               <Icon className="w-4 h-4" />

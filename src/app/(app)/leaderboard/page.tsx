@@ -133,13 +133,13 @@ export default function LeaderboardPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-2 mb-6">
+      <div className="bg-dark-800/50 rounded-xl p-1 flex gap-1 mb-6">
         <button
           onClick={() => setActiveTab('xp')}
-          className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-3 rounded-xl font-medium transition-colors ${
+          className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg font-medium transition-all ${
             activeTab === 'xp'
-              ? 'bg-turbo-500 text-white'
-              : 'bg-dark-700 text-dark-300 hover:bg-dark-600'
+              ? 'bg-turbo-500 text-white shadow-sm'
+              : 'bg-transparent text-dark-400 hover:text-dark-300'
           }`}
         >
           <Zap className="w-4 h-4" />
@@ -147,10 +147,10 @@ export default function LeaderboardPage() {
         </button>
         <button
           onClick={() => setActiveTab('donation')}
-          className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-3 rounded-xl font-medium transition-colors ${
+          className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg font-medium transition-all ${
             activeTab === 'donation'
-              ? 'bg-red-500 text-white'
-              : 'bg-dark-700 text-dark-300 hover:bg-dark-600'
+              ? 'bg-red-500 text-white shadow-sm'
+              : 'bg-transparent text-dark-400 hover:text-dark-300'
           }`}
         >
           <Heart className="w-4 h-4" />
@@ -158,10 +158,10 @@ export default function LeaderboardPage() {
         </button>
         <button
           onClick={() => setActiveTab('speedrun')}
-          className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-3 rounded-xl font-medium transition-colors ${
+          className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg font-medium transition-all ${
             activeTab === 'speedrun'
-              ? 'bg-yellow-500 text-black'
-              : 'bg-dark-700 text-dark-300 hover:bg-dark-600'
+              ? 'bg-yellow-500 text-black shadow-sm'
+              : 'bg-transparent text-dark-400 hover:text-dark-300'
           }`}
         >
           <Timer className="w-4 h-4" />
@@ -641,7 +641,7 @@ export default function LeaderboardPage() {
                             >
                               <div className={`w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold ${
                                 index === 0
-                                  ? 'bg-yellow-500 text-black'
+                                  ? 'bg-yellow-500 text-black shadow-sm'
                                   : index === 1
                                   ? 'bg-gray-400 text-black'
                                   : index === 2

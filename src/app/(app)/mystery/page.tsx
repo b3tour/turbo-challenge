@@ -350,7 +350,7 @@ export default function MysteryGaragePage() {
                   </div>
                 </div>
 
-                <div className="p-4 bg-dark-700 rounded-xl">
+                <div className="p-4 bg-white/[0.03] rounded-xl">
                   <p className="text-sm text-dark-400 mb-2">Szanse na rzadkość:</p>
                   <div className="grid grid-cols-4 gap-2">
                     <div className="text-center">
@@ -403,7 +403,7 @@ export default function MysteryGaragePage() {
                   </p>
                 </div>
 
-                <div className="bg-dark-700 rounded-xl p-4 space-y-3">
+                <div className="bg-white/[0.03] rounded-xl p-4 space-y-3">
                   <div>
                     <p className="text-xs text-dark-400 mb-1">Numer konta</p>
                     <p className="font-mono text-white">XX XXXX XXXX XXXX XXXX XXXX XXXX</p>
@@ -497,7 +497,7 @@ export default function MysteryGaragePage() {
                   return (
                     <div
                       key={cardId}
-                      className="flex items-center gap-3 p-3 bg-dark-700 rounded-xl"
+                      className="flex items-center gap-3 p-3 bg-white/[0.03] rounded-xl"
                     >
                       <div className="w-16 h-12 bg-dark-600 rounded overflow-hidden">
                         {card.image_url ? (

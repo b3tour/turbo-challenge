@@ -139,7 +139,7 @@ export function TuningContent() {
               <Card key={tc.id} className="hover:border-dark-600 transition-colors">
                 <div className="flex gap-3">
                   {/* Miniaturka */}
-                  <div className="w-20 h-16 rounded-lg overflow-hidden flex-shrink-0 bg-dark-700">
+                  <div className="w-20 h-16 rounded-lg overflow-hidden flex-shrink-0 bg-white/[0.03]">
                     {card.image_url ? (
                       <img src={card.image_url} alt={card.name} className="w-full h-full object-cover" />
                     ) : (
@@ -233,7 +233,7 @@ export function TuningContent() {
                 key={card.id}
                 onClick={() => handleAddCar(card)}
                 disabled={actionLoading}
-                className="w-full flex items-center gap-3 p-3 rounded-xl bg-dark-700 hover:bg-dark-600 transition-colors text-left"
+                className="w-full flex items-center gap-3 p-3 rounded-xl bg-white/[0.03] hover:bg-dark-600 transition-colors text-left"
               >
                 <div className="w-16 h-12 rounded-lg overflow-hidden flex-shrink-0 bg-dark-800">
                   {card.image_url ? (
@@ -280,7 +280,7 @@ export function TuningContent() {
           return (
             <div className="space-y-4">
               {/* Auto info */}
-              <div className="flex items-center gap-3 p-3 rounded-xl bg-dark-700">
+              <div className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.03]">
                 <div className="w-16 h-12 rounded-lg overflow-hidden flex-shrink-0 bg-dark-800">
                   {card.image_url ? (
                     <img src={card.image_url} alt={card.name} className="w-full h-full object-cover" />
@@ -314,7 +314,7 @@ export function TuningContent() {
                     : card.car_max_speed;
 
                   return (
-                    <div key={mod.id} className="p-3 rounded-xl bg-dark-700">
+                    <div key={mod.id} className="p-3 rounded-xl bg-white/[0.03]">
                       <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-2">
                           {statIcon(mod.stat)}
