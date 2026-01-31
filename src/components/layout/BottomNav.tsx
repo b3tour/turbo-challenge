@@ -55,16 +55,19 @@ export function BottomNav() {
                   />
                 )}
 
-                {/* Icon with scale animation */}
+                {/* Icon with scale animation + soft glow */}
                 <motion.div
                   animate={{
                     scale: isActive ? 1.1 : 1,
                   }}
                   transition={springTransition}
-                  className="mb-0.5"
+                  className="relative mb-0.5"
                 >
+                  {isActive && (
+                    <div className="absolute inset-0 bg-[#22d3ee]/20 blur-lg rounded-full pointer-events-none" />
+                  )}
                   <Icon className={cn(
-                    'w-5 h-5',
+                    'w-5 h-5 relative',
                     isActive && 'drop-shadow-[0_0_8px_rgba(34,211,238,0.6)]'
                   )} />
                 </motion.div>
