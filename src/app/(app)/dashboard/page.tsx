@@ -9,7 +9,7 @@ import { useLeaderboard } from '@/hooks/useLeaderboard';
 import { Card, ProgressBar, Avatar, AppInfoModal } from '@/components/ui';
 import { SkeletonCard } from '@/components/ui/Skeleton';
 import { MissionCard } from '@/components/missions';
-import { formatNumber, missionTypeIcons } from '@/lib/utils';
+import { formatNumber, missionTypeStyles } from '@/lib/utils';
 import { useLevels } from '@/hooks/useLevels';
 import {
   Target,
@@ -21,6 +21,10 @@ import {
   Package,
   Gift,
   HelpCircle,
+  Camera,
+  MapPin,
+  Send,
+  Hand,
 } from 'lucide-react';
 import { useCards } from '@/hooks/useCards';
 import { useBattles } from '@/hooks/useBattles';
@@ -58,10 +62,18 @@ export default function DashboardPage() {
   const availableMissions = missions
     .filter(m => !busyMissionIds.includes(m.id));
 
-  // Top misje posortowane po XP (max 3)
-  const topMissions = [...availableMissions]
-    .sort((a, b) => (b.xp_reward || 0) - (a.xp_reward || 0))
-    .slice(0, 3);
+  // Misje posortowane po XP
+  const sortedMissions = [...availableMissions]
+    .sort((a, b) => (b.xp_reward || 0) - (a.xp_reward || 0));
+
+  // Mapa ikon Lucide dla typów misji
+  const missionIconMap: Record<string, React.ElementType> = {
+    qr_code: Send,
+    photo: Camera,
+    quiz: HelpCircle,
+    gps: MapPin,
+    manual: Hand,
+  };
 
   // Kolekcja stats
   const collectionStats = getCollectionStats();
@@ -165,28 +177,28 @@ export default function DashboardPage() {
             <p className="text-dark-400 text-sm">Gratulacje! Wszystkie misje ukończone.</p>
             <p className="text-dark-500 text-xs mt-1">Oczekuj na kolejne wyzwania!</p>
           </Card>
-        ) : availableMissions.length === 1 ? (
-          <MissionCard
-            mission={topMissions[0]}
-            compact
-            onClick={() => router.push('/missions')}
-          />
         ) : (
-          <div className={`grid gap-3 ${topMissions.length === 2 ? 'grid-cols-2' : 'grid-cols-3'}`}>
-            {topMissions.map(mission => (
-              <Card
-                key={mission.id}
-                hover
-                onClick={() => router.push('/missions')}
-                className="py-3 px-3 relative"
-              >
-                <span className="absolute top-2 right-2 text-xs font-bold text-turbo-400">
-                  {formatNumber(mission.xp_reward)} XP
-                </span>
-                <div className="text-2xl mb-2">{missionTypeIcons[mission.type]}</div>
-                <p className="text-sm font-medium text-white line-clamp-2">{mission.title}</p>
-              </Card>
-            ))}
+          <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
+            {sortedMissions.map(mission => {
+              const style = missionTypeStyles[mission.type] || missionTypeStyles.manual;
+              const IconComponent = missionIconMap[mission.type] || Hand;
+              return (
+                <Card
+                  key={mission.id}
+                  hover
+                  onClick={() => router.push('/missions')}
+                  className="relative flex-shrink-0 w-36 py-4 px-3 cursor-pointer"
+                >
+                  <span className="absolute top-2 right-2 text-[11px] font-bold text-white bg-red-500 px-2 py-0.5 rounded-full">
+                    +{formatNumber(mission.xp_reward)}
+                  </span>
+                  <div className={`w-12 h-12 rounded-xl ${style.bgColor} flex items-center justify-center mb-3`}>
+                    <IconComponent className={`w-6 h-6 ${style.color}`} />
+                  </div>
+                  <p className="text-sm font-medium text-white line-clamp-2">{mission.title}</p>
+                </Card>
+              );
+            })}
           </div>
         )}
       </div>

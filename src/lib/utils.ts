@@ -187,13 +187,22 @@ export function truncate(text: string, maxLength: number): string {
   return text.substring(0, maxLength - 3) + '...';
 }
 
-// Ikony dla typów misji
+// Ikony dla typów misji (emoji fallback dla admin/prostych kontekstów)
 export const missionTypeIcons: Record<string, string> = {
   qr_code: '📱',
   photo: '📸',
   quiz: '❓',
   gps: '📍',
   manual: '✋',
+};
+
+// Konfiguracja ikon misji z kolorami (dla komponentów React)
+export const missionTypeStyles: Record<string, { icon: string; color: string; bgColor: string }> = {
+  qr_code: { icon: 'Send', color: 'text-green-400', bgColor: 'bg-green-500/15' },
+  photo: { icon: 'Camera', color: 'text-pink-400', bgColor: 'bg-pink-500/15' },
+  quiz: { icon: 'HelpCircle', color: 'text-yellow-400', bgColor: 'bg-yellow-500/15' },
+  gps: { icon: 'MapPin', color: 'text-blue-400', bgColor: 'bg-blue-500/15' },
+  manual: { icon: 'Hand', color: 'text-orange-400', bgColor: 'bg-orange-500/15' },
 };
 
 // Nazwy typów misji

@@ -2,8 +2,16 @@
 
 import { Mission, Submission } from '@/types';
 import { Card, Badge, Button } from '@/components/ui';
-import { missionTypeIcons, missionTypeNames, formatNumber } from '@/lib/utils';
-import { MapPin, Clock, Star, CheckCircle, Loader2, XCircle, Ban } from 'lucide-react';
+import { missionTypeNames, missionTypeStyles, formatNumber } from '@/lib/utils';
+import { MapPin, Clock, Star, CheckCircle, Loader2, XCircle, Ban, Camera, Send, HelpCircle, Hand } from 'lucide-react';
+
+const missionIconMap: Record<string, React.ElementType> = {
+  qr_code: Send,
+  photo: Camera,
+  quiz: HelpCircle,
+  gps: MapPin,
+  manual: Hand,
+};
 
 interface MissionCardProps {
   mission: Mission;
@@ -70,7 +78,9 @@ export function MissionCard({
         className={isBlocked ? 'opacity-60' : ''}
       >
         <div className="flex items-center gap-3">
-          <div className="text-2xl">{missionTypeIcons[mission.type]}</div>
+          <div className={`w-8 h-8 rounded-lg ${(missionTypeStyles[mission.type] || missionTypeStyles.manual).bgColor} flex items-center justify-center`}>
+            {(() => { const Icon = missionIconMap[mission.type] || Hand; const style = missionTypeStyles[mission.type] || missionTypeStyles.manual; return <Icon className={`w-4 h-4 ${style.color}`} />; })()}
+          </div>
           <div className="flex-1 min-w-0">
             <h4 className="font-medium text-white truncate">{mission.title}</h4>
             <p className="text-sm text-dark-400">{missionTypeNames[mission.type]}</p>
@@ -99,8 +109,8 @@ export function MissionCard({
       {/* Header */}
       <div className="flex items-start justify-between mb-3">
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-xl bg-dark-700 flex items-center justify-center text-2xl">
-            {missionTypeIcons[mission.type]}
+          <div className={`w-12 h-12 rounded-xl ${(missionTypeStyles[mission.type] || missionTypeStyles.manual).bgColor} flex items-center justify-center`}>
+            {(() => { const Icon = missionIconMap[mission.type] || Hand; const style = missionTypeStyles[mission.type] || missionTypeStyles.manual; return <Icon className={`w-6 h-6 ${style.color}`} />; })()}
           </div>
           <div>
             <Badge variant="default" size="sm">

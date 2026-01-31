@@ -8,8 +8,16 @@ import { SkeletonCard } from '@/components/ui/Skeleton';
 import { useToast } from '@/components/ui/Toast';
 import { MissionCard, QRScanner, PhotoUpload, Quiz, GPSChecker } from '@/components/missions';
 import { Mission, MissionType } from '@/types';
-import { missionTypeIcons, missionTypeNames } from '@/lib/utils';
-import { Target, Filter, X } from 'lucide-react';
+import { missionTypeStyles, missionTypeNames } from '@/lib/utils';
+import { Target, Filter, X, Send, Camera, HelpCircle, MapPin, Hand } from 'lucide-react';
+
+const missionIconMap: Record<string, React.ElementType> = {
+  qr_code: Send,
+  photo: Camera,
+  quiz: HelpCircle,
+  gps: MapPin,
+  manual: Hand,
+};
 
 type FilterType = 'all' | MissionType;
 
@@ -33,12 +41,12 @@ export default function MissionsPage() {
 
   if (!profile) return null;
 
-  const filters: { value: FilterType; label: string; icon?: string }[] = [
+  const filters: { value: FilterType; label: string; iconType?: string }[] = [
     { value: 'all', label: 'Wszystkie' },
-    { value: 'qr_code', label: 'QR', icon: missionTypeIcons.qr_code },
-    { value: 'photo', label: 'Zdjęcie', icon: missionTypeIcons.photo },
-    { value: 'quiz', label: 'Quiz', icon: missionTypeIcons.quiz },
-    { value: 'gps', label: 'GPS', icon: missionTypeIcons.gps },
+    { value: 'qr_code', label: 'QR', iconType: 'qr_code' },
+    { value: 'photo', label: 'Zdjęcie', iconType: 'photo' },
+    { value: 'quiz', label: 'Quiz', iconType: 'quiz' },
+    { value: 'gps', label: 'GPS', iconType: 'gps' },
   ];
 
   const getUserSubmission = (missionId: string) => {
@@ -247,7 +255,9 @@ export default function MissionsPage() {
         return (
           <div className="p-4">
             <div className="text-center mb-6">
-              <div className="text-4xl mb-2">{missionTypeIcons[selectedMission.type]}</div>
+              <div className={`w-16 h-16 rounded-2xl ${(missionTypeStyles[selectedMission.type] || missionTypeStyles.manual).bgColor} flex items-center justify-center mx-auto mb-2`}>
+                {(() => { const Icon = missionIconMap[selectedMission.type] || Hand; const style = missionTypeStyles[selectedMission.type] || missionTypeStyles.manual; return <Icon className={`w-8 h-8 ${style.color}`} />; })()}
+              </div>
               <h3 className="text-xl font-bold text-white">{selectedMission.title}</h3>
               <Badge variant="turbo" className="mt-2">
                 +{selectedMission.xp_reward} XP
@@ -299,7 +309,7 @@ export default function MissionsPage() {
                 : 'bg-transparent text-dark-400 hover:text-dark-300'
             }`}
           >
-            {f.icon && <span>{f.icon}</span>}
+            {f.iconType && (() => { const Icon = missionIconMap[f.iconType]; return Icon ? <Icon className="w-4 h-4" /> : null; })()}
             {f.label}
           </button>
         ))}
