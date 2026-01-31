@@ -55,15 +55,6 @@ export function BottomNav() {
                   />
                 )}
 
-                {/* Glow effect behind active icon */}
-                {isActive && (
-                  <motion.div
-                    layoutId="bottom-nav-glow"
-                    className="absolute inset-0 rounded-xl bg-[#22d3ee]/10"
-                    transition={springTransition}
-                  />
-                )}
-
                 {/* Icon with scale animation */}
                 <motion.div
                   animate={{
