@@ -131,7 +131,7 @@ export default function DashboardPage() {
                       <Trophy className="h-3 w-3" />
                       <span>Ranking</span>
                     </div>
-                    <div className="mt-0.5 text-2xl font-bold text-turbo-400">
+                    <div className="mt-0.5 text-2xl font-bold text-gradient-gold">
                       #{userRank}
                     </div>
                   </div>
