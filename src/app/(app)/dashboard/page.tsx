@@ -164,25 +164,22 @@ export default function DashboardPage() {
 
           {/* Donation Card */}
           <div className="mt-5 rounded-xl bg-white/[0.03] p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-red-500/20">
-                  <Heart className="h-5 w-5 text-red-400" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-white">Wsparcie Turbo Pomoc</p>
-                  <p className="text-xs text-dark-500">
-                    {(profile.donation_total || 0) > 0
-                      ? 'Dziękujemy za Twój wkład!'
-                      : 'Kup kartę i wesprzyj fundację!'}
-                  </p>
-                </div>
+            <div className="flex items-center gap-2.5">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-red-500/20 flex-shrink-0">
+                <Heart className="h-5 w-5 text-red-400 fill-red-400" />
               </div>
-              <div className="text-right">
-                <p className="text-lg font-bold text-red-400">
-                  {(profile.donation_total || 0).toFixed(2)} zł
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-white">Wsparcie Turbo Pomoc</p>
+                <p className="text-xs text-dark-500">
+                  {(profile.donation_total || 0) > 0
+                    ? 'Dziękujemy za Twój wkład!'
+                    : 'Kup kartę i wesprzyj fundację!'}
                 </p>
               </div>
+              <p className="text-lg font-bold text-green-400 flex-shrink-0">
+                {(profile.donation_total || 0).toFixed(2)} zł
+              </p>
+              <ChevronRight className="h-5 w-5 text-dark-500 flex-shrink-0" />
             </div>
           </div>
         </div>
