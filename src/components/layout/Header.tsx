@@ -20,7 +20,7 @@ export function Header({ user }: HeaderProps) {
         <div className="flex items-center justify-between h-16 px-4 sm:px-6 max-w-content mx-auto">
           {/* Logo */}
           <Link href="/dashboard" className="flex items-center gap-1.5 min-w-0">
-            <Heart className="w-[18px] h-[18px] text-turbo-500 fill-turbo-500 flex-shrink-0" />
+            <Heart className="w-5 sm:w-6 h-5 sm:h-6 text-turbo-500 fill-turbo-500 flex-shrink-0" />
             <div className="flex items-baseline gap-1 min-w-0">
               <span className="text-lg sm:text-xl font-bold tracking-tight text-white">TURBO</span>
               <span className="text-lg sm:text-xl font-extrabold tracking-tight text-turbo-500">CHALLENGE</span>
