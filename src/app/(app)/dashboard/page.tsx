@@ -141,7 +141,7 @@ export default function DashboardPage() {
                 <TrendingUp className="h-4 w-4 text-turbo-500" />
                 <span className="text-sm font-medium text-white">Poziom {level.id}</span>
               </div>
-              <span className="rounded-lg bg-turbo-500/10 px-2 py-1 text-xs font-bold text-turbo-400">
+              <span className="rounded-lg bg-turbo-500/10 px-2.5 py-1 text-base font-bold text-turbo-400">
                 {formatNumber(profile.total_xp)} XP
               </span>
             </div>
