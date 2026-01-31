@@ -161,10 +161,10 @@ export default function DashboardPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-            <Zap className="w-5 h-5 text-red-500" />
+            <Zap className="w-5 h-5 text-pink-500" />
             Dostępne misje
             {availableMissions.length > 0 && (
-              <span className="inline-flex items-center justify-center w-6 h-6 bg-red-500 rounded-full text-[11px] font-bold text-white leading-none text-center">
+              <span className="inline-flex items-center justify-center w-6 h-6 bg-gradient-to-r from-red-500 to-pink-500 rounded-full text-[11px] font-bold text-white leading-none text-center">
                 {availableMissions.length}
               </span>
             )}
