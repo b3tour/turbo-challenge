@@ -9,7 +9,7 @@ import { useLeaderboard } from '@/hooks/useLeaderboard';
 import { Card, ProgressBar, Avatar, AppInfoModal } from '@/components/ui';
 import { SkeletonCard } from '@/components/ui/Skeleton';
 import { MissionCard } from '@/components/missions';
-import { formatNumber, missionTypeStyles } from '@/lib/utils';
+import { formatNumber } from '@/lib/utils';
 import { useLevels } from '@/hooks/useLevels';
 import {
   Target,
@@ -23,9 +23,26 @@ import {
   HelpCircle,
   Camera,
   MapPin,
-  Send,
-  Hand,
+  Navigation,
 } from 'lucide-react';
+
+// Mapowanie typu misji na ikonę (jak v0)
+const missionIconMap: Record<string, React.ElementType> = {
+  qr_code: MapPin,
+  quiz: HelpCircle,
+  photo: Camera,
+  gps: Navigation,
+  manual: Target,
+};
+
+// Mapowanie typu misji na kolory (tło + tekst)
+const missionColorMap: Record<string, string> = {
+  qr_code: 'bg-blue-500/20 text-blue-400',
+  quiz: 'bg-amber-500/20 text-amber-400',
+  photo: 'bg-purple-500/20 text-purple-400',
+  gps: 'bg-green-500/20 text-green-400',
+  manual: 'bg-turbo-500/20 text-turbo-400',
+};
 import { useCards } from '@/hooks/useCards';
 import { useBattles } from '@/hooks/useBattles';
 
@@ -65,15 +82,6 @@ export default function DashboardPage() {
   // Misje posortowane po XP
   const sortedMissions = [...availableMissions]
     .sort((a, b) => (b.xp_reward || 0) - (a.xp_reward || 0));
-
-  // Mapa ikon Lucide dla typów misji
-  const missionIconMap: Record<string, React.ElementType> = {
-    qr_code: Send,
-    photo: Camera,
-    quiz: HelpCircle,
-    gps: MapPin,
-    manual: Hand,
-  };
 
   // Kolekcja stats
   const collectionStats = getCollectionStats();
@@ -149,26 +157,28 @@ export default function DashboardPage() {
       </Card>
 
       {/* Available Missions */}
-      <div>
-        <div className="flex items-center justify-between mb-3">
+      <div className="animate-slide-up space-y-4">
+        {/* Header */}
+        <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold text-white flex items-center gap-2">
             <Zap className="w-5 h-5 text-turbo-500" />
             Dostępne misje
             {availableMissions.length > 0 && (
-              <span className="w-5 h-5 bg-red-500 rounded-full flex items-center justify-center">
-                <span className="text-[11px] font-bold text-white leading-none">{availableMissions.length}</span>
+              <span className="inline-flex items-center justify-center w-6 h-6 bg-turbo-500 rounded-full text-[11px] font-bold text-white">
+                {availableMissions.length}
               </span>
             )}
           </h2>
           <Link
             href="/missions"
-            className="text-sm text-accent-400 flex items-center px-2 py-1 -mr-2 rounded-lg active:bg-dark-700/50"
+            className="flex items-center gap-1 text-sm font-medium text-turbo-400 hover:text-turbo-300"
           >
             Zobacz wszystkie
             <ChevronRight className="w-4 h-4" />
           </Link>
         </div>
 
+        {/* Cards */}
         {missionsLoading ? (
           <SkeletonCard />
         ) : availableMissions.length === 0 ? (
@@ -178,29 +188,32 @@ export default function DashboardPage() {
             <p className="text-dark-500 text-xs mt-1">Oczekuj na kolejne wyzwania!</p>
           </Card>
         ) : (
-          <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
+          <div className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-2 scrollbar-hide">
             {sortedMissions.map((mission, index) => {
-              const style = missionTypeStyles[mission.type] || missionTypeStyles.manual;
-              const IconComponent = missionIconMap[mission.type] || Hand;
+              const Icon = missionIconMap[mission.type] || Target;
+              const colorClass = missionColorMap[mission.type] || missionColorMap.manual;
               return (
-                <Card
+                <Link
                   key={mission.id}
-                  hover
-                  onClick={() => router.push('/missions')}
-                  className="group flex-shrink-0 w-32 py-4 px-3 cursor-pointer animate-slide-up"
+                  href="/missions"
+                  className="animate-slide-up group flex w-32 flex-shrink-0 flex-col items-center gap-3 rounded-xl border border-white/[0.07] bg-white/[0.05] p-4 text-center transition-all hover:border-turbo-500/50 hover:bg-white/[0.08]"
                   style={{ animationDelay: `${index * 0.1}s`, animationFillMode: 'backwards' }}
                 >
-                  {/* Icon z floating XP badge */}
-                  <div className="relative w-fit mb-3">
-                    <div className={`w-14 h-14 rounded-xl ${style.bgColor} flex items-center justify-center transition-transform duration-200 group-hover:scale-110`}>
-                      <IconComponent className={`w-7 h-7 ${style.color}`} />
+                  {/* Ikona z badge XP */}
+                  <div className="relative">
+                    <div className={`flex h-14 w-14 items-center justify-center rounded-xl transition-transform group-hover:scale-110 ${colorClass}`}>
+                      <Icon className="h-6 w-6" />
                     </div>
-                    <span className="absolute -right-2 -top-2 text-[10px] font-bold text-white bg-red-500 px-1.5 py-0.5 rounded-full leading-none">
-                      +{formatNumber(mission.xp_reward)}
+                    <span className="absolute -right-2 -top-2 inline-flex items-center rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-bold leading-none text-white">
+                      +{mission.xp_reward}
                     </span>
                   </div>
-                  <p className="text-sm font-medium text-white line-clamp-2">{mission.title}</p>
-                </Card>
+
+                  {/* Tytuł misji */}
+                  <span className="line-clamp-2 text-xs font-medium leading-tight text-white">
+                    {mission.title}
+                  </span>
+                </Link>
               );
             })}
           </div>
