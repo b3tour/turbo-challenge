@@ -3,7 +3,7 @@
 import { Mission, Submission } from '@/types';
 import { Card, Badge, Button } from '@/components/ui';
 import { missionTypeNames, missionTypeStyles, formatNumber } from '@/lib/utils';
-import { MapPin, Clock, Star, CheckCircle, Loader2, XCircle, Ban, Camera, QrCode, HelpCircle, ListTodo } from 'lucide-react';
+import { MapPin, Clock, Zap, CheckCircle, Loader2, XCircle, Ban, Camera, QrCode, HelpCircle, ListTodo } from 'lucide-react';
 
 const missionIconMap: Record<string, React.ElementType> = {
   qr_code: QrCode,
@@ -88,11 +88,10 @@ export function MissionCard({
           <div className="flex items-center gap-2">
             {getStatusBadge()}
             <div className="text-right">
-              <div className="flex items-center font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-500">
-                <Star className="w-4 h-4 mr-1 text-purple-400" />
-                {formatNumber(mission.xp_reward)}
+              <div className="flex items-center font-bold text-pink-500">
+                <Zap className="w-4 h-4 mr-1" />
+                {formatNumber(mission.xp_reward)} XP
               </div>
-              <span className="text-xs text-dark-400">XP</span>
             </div>
           </div>
         </div>
@@ -146,11 +145,10 @@ export function MissionCard({
       {/* Footer */}
       <div className="flex items-center justify-between pt-3 border-t border-dark-700">
         <div className="flex items-center gap-1">
-          <Star className="w-5 h-5 text-purple-400" />
-          <span className="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-500">
-            {formatNumber(mission.xp_reward)}
+          <Zap className="w-5 h-5 text-pink-500" />
+          <span className="text-xl font-bold text-pink-500">
+            {formatNumber(mission.xp_reward)} XP
           </span>
-          <span className="text-dark-400 text-sm">XP</span>
         </div>
 
         {!isBlocked && (
