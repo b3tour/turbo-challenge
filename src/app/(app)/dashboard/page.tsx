@@ -28,7 +28,6 @@ import {
   MapPin,
   ListTodo,
   TrendingUp,
-  HeartPulse,
 } from 'lucide-react';
 
 // Mapowanie typu misji na ikonę — spójne z missions/page.tsx i MissionCard
@@ -163,9 +162,7 @@ export default function DashboardPage() {
             className="group mt-5 block rounded-xl bg-surface-2 p-4 border border-transparent transition-all duration-300 hover:border-green-500/40 hover:shadow-[0_0_20px_rgba(34,197,94,0.1)]"
           >
             <div className="flex items-center gap-2.5">
-              <div className="rounded-xl bg-red-500/10 p-2.5 flex-shrink-0">
-                <HeartPulse className="h-6 w-6 text-red-500" />
-              </div>
+              <span className="text-2xl flex-shrink-0">❤️</span>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-white">Wsparcie Turbo Pomoc</p>
                 <p className="text-xs text-dark-500">
