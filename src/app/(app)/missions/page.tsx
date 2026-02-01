@@ -62,25 +62,27 @@ export default function MissionsPage() {
   // Funkcja do określenia priorytetu statusu (niższy = wyżej w liście)
   const getStatusPriority = (mission: Mission): number => {
     const lockStatus = isMissionLocked(mission);
-    if (lockStatus.locked) return 6; // Zablokowane poziomem — na dole
-
     const submission = getUserSubmission(mission.id);
-    if (!submission) {
+
+    if (!lockStatus.locked && !submission) {
       return 0; // Do zrobienia - najwyższy priorytet
     }
-    if (submission.status === 'pending') {
+    if (!lockStatus.locked && submission?.status === 'pending') {
       return 1; // Oczekuje na weryfikację
     }
-    if (submission.status === 'rejected' || submission.status === 'revoked') {
+    if (!lockStatus.locked && (submission?.status === 'rejected' || submission?.status === 'revoked')) {
       return 2; // Odrzucone — do ponownego zrobienia
     }
-    if (submission.status === 'approved') {
-      return 3; // Ukończone
+    if (lockStatus.locked) {
+      return 3; // Zablokowane poziomem — nad ukończonymi
     }
-    if (submission.status === 'failed') {
-      return 4; // Niezaliczone — na końcu
+    if (submission?.status === 'approved') {
+      return 4; // Ukończone
     }
-    return 5;
+    if (submission?.status === 'failed') {
+      return 5; // Niezaliczone — na końcu
+    }
+    return 6;
   };
 
   // Filtruj i sortuj misje
@@ -188,70 +190,62 @@ export default function MissionsPage() {
       const Icon = missionIconMap[selectedMission.type] || ListTodo;
 
       return (
-        <div className="p-4">
-          {/* Ikona + Tytuł */}
-          <div className="text-center mb-6">
-            <div className={`w-16 h-16 rounded-2xl ${style.bgColor} flex items-center justify-center mx-auto mb-3`}>
-              <Icon className={`w-8 h-8 ${style.color}`} />
-            </div>
-            <h3 className="text-xl font-bold text-white">{selectedMission.title}</h3>
-            <div className="flex items-center justify-center gap-2 mt-2">
-              <span className="inline-flex items-center gap-1 rounded-lg bg-pink-500/10 px-2.5 py-1 text-sm font-bold text-pink-500">
-                <Zap className="w-3.5 h-3.5" />
-                +{selectedMission.xp_reward} XP
-              </span>
-              {selectedMission.required_level > 1 && (
-                <span className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-sm font-medium ${
-                  lockStatus.locked
-                    ? 'bg-red-500/10 text-red-400'
-                    : 'bg-green-500/10 text-green-400'
-                }`}>
-                  <Lock className="w-3 h-3" />
-                  Poziom {selectedMission.required_level}
-                </span>
-              )}
-            </div>
+        <div className="p-4 space-y-3">
+          {/* Ikona + Tytuł (inline) */}
+          <div className="flex items-center gap-2.5">
+            <Icon className={`w-5 h-5 ${style.color} flex-shrink-0`} />
+            <h3 className="text-lg font-bold text-white">{selectedMission.title}</h3>
           </div>
 
           {/* Opis */}
-          <p className="text-dark-300 mb-6 text-sm leading-relaxed">{selectedMission.description}</p>
+          <p className="text-dark-300 text-sm leading-relaxed">{selectedMission.description}</p>
+
+          {/* Nagroda */}
+          <div className="flex items-center justify-between p-3 bg-dark-700/50 rounded-xl">
+            <span className="text-sm font-medium text-white">Nagroda</span>
+            <span className="flex items-center gap-1 text-sm font-bold text-pink-500">
+              <Zap className="w-3.5 h-3.5" />
+              {selectedMission.xp_reward} XP
+            </span>
+          </div>
 
           {/* Lokalizacja */}
           {selectedMission.location_name && (
-            <div className="mb-4 p-3 bg-dark-700/50 rounded-xl flex items-center gap-2">
+            <div className="p-3 bg-dark-700/50 rounded-xl flex items-center gap-2">
               <MapPin className="w-4 h-4 text-dark-400" />
-              <span className="text-sm text-dark-300">{selectedMission.location_name}</span>
+              <span className="text-sm text-white">{selectedMission.location_name}</span>
             </div>
           )}
 
-          {/* Typ misji */}
-          <div className="mb-6 p-3 bg-dark-700/50 rounded-xl flex items-center gap-2">
-            <Icon className={`w-4 h-4 ${style.color}`} />
-            <span className="text-sm text-dark-300">{missionTypeNames[selectedMission.type]}</span>
-          </div>
+          {/* Wymagany poziom */}
+          {selectedMission.required_level > 1 && (
+            <p className="text-sm text-dark-400">
+              Wymagany poziom: {selectedMission.required_level}
+            </p>
+          )}
 
           {/* Akcja lub status */}
           {lockStatus.locked ? (
-            <div className="text-center p-4 bg-dark-700/30 rounded-xl">
-              <Lock className="w-8 h-8 text-dark-500 mx-auto mb-2" />
+            <div className="text-center p-3 bg-dark-700/30 rounded-xl">
+              <Lock className="w-6 h-6 text-dark-500 mx-auto mb-1" />
               <p className="text-dark-400 text-sm">Wymaga poziomu {lockStatus.requiredLevel}</p>
-              <p className="text-dark-500 text-xs mt-1">Twój aktualny poziom: {userLevel?.id || 1}</p>
+              <p className="text-dark-500 text-xs">Twój poziom: {userLevel?.id || 1}</p>
             </div>
           ) : isCompleted ? (
-            <div className="text-center p-4 bg-green-500/10 rounded-xl">
-              <CheckCircle className="w-8 h-8 text-green-400 mx-auto mb-2" />
-              <p className="text-green-400 font-medium">Misja ukończona</p>
-              <p className="text-dark-400 text-xs mt-1">+{formatNumber(submission?.xp_awarded || selectedMission.xp_reward)} XP</p>
+            <div className="flex items-center gap-2 p-3 bg-green-500/10 rounded-xl">
+              <CheckCircle className="w-5 h-5 text-green-400" />
+              <span className="text-green-400 font-medium text-sm">Misja ukończona</span>
+              <span className="text-dark-400 text-xs ml-auto">+{formatNumber(submission?.xp_awarded || selectedMission.xp_reward)} XP</span>
             </div>
           ) : isPending ? (
-            <div className="text-center p-4 bg-yellow-500/10 rounded-xl">
-              <Loader2 className="w-8 h-8 text-yellow-400 mx-auto mb-2 animate-spin" />
-              <p className="text-yellow-400 font-medium">Oczekuje na weryfikację</p>
+            <div className="flex items-center gap-2 p-3 bg-yellow-500/10 rounded-xl">
+              <Loader2 className="w-5 h-5 text-yellow-400 animate-spin" />
+              <span className="text-yellow-400 font-medium text-sm">Oczekuje na weryfikację</span>
             </div>
           ) : isFailed ? (
-            <div className="text-center p-4 bg-red-500/10 rounded-xl">
-              <Ban className="w-8 h-8 text-red-400 mx-auto mb-2" />
-              <p className="text-red-400 font-medium">Misja nieukończona</p>
+            <div className="flex items-center gap-2 p-3 bg-red-500/10 rounded-xl">
+              <Ban className="w-5 h-5 text-red-400" />
+              <span className="text-red-400 font-medium text-sm">Misja niezaliczona</span>
             </div>
           ) : (
             <Button
