@@ -56,6 +56,7 @@ import {
   Package,
   UserPlus,
   Check,
+  Search,
 } from 'lucide-react';
 import { LEVELS } from '@/lib/utils';
 import { Level } from '@/types';
@@ -120,6 +121,7 @@ export default function AdminPage() {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [userSubmissions, setUserSubmissions] = useState<Submission[]>([]);
   const [loadingUserDetails, setLoadingUserDetails] = useState(false);
+  const [userSearchQuery, setUserSearchQuery] = useState('');
 
   // XP management
   const [showXpModal, setShowXpModal] = useState(false);
@@ -223,6 +225,9 @@ export default function AdminPage() {
   // Cards management
   const [cards, setCards] = useState<CollectibleCard[]>([]);
   const [cardsLoaded, setCardsLoaded] = useState(false);
+  const [cardSearchQuery, setCardSearchQuery] = useState('');
+  const [cardFilterRarity, setCardFilterRarity] = useState<'all' | CardRarity>('all');
+  const [cardFilterType, setCardFilterType] = useState<'all' | 'car' | 'hero'>('all');
   const [savingCard, setSavingCard] = useState(false);
   const [showCardModal, setShowCardModal] = useState(false);
   const [editingCard, setEditingCard] = useState<CollectibleCard | null>(null);
@@ -2993,7 +2998,13 @@ export default function AdminPage() {
               )}
 
               {/* Users Tab */}
-              {activeTab === 'users' && (
+              {activeTab === 'users' && (() => {
+                const q = userSearchQuery.toLowerCase().trim();
+                const filteredUsers = q
+                  ? users.filter(u => u.nick.toLowerCase().includes(q) || u.email.toLowerCase().includes(q))
+                  : users;
+
+                return (
                 <div className="space-y-4">
                   {/* Header z przyciskiem pakietu startowego */}
                   <div className="flex items-center justify-between">
@@ -3013,17 +3024,45 @@ export default function AdminPage() {
                     </div>
                   </div>
 
+                  {/* Wyszukiwarka graczy */}
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-dark-400" />
+                    <input
+                      type="text"
+                      value={userSearchQuery}
+                      onChange={e => setUserSearchQuery(e.target.value)}
+                      placeholder="Szukaj po nicku lub emailu..."
+                      className="w-full bg-dark-800 border border-dark-600 rounded-xl pl-10 pr-4 py-2.5 text-white placeholder:text-dark-500 focus:border-turbo-500 focus:outline-none transition-colors"
+                    />
+                    {userSearchQuery && (
+                      <button
+                        onClick={() => setUserSearchQuery('')}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-dark-400 hover:text-white"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+
+                  {q && (
+                    <p className="text-sm text-dark-400">
+                      Znaleziono: {filteredUsers.length} {filteredUsers.length === 1 ? 'gracz' : filteredUsers.length < 5 ? 'graczy' : 'graczy'}
+                    </p>
+                  )}
+
                   <div className="space-y-3">
-                  {users.map((user, index) => (
+                  {filteredUsers.map((user, index) => {
+                    const originalIndex = users.indexOf(user);
+                    return (
                     <Card key={user.id} hover onClick={() => openUserDetails(user)} className="p-4">
                       <div className="flex items-center gap-4">
                         <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold ${
-                          index === 0 ? 'bg-yellow-500 text-black' :
-                          index === 1 ? 'bg-gray-400 text-black' :
-                          index === 2 ? 'bg-amber-700 text-white' :
+                          originalIndex === 0 ? 'bg-yellow-500 text-black' :
+                          originalIndex === 1 ? 'bg-gray-400 text-black' :
+                          originalIndex === 2 ? 'bg-amber-700 text-white' :
                           'bg-dark-700 text-dark-300'
                         }`}>
-                          {index + 1}
+                          {originalIndex + 1}
                         </div>
                         <div className="w-12 h-12 rounded-full bg-dark-700 flex items-center justify-center text-white font-bold overflow-hidden">
                           {user.avatar_url ? (
@@ -3048,10 +3087,18 @@ export default function AdminPage() {
                         <Eye className="w-5 h-5 text-dark-400" />
                       </div>
                     </Card>
-                  ))}
+                    );
+                  })}
+                  {q && filteredUsers.length === 0 && (
+                    <Card className="text-center py-8">
+                      <Search className="w-10 h-10 text-dark-600 mx-auto mb-2" />
+                      <p className="text-dark-400">Nie znaleziono graczy</p>
+                    </Card>
+                  )}
                   </div>
                 </div>
-              )}
+                );
+              })()}
 
               {/* Rewards Tab */}
               {activeTab === 'rewards' && (
@@ -3147,11 +3194,20 @@ export default function AdminPage() {
               )}
 
               {/* Cards Tab */}
-              {activeTab === 'cards' && (
+              {activeTab === 'cards' && (() => {
+                const cq = cardSearchQuery.toLowerCase().trim();
+                const filteredCards = cards.filter(card => {
+                  if (cq && !card.name.toLowerCase().includes(cq) && !(card.car_brand && card.car_brand.toLowerCase().includes(cq))) return false;
+                  if (cardFilterRarity !== 'all' && card.rarity !== cardFilterRarity) return false;
+                  if (cardFilterType !== 'all' && card.card_type !== cardFilterType) return false;
+                  return true;
+                });
+
+                return (
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h3 className="text-lg font-semibold text-white">Karty kolekcjonerskie</h3>
+                      <h3 className="text-lg font-semibold text-white">Karty kolekcjonerskie ({cards.length})</h3>
                       <p className="text-sm text-dark-400">Twórz karty, które gracze mogą zbierać</p>
                     </div>
                     <Button onClick={() => openCardModal()}>
@@ -3160,17 +3216,87 @@ export default function AdminPage() {
                     </Button>
                   </div>
 
+                  {/* Wyszukiwarka i filtry */}
+                  <div className="space-y-3">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-dark-400" />
+                      <input
+                        type="text"
+                        value={cardSearchQuery}
+                        onChange={e => setCardSearchQuery(e.target.value)}
+                        placeholder="Szukaj po nazwie lub marce..."
+                        className="w-full bg-dark-800 border border-dark-600 rounded-xl pl-10 pr-4 py-2.5 text-white placeholder:text-dark-500 focus:border-turbo-500 focus:outline-none transition-colors"
+                      />
+                      {cardSearchQuery && (
+                        <button
+                          onClick={() => setCardSearchQuery('')}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-dark-400 hover:text-white"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                    <div className="flex gap-2 flex-wrap">
+                      {/* Filtr rzadkości */}
+                      <select
+                        value={cardFilterRarity}
+                        onChange={e => setCardFilterRarity(e.target.value as 'all' | CardRarity)}
+                        className="bg-dark-800 border border-dark-600 rounded-xl px-3 py-2 text-sm text-white focus:border-turbo-500 focus:outline-none"
+                      >
+                        <option value="all">Wszystkie rzadkości</option>
+                        {RARITY_OPTIONS.map(r => (
+                          <option key={r.value} value={r.value}>{r.label}</option>
+                        ))}
+                      </select>
+                      {/* Filtr typu */}
+                      <select
+                        value={cardFilterType}
+                        onChange={e => setCardFilterType(e.target.value as 'all' | 'car' | 'hero')}
+                        className="bg-dark-800 border border-dark-600 rounded-xl px-3 py-2 text-sm text-white focus:border-turbo-500 focus:outline-none"
+                      >
+                        <option value="all">Wszystkie typy</option>
+                        <option value="car">Samochody</option>
+                        <option value="hero">Turbo Hero</option>
+                      </select>
+                      {(cardSearchQuery || cardFilterRarity !== 'all' || cardFilterType !== 'all') && (
+                        <button
+                          onClick={() => {
+                            setCardSearchQuery('');
+                            setCardFilterRarity('all');
+                            setCardFilterType('all');
+                          }}
+                          className="text-sm text-dark-400 hover:text-white px-3 py-2 transition-colors"
+                        >
+                          Wyczyść filtry
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {(cq || cardFilterRarity !== 'all' || cardFilterType !== 'all') && (
+                    <p className="text-sm text-dark-400">Znaleziono: {filteredCards.length} kart</p>
+                  )}
+
                   {!cardsLoaded ? (
                     <div className="text-center py-8 text-dark-400">Ładowanie kart...</div>
-                  ) : cards.length === 0 ? (
+                  ) : filteredCards.length === 0 ? (
                     <Card className="text-center py-12">
-                      <Layers className="w-16 h-16 text-dark-600 mx-auto mb-4" />
-                      <p className="text-dark-400">Brak kart</p>
-                      <p className="text-sm text-dark-500">Dodaj pierwszą kartę kolekcjonerską</p>
+                      {cards.length === 0 ? (
+                        <>
+                          <Layers className="w-16 h-16 text-dark-600 mx-auto mb-4" />
+                          <p className="text-dark-400">Brak kart</p>
+                          <p className="text-sm text-dark-500">Dodaj pierwszą kartę kolekcjonerską</p>
+                        </>
+                      ) : (
+                        <>
+                          <Search className="w-10 h-10 text-dark-600 mx-auto mb-2" />
+                          <p className="text-dark-400">Brak kart dla wybranych filtrów</p>
+                        </>
+                      )}
                     </Card>
                   ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {cards.map(card => {
+                      {filteredCards.map(card => {
                         const rarityOpt = RARITY_OPTIONS.find(r => r.value === card.rarity);
                         return (
                           <Card key={card.id} className={`p-4 ${!card.is_active ? 'opacity-50' : ''}`}>
@@ -3266,7 +3392,8 @@ export default function AdminPage() {
                     </div>
                   </Card>
                 </div>
-              )}
+                );
+              })()}
 
               {/* Orders Tab */}
               {activeTab === 'orders' && (
