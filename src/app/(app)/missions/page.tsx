@@ -322,12 +322,12 @@ export default function MissionsPage() {
       </div>
 
       {/* Filters — segmented control */}
-      <div className="bg-surface-1 rounded-xl p-1 flex gap-1 mb-4 overflow-x-auto">
+      <div className="bg-surface-1 rounded-xl p-1 flex gap-1 mb-4">
         {filters.map(f => (
           <button
             key={f.value}
             onClick={() => setFilter(f.value)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition-all ${
               filter === f.value
                 ? 'bg-turbo-500 text-white shadow-sm'
                 : 'bg-transparent text-dark-400 hover:text-dark-300'
