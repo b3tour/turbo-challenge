@@ -25,7 +25,9 @@ import {
   Gauge,
   Timer,
   Info,
+  Sparkles,
 } from 'lucide-react';
+import Link from 'next/link';
 import { CollectibleCard, BattleSlotAssignment, BattleRoundCategory, BattleRoundResult, User, TunedCar, TuningCategory, TuningChallenge } from '@/types';
 import {
   CATEGORY_LABELS,
@@ -562,6 +564,22 @@ export function BattlesContent({ activeSubTab }: BattlesContentProps = {}) {
             <Users className="w-5 h-5" />
             Wyzwij gracza
           </button>
+
+          {/* Mystery Garage promo */}
+          <Link href="/mystery">
+            <Card className="border-emerald-500/30 hover:border-emerald-400 transition-colors">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
+                  <Sparkles className="w-5 h-5 text-emerald-400" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h4 className="font-medium text-white text-sm">Mystery Garage</h4>
+                  <p className="text-xs text-dark-400">Potrzebujesz lepszych kart? Kup losowy pakiet!</p>
+                </div>
+                <ChevronRight className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+              </div>
+            </Card>
+          </Link>
         </div>
       ) : activeTab === 'tuning_challenges' ? (
         /* ========== TAB: WYZWANIA (Tuning Challenges) ========== */

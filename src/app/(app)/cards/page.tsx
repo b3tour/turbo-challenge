@@ -38,10 +38,8 @@ import {
   Cog,
   Grid2X2,
   Grid3X3,
-  Gift,
   Wrench,
 } from 'lucide-react';
-import Link from 'next/link';
 import { CollectibleCardDisplay } from '@/components/cards';
 import { TuningContent } from '@/components/arena/TuningContent';
 
@@ -509,27 +507,6 @@ export default function CardsPage() {
           <p className="text-dark-400">Zbierz karty z wymarzonymi samochodami</p>
         </div>
       </div>
-
-      {/* Mystery Garage Link — only on car tab */}
-      {activeTab === 'car' && <Link href="/mystery">
-        <Card className="mb-6 border-emerald-500/50 hover:border-emerald-400 transition-colors">
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-xl bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
-              <Gift className="h-7 w-7 text-emerald-400" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <h3 className="font-bold text-white text-lg">Mystery Garage</h3>
-              <p className="text-sm text-dark-300">
-                Kup pakiet losowych kart
-              </p>
-              <p className="text-xs text-emerald-400 mt-1">
-                od 15 zł • 3-10 kart
-              </p>
-            </div>
-            <ChevronRight className="w-5 h-5 text-emerald-400 flex-shrink-0" />
-          </div>
-        </Card>
-      </Link>}
 
       {/* Demo mode notice */}
       {isDemoMode && (
