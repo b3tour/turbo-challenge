@@ -39,11 +39,13 @@ import {
   Grid2X2,
   Grid3X3,
   Gift,
+  Wrench,
 } from 'lucide-react';
 import Link from 'next/link';
 import { CollectibleCardDisplay } from '@/components/cards';
+import { TuningContent } from '@/components/arena/TuningContent';
 
-type ViewTab = 'car' | 'achievement';
+type ViewTab = 'car' | 'tuning' | 'achievement';
 
 // Demo karty Heroes
 const DEMO_HERO_CARDS: CollectibleCard[] = [
@@ -493,7 +495,7 @@ export default function CardsPage() {
     );
   };
 
-  const stats = getCollectionStats(activeTab);
+  const stats = getCollectionStats(activeTab === 'tuning' ? undefined : activeTab);
 
   return (
     <div className="py-6 pb-24">
@@ -508,8 +510,8 @@ export default function CardsPage() {
         </div>
       </div>
 
-      {/* Mystery Garage Link */}
-      <Link href="/mystery">
+      {/* Mystery Garage Link — only on car tab */}
+      {activeTab === 'car' && <Link href="/mystery">
         <Card className="mb-6 border-emerald-500/50 hover:border-emerald-400 transition-colors">
           <div className="flex items-center gap-4">
             <div className="w-14 h-14 rounded-xl bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
@@ -527,7 +529,7 @@ export default function CardsPage() {
             <ChevronRight className="w-5 h-5 text-emerald-400 flex-shrink-0" />
           </div>
         </Card>
-      </Link>
+      </Link>}
 
       {/* Demo mode notice */}
       {isDemoMode && (
@@ -546,31 +548,32 @@ export default function CardsPage() {
 
       {/* Tabs */}
       <div className="bg-surface-1 rounded-xl p-1 flex gap-1 mb-6">
-        <button
-          onClick={() => setActiveTab('car')}
-          className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium transition-all ${
-            activeTab === 'car'
-              ? 'bg-turbo-500 text-white shadow-sm'
-              : 'bg-transparent text-dark-400 hover:text-dark-300'
-          }`}
-        >
-          <Car className="w-5 h-5" />
-          Samochody
-        </button>
-        <button
-          onClick={() => setActiveTab('achievement')}
-          className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium transition-all ${
-            activeTab === 'achievement'
-              ? 'bg-purple-500 text-white shadow-sm'
-              : 'bg-transparent text-dark-400 hover:text-dark-300'
-          }`}
-        >
-          <Award className="w-5 h-5" />
-          Osiągnięcia
-        </button>
+        {([
+          { value: 'car' as ViewTab, label: 'Samochody', icon: Car },
+          { value: 'tuning' as ViewTab, label: 'Strefa tuningu', icon: Wrench },
+          { value: 'achievement' as ViewTab, label: 'Osiągnięcia', icon: Award },
+        ]).map(tab => {
+          const Icon = tab.icon;
+          return (
+            <button
+              key={tab.value}
+              onClick={() => setActiveTab(tab.value)}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition-all ${
+                activeTab === tab.value
+                  ? 'bg-turbo-500 text-white shadow-sm'
+                  : 'bg-transparent text-dark-400 hover:text-dark-300'
+              }`}
+            >
+              <Icon className="w-4 h-4" />
+              {tab.label}
+            </button>
+          );
+        })}
       </div>
 
-      {loading ? (
+      {activeTab === 'tuning' ? (
+        <TuningContent />
+      ) : loading ? (
         <div className="space-y-4">
           {[1, 2, 3].map(i => (
             <SkeletonCard key={i} />

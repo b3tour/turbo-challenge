@@ -30,7 +30,7 @@ export function BottomNav() {
         <div className="flex items-center justify-around h-14 px-2">
           {navItems.map(item => {
             const isActive = pathname === item.href ||
-              (item.href === '/arena' && (pathname === '/battles' || pathname === '/tuning'));
+              (item.href === '/arena' && pathname === '/battles');
             const Icon = item.icon;
 
             return (

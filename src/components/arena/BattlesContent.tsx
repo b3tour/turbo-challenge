@@ -47,7 +47,11 @@ type HistoryItem =
   | { type: 'card_battle'; data: any; date: string }
   | { type: 'tuning_challenge'; data: TuningChallenge; date: string };
 
-export function BattlesContent() {
+interface BattlesContentProps {
+  activeSubTab?: 'battles' | 'challenges' | 'history';
+}
+
+export function BattlesContent({ activeSubTab }: BattlesContentProps = {}) {
   const { profile } = useAuth();
   const {
     myBattles: cardBattles,
@@ -75,7 +79,16 @@ export function BattlesContent() {
 
   const { success, error: showError } = useToast();
 
-  const [activeTab, setActiveTab] = useState<Tab>('battles');
+  const [internalTab, setInternalTab] = useState<Tab>('battles');
+
+  // Mapowanie external prop -> internal tab
+  const externalTabMap: Record<string, Tab> = {
+    battles: 'battles',
+    challenges: 'tuning_challenges',
+    history: 'history',
+  };
+  const activeTab: Tab = activeSubTab ? (externalTabMap[activeSubTab] || 'battles') : internalTab;
+  const setActiveTab = setInternalTab;
   const [challengesSentThisWeek, setChallengesSentThisWeek] = useState(0);
 
   // ========== CARD BATTLE STATE ==========
@@ -368,48 +381,51 @@ export function BattlesContent() {
   // ========== RENDER ==========
 
   return (
-    <div className="py-4 space-y-4">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-          <Swords className="w-7 h-7 text-turbo-500" />
-          Turbo Bitwy
-        </h1>
-        <div className="text-right">
-          <div className="text-sm text-dark-400">Wyzwania w tygodniu</div>
-          <div className={`text-lg font-bold ${challengesSentThisWeek >= 30 ? 'text-red-400' : 'text-turbo-400'}`}>
-            {challengesSentThisWeek}/30
+    <div className={activeSubTab ? 'space-y-4' : 'py-4 space-y-4'}>
+      {/* Header + Tabs — only when used standalone (no external tab control) */}
+      {!activeSubTab && (
+        <>
+          <div className="flex items-center justify-between">
+            <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+              <Swords className="w-7 h-7 text-turbo-500" />
+              Turbo Bitwy
+            </h1>
+            <div className="text-right">
+              <div className="text-sm text-dark-400">Wyzwania w tygodniu</div>
+              <div className={`text-lg font-bold ${challengesSentThisWeek >= 30 ? 'text-red-400' : 'text-turbo-400'}`}>
+                {challengesSentThisWeek}/30
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
 
-      {/* Tabs */}
-      <div className="bg-surface-1 rounded-xl p-1 flex gap-1 overflow-x-auto">
-        {tabs.map(t => {
-          const Icon = t.icon;
-          return (
-            <button
-              key={t.value}
-              onClick={() => setActiveTab(t.value)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${
-                activeTab === t.value
-                  ? 'bg-turbo-500 text-white shadow-sm'
-                  : 'bg-transparent text-dark-400 hover:text-dark-300'
-              }`}
-            >
-              <Icon className="w-4 h-4" />
-              {t.label}
-              {t.count !== undefined && t.count > 0 && (
-                <span className={`text-xs px-1.5 py-0.5 rounded-full ${
-                  activeTab === t.value ? 'bg-white/20' : 'bg-dark-600'
-                }`}>
-                  {t.count}
-                </span>
-              )}
-            </button>
-          );
-        })}
-      </div>
+          <div className="bg-surface-1 rounded-xl p-1 flex gap-1 overflow-x-auto">
+            {tabs.map(t => {
+              const Icon = t.icon;
+              return (
+                <button
+                  key={t.value}
+                  onClick={() => setActiveTab(t.value)}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${
+                    activeTab === t.value
+                      ? 'bg-turbo-500 text-white shadow-sm'
+                      : 'bg-transparent text-dark-400 hover:text-dark-300'
+                  }`}
+                >
+                  <Icon className="w-4 h-4" />
+                  {t.label}
+                  {t.count !== undefined && t.count > 0 && (
+                    <span className={`text-xs px-1.5 py-0.5 rounded-full ${
+                      activeTab === t.value ? 'bg-white/20' : 'bg-dark-600'
+                    }`}>
+                      {t.count}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </>
+      )}
 
       {/* Content */}
       {loading ? (

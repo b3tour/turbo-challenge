@@ -45,12 +45,14 @@ export function TuningContent() {
 
   if (!profile) return null;
 
-  // Karty samochodow gracza, ktore nie sa jeszcze w tuningu
+  // Karty samochodow gracza, ktore nie sa jeszcze w tuningu (max 550 KM bazowej mocy)
+  const MAX_TUNING_HP = 550;
   const tunedCardIds = new Set(tunedCars.map(tc => tc.card_id));
   const availableCarCards = allCards
     .filter(c => c.card_type === 'car')
     .filter(c => userCards.some(uc => uc.card_id === c.id))
-    .filter(c => !tunedCardIds.has(c.id));
+    .filter(c => !tunedCardIds.has(c.id))
+    .filter(c => !c.car_horsepower || c.car_horsepower <= MAX_TUNING_HP);
 
   const investedXP = totalXP - availableXP;
 
@@ -227,6 +229,9 @@ export function TuningContent() {
         title="Dodaj auto do tuningu"
       >
         <div className="space-y-3 max-h-96 overflow-y-auto">
+          <p className="text-xs text-dark-400 px-1">
+            Tuningowac mozna auta do {MAX_TUNING_HP} KM bazowej mocy.
+          </p>
           {availableCarCards.length > 0 ? (
             availableCarCards.map(card => (
               <button

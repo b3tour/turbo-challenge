@@ -1,5 +1,5 @@
-import { TuningContent } from '@/components/arena/TuningContent';
+import { redirect } from 'next/navigation';
 
 export default function TuningPage() {
-  return <TuningContent />;
+  redirect('/cards');
 }

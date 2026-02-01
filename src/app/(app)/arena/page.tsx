@@ -1,33 +1,44 @@
 'use client';
 
 import { useState } from 'react';
-import { Swords, Wrench, Trophy } from 'lucide-react';
+import { Swords, Car, History, Trophy } from 'lucide-react';
 import { BattlesContent } from '@/components/arena/BattlesContent';
-import { TuningContent } from '@/components/arena/TuningContent';
 import { ArenaRankings } from '@/components/arena/ArenaRankings';
 
-type ArenaTab = 'battles' | 'tuning' | 'rankings';
+type ArenaTab = 'battles' | 'challenges' | 'history' | 'rankings';
 
 export default function ArenaPage() {
   const [activeTab, setActiveTab] = useState<ArenaTab>('battles');
 
   const tabs: { value: ArenaTab; label: string; icon: React.ElementType }[] = [
-    { value: 'battles', label: 'Turbo Bitwy', icon: Swords },
-    { value: 'tuning', label: 'Strefa Tuningu', icon: Wrench },
-    { value: 'rankings', label: 'Rankingi', icon: Trophy },
+    { value: 'battles', label: 'Bitwy', icon: Swords },
+    { value: 'challenges', label: 'Wyzwania', icon: Car },
+    { value: 'history', label: 'Historia', icon: History },
+    { value: 'rankings', label: 'Ranking', icon: Trophy },
   ];
 
   return (
-    <div className="space-y-6">
-      {/* Arena Tabs */}
-      <div className="bg-surface-1 rounded-xl p-1 flex gap-1 overflow-x-auto pt-4">
+    <div className="py-6 space-y-4">
+      {/* Header */}
+      <div className="flex items-center gap-4">
+        <div className="w-14 h-14 rounded-xl bg-turbo-500/20 flex items-center justify-center flex-shrink-0">
+          <Swords className="w-7 h-7 text-turbo-500" />
+        </div>
+        <div>
+          <h1 className="text-2xl font-bold text-white">Turbo Bitwy</h1>
+          <p className="text-dark-400">Walcz kartami i tunuj auta!</p>
+        </div>
+      </div>
+
+      {/* Filter bar — missions style */}
+      <div className="bg-surface-1 rounded-xl p-1 flex gap-1">
         {tabs.map(t => {
           const Icon = t.icon;
           return (
             <button
               key={t.value}
               onClick={() => setActiveTab(t.value)}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition-all ${
                 activeTab === t.value
                   ? 'bg-turbo-500 text-white shadow-sm'
                   : 'bg-transparent text-dark-400 hover:text-dark-300'
@@ -41,9 +52,11 @@ export default function ArenaPage() {
       </div>
 
       {/* Tab content */}
-      {activeTab === 'battles' && <BattlesContent />}
-      {activeTab === 'tuning' && <TuningContent />}
-      {activeTab === 'rankings' && <ArenaRankings />}
+      {activeTab === 'rankings' ? (
+        <ArenaRankings />
+      ) : (
+        <BattlesContent activeSubTab={activeTab} />
+      )}
     </div>
   );
 }
