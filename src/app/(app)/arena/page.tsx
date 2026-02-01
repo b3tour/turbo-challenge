@@ -21,12 +21,12 @@ export default function ArenaPage() {
     <div className="py-6 space-y-4">
       {/* Header */}
       <div className="flex items-center gap-4">
-        <div className="w-14 h-14 rounded-xl bg-turbo-500/20 flex items-center justify-center flex-shrink-0">
-          <Swords className="w-7 h-7 text-turbo-500" />
+        <div className="w-14 h-14 rounded-xl bg-red-500/20 flex items-center justify-center flex-shrink-0">
+          <Swords className="w-7 h-7 text-red-500" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold text-white">Turbo Bitwy</h1>
-          <p className="text-dark-400">Walcz kartami i tunuj auta!</p>
+          <h1 className="text-2xl font-bold text-white">Arena</h1>
+          <p className="text-dark-400">Rywalizuj z innymi graczami</p>
         </div>
       </div>
 
