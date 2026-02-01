@@ -3,7 +3,7 @@
 import { Mission, Submission } from '@/types';
 import { Badge } from '@/components/ui';
 import { missionTypeNames, missionTypeStyles, formatNumber } from '@/lib/utils';
-import { Zap, CheckCircle, Loader2, XCircle, Ban, Camera, QrCode, HelpCircle, MapPin, ListTodo, Lock, ChevronRight } from 'lucide-react';
+import { Zap, CheckCircle, Loader2, XCircle, Ban, Camera, QrCode, HelpCircle, MapPin, ListTodo, Lock, ChevronRight, Circle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const missionIconMap: Record<string, React.ElementType> = {
@@ -58,7 +58,7 @@ export function MissionCard({
       return (
         <Badge variant="danger" size="sm">
           <Ban className="w-3 h-3 mr-1" />
-          Nieukończono
+          Niezaliczona
         </Badge>
       );
     }
@@ -70,11 +70,17 @@ export function MissionCard({
         </Badge>
       );
     }
-    return null;
+    return (
+      <Badge variant="default" size="sm">
+        <Circle className="w-3 h-3 mr-1" />
+        Do zrobienia
+      </Badge>
+    );
   };
 
   const statusBadge = getStatusBadge();
   const isBlocked = isCompleted || isPending || isFailed;
+  const xpColor = isCompleted ? 'text-dark-400' : 'text-pink-500';
 
   return (
     <div
@@ -102,7 +108,7 @@ export function MissionCard({
       <div className="flex-1 min-w-0">
         <h4 className="font-medium text-white text-sm truncate">{mission.title}</h4>
         <p className="text-xs text-dark-400 line-clamp-1 mt-0.5">{mission.description}</p>
-        {statusBadge && <div className="mt-1">{statusBadge}</div>}
+        <div className="mt-1">{statusBadge}</div>
       </div>
 
       {/* Right side: XP + arrow or lock info */}
@@ -113,7 +119,7 @@ export function MissionCard({
           </span>
         ) : (
           <>
-            <div className="flex items-center gap-0.5 text-pink-500 font-bold text-sm whitespace-nowrap">
+            <div className={`flex items-center gap-0.5 ${xpColor} font-bold text-sm whitespace-nowrap`}>
               <Zap className="w-3.5 h-3.5" />
               {formatNumber(mission.xp_reward)} XP
             </div>

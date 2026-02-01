@@ -62,22 +62,25 @@ export default function MissionsPage() {
   // Funkcja do określenia priorytetu statusu (niższy = wyżej w liście)
   const getStatusPriority = (mission: Mission): number => {
     const lockStatus = isMissionLocked(mission);
-    if (lockStatus.locked) return 5; // Zablokowane poziomem — na dole
+    if (lockStatus.locked) return 6; // Zablokowane poziomem — na dole
 
     const submission = getUserSubmission(mission.id);
-    if (!submission || submission.status === 'rejected' || submission.status === 'revoked') {
+    if (!submission) {
       return 0; // Do zrobienia - najwyższy priorytet
     }
     if (submission.status === 'pending') {
       return 1; // Oczekuje na weryfikację
     }
+    if (submission.status === 'rejected' || submission.status === 'revoked') {
+      return 2; // Odrzucone — do ponownego zrobienia
+    }
     if (submission.status === 'approved') {
-      return 2; // Ukończone
+      return 3; // Ukończone
     }
     if (submission.status === 'failed') {
-      return 3; // Nieukończone (zablokowane) - najniższy priorytet
+      return 4; // Niezaliczone — na końcu
     }
-    return 4;
+    return 5;
   };
 
   // Filtruj i sortuj misje
