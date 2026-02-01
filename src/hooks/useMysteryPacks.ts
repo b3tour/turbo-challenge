@@ -196,7 +196,8 @@ export function useMysteryPacks(options: UseMysteryPacksOptions = {}) {
       .from('cards')
       .select('*')
       .eq('card_type', 'car')
-      .eq('is_active', true);
+      .eq('is_active', true)
+      .is('owner_user_id', null);
 
     if (cardsError || !allCards || allCards.length === 0) {
       return { success: false, error: 'Brak dostępnych kart w systemie' };

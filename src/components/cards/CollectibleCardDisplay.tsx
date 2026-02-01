@@ -58,6 +58,7 @@ interface CollectibleCardDisplayProps {
   variant?: 'grid' | 'hero' | 'full';
   onClick?: () => void;
   isDemoMode?: boolean;
+  isOwnerCard?: boolean;
 }
 
 export function CollectibleCardDisplay({
@@ -68,6 +69,7 @@ export function CollectibleCardDisplay({
   variant = 'grid',
   onClick,
   isDemoMode = false,
+  isOwnerCard = false,
 }: CollectibleCardDisplayProps) {
   const [imageLoaded, setImageLoaded] = useState(false);
 
@@ -326,10 +328,18 @@ export function CollectibleCardDisplay({
             </div>
           )}
 
-          {/* Cena (jeśli do kupienia) */}
-          {card.is_purchasable && card.price && !owned && (
+          {/* Cena (jeśli do kupienia, nie owner card) */}
+          {card.is_purchasable && card.price && !owned && !card.owner_user_id && (
             <div className="absolute bottom-2 left-2 px-2 py-1 rounded-lg bg-gradient-to-r from-turbo-500 to-purple-500 text-white text-xs font-bold shadow-lg">
               {card.price} zł
+            </div>
+          )}
+
+          {/* Badge Moje auto */}
+          {isOwnerCard && owned && (
+            <div className="absolute bottom-2 right-2 flex items-center gap-1 px-2 py-1 rounded-full bg-cyan-500/90 text-xs font-medium text-white shadow-lg">
+              <User className="w-3 h-3" />
+              Moje auto
             </div>
           )}
 

@@ -150,6 +150,18 @@ export default function AdminPage() {
   const [starterPackSize, setStarterPackSize] = useState(5);
   const [starterPackProgress, setStarterPackProgress] = useState({ current: 0, total: 0, assigned: 0 });
 
+  // Bulk reset & redistribute
+  const [showResetModal, setShowResetModal] = useState(false);
+  const [resettingCards, setResettingCards] = useState(false);
+  const [resetPackSize, setResetPackSize] = useState(30);
+  const [resetProgress, setResetProgress] = useState({ phase: '' as '' | 'deleting' | 'assigning', current: 0, total: 0, assigned: 0 });
+  const [resetConfirmText, setResetConfirmText] = useState('');
+
+  // Owner card search
+  const [ownerSearchQuery, setOwnerSearchQuery] = useState('');
+  const [ownerSearchResults, setOwnerSearchResults] = useState<User[]>([]);
+  const [selectedOwnerUser, setSelectedOwnerUser] = useState<User | null>(null);
+
   // Photo preview
   const [showPhotoModal, setShowPhotoModal] = useState(false);
   const [selectedPhotoUrl, setSelectedPhotoUrl] = useState<string | null>(null);
@@ -243,6 +255,9 @@ export default function AdminPage() {
     is_hero: false,
     hero_name: '',
     hero_title: '',
+    // Karta Właściciela
+    is_owner_card: false,
+    owner_user_id: '',
   });
 
   // Upload obrazka karty
@@ -854,6 +869,13 @@ export default function AdminPage() {
 
   // === REMOVE CARD FROM USER ===
   const handleRemoveCardFromUser = async (userCardId: string, userId: string, cardId: string, cardName: string) => {
+    // Ochrona Karty Właściciela
+    const cardData = cards.find(c => c.id === cardId);
+    if (cardData?.owner_user_id && cardData.owner_user_id === userId) {
+      showError('Chroniona karta', `"${cardName}" jest Kartą Właściciela i nie może być usunięta od jej właściciela.`);
+      return;
+    }
+
     if (!confirm(`Czy na pewno chcesz usunąć kartę "${cardName}" od tego gracza?`)) return;
 
     setRemovingCard(userCardId);
@@ -992,7 +1014,8 @@ export default function AdminPage() {
         .select('*')
         .eq('card_type', 'car')
         .eq('is_active', true)
-        .is('is_hero', false);
+        .is('is_hero', false)
+        .is('owner_user_id', null);
 
       if (cardsError || !allCarCards || allCarCards.length === 0) {
         showError('Błąd', 'Brak dostępnych kart samochodów w bazie');
@@ -1128,6 +1151,165 @@ export default function AdminPage() {
       showError('Błąd', errorMessage);
     } finally {
       setAssigningStarterPacks(false);
+    }
+  };
+
+  // === OWNER CARD SEARCH ===
+  const handleOwnerSearch = async (query: string) => {
+    setOwnerSearchQuery(query);
+    if (query.length < 2) {
+      setOwnerSearchResults([]);
+      return;
+    }
+
+    const { data } = await supabase
+      .from('users')
+      .select('id, nick, avatar_url, email')
+      .ilike('nick', `%${query}%`)
+      .limit(10);
+
+    if (data) {
+      setOwnerSearchResults(data as User[]);
+    }
+  };
+
+  // === BULK RESET & REDISTRIBUTE ===
+  const handleBulkResetAndRedistribute = async () => {
+    if (resetConfirmText !== 'RESETUJ') return;
+
+    setResettingCards(true);
+    setResetProgress({ phase: 'deleting', current: 0, total: 0, assigned: 0 });
+
+    try {
+      // 1. Pobierz karty z owner_user_id
+      const { data: ownerCards } = await supabase
+        .from('cards')
+        .select('id, owner_user_id')
+        .not('owner_user_id', 'is', null);
+
+      const ownerMap = new Map<string, string>();
+      (ownerCards || []).forEach((c: { id: string; owner_user_id: string | null }) => {
+        if (c.owner_user_id) ownerMap.set(c.id, c.owner_user_id);
+      });
+
+      // 2. Pobierz wszystkie user_cards
+      const { data: allUserCards } = await supabase
+        .from('user_cards')
+        .select('id, user_id, card_id');
+
+      if (!allUserCards) throw new Error('Nie udało się pobrać user_cards');
+
+      // 3. Filtruj — zachowaj tylko owner-to-owner
+      const toDelete = allUserCards.filter((uc: { id: string; user_id: string; card_id: string }) => {
+        const ownerId = ownerMap.get(uc.card_id);
+        return !(ownerId && ownerId === uc.user_id);
+      });
+
+      // 4. Usuń batchami
+      const batchSize = 100;
+      for (let i = 0; i < toDelete.length; i += batchSize) {
+        const batch = toDelete.slice(i, i + batchSize);
+        const ids = batch.map((uc: { id: string }) => uc.id);
+        await supabase.from('user_cards').delete().in('id', ids);
+        setResetProgress(prev => ({
+          ...prev,
+          phase: 'deleting',
+          current: Math.min(i + batchSize, toDelete.length),
+          total: toDelete.length,
+        }));
+      }
+
+      // 5. Pobierz dostępne karty (bez owner cards i hero)
+      const { data: availableCards } = await supabase
+        .from('cards')
+        .select('*')
+        .eq('card_type', 'car')
+        .eq('is_active', true)
+        .is('owner_user_id', null)
+        .is('is_hero', false);
+
+      if (!availableCards || availableCards.length === 0) {
+        showError('Błąd', 'Brak dostępnych kart do rozdania');
+        setResettingCards(false);
+        return;
+      }
+
+      // 6. Pobierz wszystkich użytkowników
+      const { data: allUsers } = await supabase.from('users').select('id, nick');
+      if (!allUsers) throw new Error('Nie udało się pobrać użytkowników');
+
+      // 7. Losowo przydziel karty
+      setResetProgress({ phase: 'assigning', current: 0, total: allUsers.length, assigned: 0 });
+
+      const cardsByRarity = {
+        common: availableCards.filter((c: CollectibleCard) => c.rarity === 'common'),
+        rare: availableCards.filter((c: CollectibleCard) => c.rarity === 'rare'),
+        epic: availableCards.filter((c: CollectibleCard) => c.rarity === 'epic'),
+        legendary: availableCards.filter((c: CollectibleCard) => c.rarity === 'legendary'),
+      };
+
+      let totalAssigned = 0;
+
+      for (let i = 0; i < allUsers.length; i++) {
+        const user = allUsers[i];
+        const selectedCards: CollectibleCard[] = [];
+        const usedCardIds = new Set<string>();
+
+        // Karty właściciela są już w kolekcji — wykluczyć z losowania
+        ownerMap.forEach((ownerUserId, cardId) => {
+          if (ownerUserId === user.id) usedCardIds.add(cardId);
+        });
+
+        for (let j = 0; j < resetPackSize; j++) {
+          const roll = Math.random() * 100;
+          let targetRarity: CardRarity;
+          if (roll < 3) targetRarity = 'legendary';
+          else if (roll < 15) targetRarity = 'epic';
+          else if (roll < 40) targetRarity = 'rare';
+          else targetRarity = 'common';
+
+          let pool = cardsByRarity[targetRarity].filter((c: CollectibleCard) => !usedCardIds.has(c.id));
+          if (pool.length === 0) {
+            // Fallback do innej rzadkości
+            for (const fallback of ['rare', 'common', 'epic', 'legendary'] as CardRarity[]) {
+              pool = cardsByRarity[fallback].filter((c: CollectibleCard) => !usedCardIds.has(c.id));
+              if (pool.length > 0) break;
+            }
+          }
+          if (pool.length === 0) break;
+
+          const card = pool[Math.floor(Math.random() * pool.length)];
+          selectedCards.push(card);
+          usedCardIds.add(card.id);
+        }
+
+        if (selectedCards.length > 0) {
+          await supabase.from('user_cards').insert(
+            selectedCards.map(card => ({
+              user_id: user.id,
+              card_id: card.id,
+              obtained_from: 'admin' as const,
+            }))
+          );
+          totalAssigned += selectedCards.length;
+        }
+
+        setResetProgress({
+          phase: 'assigning',
+          current: i + 1,
+          total: allUsers.length,
+          assigned: totalAssigned,
+        });
+      }
+
+      success('Gotowe!', `Zresetowano karty i przydzielono ${totalAssigned} kart dla ${allUsers.length} graczy`);
+      setShowResetModal(false);
+      setResetConfirmText('');
+    } catch (e: unknown) {
+      const errorMessage = e instanceof Error ? e.message : 'Nieznany błąd';
+      showError('Błąd', errorMessage);
+    } finally {
+      setResettingCards(false);
     }
   };
 
@@ -1537,7 +1719,17 @@ export default function AdminPage() {
         is_hero: card.is_hero || false,
         hero_name: card.hero_name || '',
         hero_title: card.hero_title || '',
+        is_owner_card: !!card.owner_user_id,
+        owner_user_id: card.owner_user_id || '',
       });
+      // Load owner user data if set
+      if (card.owner_user_id) {
+        supabase.from('users').select('id, nick, avatar_url, email').eq('id', card.owner_user_id).single().then(({ data }) => {
+          if (data) setSelectedOwnerUser(data as User);
+        });
+      } else {
+        setSelectedOwnerUser(null);
+      }
     } else {
       setEditingCard(null);
       setCardForm({
@@ -1567,12 +1759,17 @@ export default function AdminPage() {
         is_hero: false,
         hero_name: '',
         hero_title: '',
+        is_owner_card: false,
+        owner_user_id: '',
       });
+      setSelectedOwnerUser(null);
     }
     // Reset image states
     setCardImageFile(null);
     setCardImagePreview(null);
     setCardGalleryImages([]);
+    setOwnerSearchQuery('');
+    setOwnerSearchResults([]);
     setShowCardModal(true);
 
     // Load gallery images when editing
@@ -1798,6 +1995,8 @@ export default function AdminPage() {
       is_hero: cardForm.card_type === 'car' && cardForm.is_hero,
       hero_name: cardForm.is_hero ? cardForm.hero_name.trim() || null : null,
       hero_title: cardForm.is_hero ? cardForm.hero_title.trim() || null : null,
+      // Karta Właściciela
+      owner_user_id: cardForm.is_owner_card && cardForm.owner_user_id ? cardForm.owner_user_id : null,
     };
 
     let savedCardId: string;
@@ -1860,6 +2059,32 @@ export default function AdminPage() {
         }
       }
       setUploadingGalleryImage(false);
+    }
+
+    // Auto-przydziel kartę właścicielowi
+    if (cardData.owner_user_id) {
+      const { data: existingAssignment } = await supabase
+        .from('user_cards')
+        .select('id')
+        .eq('user_id', cardData.owner_user_id)
+        .eq('card_id', savedCardId)
+        .maybeSingle();
+
+      if (!existingAssignment) {
+        await supabase.from('user_cards').insert({
+          user_id: cardData.owner_user_id,
+          card_id: savedCardId,
+          obtained_from: 'admin',
+        });
+
+        await sendUserNotification(
+          cardData.owner_user_id,
+          'Karta Właściciela!',
+          `Karta "${cardData.name}" została przypisana do Twojej kolekcji jako Karta Właściciela.`,
+          'card_received',
+          { card_id: savedCardId, card_name: cardData.name }
+        );
+      }
     }
 
     success(editingCard ? 'Zapisano!' : 'Dodano!', editingCard ? 'Karta została zaktualizowana' : 'Nowa karta została dodana');
@@ -2767,10 +2992,16 @@ export default function AdminPage() {
                       <h3 className="text-lg font-semibold text-white">Gracze ({users.length})</h3>
                       <p className="text-sm text-dark-400">Zarządzaj użytkownikami i przydzielaj karty</p>
                     </div>
-                    <Button onClick={() => setShowStarterPackModal(true)}>
-                      <Package className="w-4 h-4 mr-1" />
-                      Pakiet startowy
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button variant="danger" onClick={() => setShowResetModal(true)}>
+                        <RotateCcw className="w-4 h-4 mr-1" />
+                        Reset kart
+                      </Button>
+                      <Button onClick={() => setShowStarterPackModal(true)}>
+                        <Package className="w-4 h-4 mr-1" />
+                        Pakiet startowy
+                      </Button>
+                    </div>
                   </div>
 
                   <div className="space-y-3">
@@ -2968,6 +3199,9 @@ export default function AdminPage() {
                                   {card.category} • {card.points} pkt
                                   {card.card_type === 'car' && card.car_horsepower ? ` • ${card.car_horsepower} KM` : ''}
                                 </p>
+                                {card.owner_user_id && (
+                                  <Badge variant="info" size="sm">Właściciel</Badge>
+                                )}
                                 {card.total_supply && (
                                   <p className="text-xs text-dark-500">Limit: {card.total_supply} szt.</p>
                                 )}
@@ -5043,6 +5277,97 @@ export default function AdminPage() {
                   </div>
                 )}
               </div>
+
+              {/* Sekcja Karta Właściciela */}
+              <div className="border-t border-dark-700 pt-4 mt-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="text-sm font-medium text-cyan-400 flex items-center gap-2">
+                    <UserPlus className="w-4 h-4" />
+                    Karta Właściciela
+                  </h4>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <span className="text-sm text-dark-300">Właściciel</span>
+                    <div
+                      className={`relative w-10 h-5 rounded-full transition-colors ${
+                        cardForm.is_owner_card ? 'bg-cyan-500' : 'bg-dark-600'
+                      }`}
+                      onClick={() => {
+                        if (cardForm.is_owner_card) {
+                          setCardForm(prev => ({ ...prev, is_owner_card: false, owner_user_id: '' }));
+                          setSelectedOwnerUser(null);
+                        } else {
+                          setCardForm(prev => ({ ...prev, is_owner_card: true }));
+                        }
+                      }}
+                    >
+                      <div
+                        className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${
+                          cardForm.is_owner_card ? 'translate-x-5' : 'translate-x-0.5'
+                        }`}
+                      />
+                    </div>
+                  </label>
+                </div>
+                <p className="text-xs text-dark-400 mb-3">
+                  Karta Właściciela to karta przypisana do prawdziwego właściciela samochodu. Jest permanentnie w jego kolekcji i nie może być wylosowana przez innych graczy.
+                </p>
+                {cardForm.is_owner_card && (
+                  <div>
+                    {selectedOwnerUser ? (
+                      <div className="flex items-center gap-3 p-3 bg-dark-700 rounded-xl">
+                        <div className="w-8 h-8 rounded-full bg-dark-600 flex items-center justify-center overflow-hidden">
+                          {selectedOwnerUser.avatar_url
+                            ? <img src={selectedOwnerUser.avatar_url} className="w-full h-full rounded-full object-cover" alt="" />
+                            : <span className="text-sm font-bold text-white">{selectedOwnerUser.nick?.charAt(0) || '?'}</span>
+                          }
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-white font-medium">{selectedOwnerUser.nick}</p>
+                          <p className="text-xs text-dark-400">{selectedOwnerUser.email}</p>
+                        </div>
+                        <button
+                          onClick={() => {
+                            setSelectedOwnerUser(null);
+                            setCardForm(prev => ({ ...prev, owner_user_id: '' }));
+                          }}
+                          className="p-1 hover:bg-dark-600 rounded-lg"
+                        >
+                          <X className="w-4 h-4 text-dark-400" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div>
+                        <input
+                          type="text"
+                          value={ownerSearchQuery}
+                          onChange={e => handleOwnerSearch(e.target.value)}
+                          placeholder="Szukaj gracza po nicku..."
+                          className="w-full bg-dark-800 border border-dark-600 rounded-xl px-4 py-2.5 text-white"
+                        />
+                        {ownerSearchResults.length > 0 && (
+                          <div className="mt-2 space-y-1 max-h-40 overflow-y-auto">
+                            {ownerSearchResults.map(user => (
+                              <button
+                                key={user.id}
+                                onClick={() => {
+                                  setSelectedOwnerUser(user);
+                                  setCardForm(prev => ({ ...prev, owner_user_id: user.id }));
+                                  setOwnerSearchQuery('');
+                                  setOwnerSearchResults([]);
+                                }}
+                                className="w-full flex items-center gap-2 p-2 hover:bg-dark-600 rounded-lg text-left"
+                              >
+                                <span className="text-white">{user.nick}</span>
+                                <span className="text-xs text-dark-500">{user.email}</span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </>
           )}
 
@@ -5496,6 +5821,146 @@ export default function AdminPage() {
                 <>
                   <Package className="w-4 h-4 mr-1" />
                   Przydziel wszystkim
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Reset & Redistribute Modal */}
+      <Modal
+        isOpen={showResetModal}
+        onClose={() => !resettingCards && setShowResetModal(false)}
+        title="Reset i redystrybucja kart"
+        size="md"
+      >
+        <div className="space-y-4">
+          <Card variant="outlined" className="border-red-500/30 bg-red-500/5">
+            <div className="flex items-center gap-3 p-4">
+              <div className="w-12 h-12 rounded-xl bg-red-500/20 flex items-center justify-center">
+                <AlertTriangle className="w-6 h-6 text-red-400" />
+              </div>
+              <div>
+                <p className="font-medium text-red-400">Uwaga! Operacja nieodwracalna</p>
+                <p className="text-sm text-dark-400">
+                  Wszystkie karty graczy zostaną usunięte (z wyjątkiem Kart Właścicieli), a następnie każdy gracz otrzyma nowy losowy zestaw kart.
+                </p>
+              </div>
+            </div>
+          </Card>
+
+          <div>
+            <label className="block text-sm font-medium text-dark-300 mb-2">
+              Ilość kart na gracza
+            </label>
+            <div className="flex gap-2">
+              {[20, 30, 40, 50].map(size => (
+                <button
+                  key={size}
+                  onClick={() => setResetPackSize(size)}
+                  disabled={resettingCards}
+                  className={`flex-1 py-3 rounded-xl font-bold transition-colors ${
+                    resetPackSize === size
+                      ? 'bg-red-500 text-white'
+                      : 'bg-dark-700 text-dark-300 hover:bg-dark-600'
+                  }`}
+                >
+                  {size}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="p-3 bg-dark-700 rounded-xl">
+            <p className="text-sm text-dark-400 mb-2">Szanse na rzadkość:</p>
+            <div className="grid grid-cols-4 gap-2 text-center text-xs">
+              <div>
+                <span className="text-gray-400">Zwykła</span>
+                <p className="font-bold text-white">60%</p>
+              </div>
+              <div>
+                <span className="text-blue-400">Rzadka</span>
+                <p className="font-bold text-white">25%</p>
+              </div>
+              <div>
+                <span className="text-purple-400">Epicka</span>
+                <p className="font-bold text-white">12%</p>
+              </div>
+              <div>
+                <span className="text-yellow-400">Legendarna</span>
+                <p className="font-bold text-white">3%</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="p-3 bg-cyan-500/10 rounded-xl">
+            <p className="text-sm text-cyan-400 flex items-center gap-2">
+              <UserPlus className="w-4 h-4" />
+              Karty Właścicieli będą chronione — nie zostaną usunięte.
+            </p>
+          </div>
+
+          {!resettingCards && (
+            <div>
+              <label className="block text-sm font-medium text-dark-300 mb-2">
+                Wpisz RESETUJ aby potwierdzić
+              </label>
+              <input
+                type="text"
+                value={resetConfirmText}
+                onChange={e => setResetConfirmText(e.target.value)}
+                placeholder="RESETUJ"
+                className="w-full bg-dark-800 border border-dark-600 rounded-xl px-4 py-2.5 text-white"
+              />
+            </div>
+          )}
+
+          {resettingCards && (
+            <div className="p-4 bg-dark-700 rounded-xl">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-dark-300">
+                  {resetProgress.phase === 'deleting' ? 'Usuwanie kart...' : 'Przydzielanie kart...'}
+                </span>
+                <span className="text-white font-medium">
+                  {resetProgress.current}/{resetProgress.total}
+                </span>
+              </div>
+              <div className="w-full bg-dark-600 rounded-full h-2 mb-2">
+                <div
+                  className={`h-2 rounded-full transition-all ${resetProgress.phase === 'deleting' ? 'bg-red-500' : 'bg-green-500'}`}
+                  style={{ width: `${(resetProgress.current / Math.max(1, resetProgress.total)) * 100}%` }}
+                />
+              </div>
+              {resetProgress.phase === 'assigning' && (
+                <p className="text-sm text-green-400">
+                  Przydzielono: {resetProgress.assigned} kart
+                </p>
+              )}
+            </div>
+          )}
+
+          <div className="flex gap-3">
+            <Button
+              variant="secondary"
+              fullWidth
+              onClick={() => { setShowResetModal(false); setResetConfirmText(''); }}
+              disabled={resettingCards}
+            >
+              Anuluj
+            </Button>
+            <Button
+              variant="danger"
+              fullWidth
+              onClick={handleBulkResetAndRedistribute}
+              disabled={resettingCards || resetConfirmText !== 'RESETUJ'}
+            >
+              {resettingCards ? (
+                <>Resetowanie...</>
+              ) : (
+                <>
+                  <RotateCcw className="w-4 h-4 mr-1" />
+                  Resetuj i przydziel
                 </>
               )}
             </Button>

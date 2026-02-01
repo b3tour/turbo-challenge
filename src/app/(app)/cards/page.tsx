@@ -405,6 +405,7 @@ export default function CardsPage() {
         variant="hero"
         onClick={() => openCardDetails(card)}
         isDemoMode={isDemoMode}
+        isOwnerCard={!!card.owner_user_id && card.owner_user_id === profile?.id}
       />
     );
   };
@@ -425,6 +426,7 @@ export default function CardsPage() {
         variant="grid"
         onClick={() => openCardDetails(card)}
         isDemoMode={isDemoMode}
+        isOwnerCard={!!card.owner_user_id && card.owner_user_id === profile?.id}
       />
     );
   };
@@ -1088,7 +1090,7 @@ export default function CardsPage() {
                         </button>
                       )}
 
-                      {selectedCard.is_purchasable && selectedCard.price && !owned && !isDemoMode && !isCardSoldOut(selectedCard) && (
+                      {selectedCard.is_purchasable && selectedCard.price && !owned && !isDemoMode && !isCardSoldOut(selectedCard) && !selectedCard.owner_user_id && (
                         <Button
                           onClick={() => {
                             setSelectedCard(null);

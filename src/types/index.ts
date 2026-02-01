@@ -257,6 +257,8 @@ export interface CollectibleCard {
   car_weight?: number | null; // masa w kg
   car_drivetrain?: string | null; // "RWD" / "AWD" / "FWD"
   car_fun_fact?: string | null; // ciekawostka o aucie
+  // Karta Właściciela
+  owner_user_id?: string | null; // UUID właściciela prawdziwego auta
 }
 
 // Galeria zdjęć karty
