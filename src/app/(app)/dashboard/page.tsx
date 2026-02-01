@@ -156,8 +156,11 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Donation Card */}
-          <div className="mt-5 rounded-xl bg-surface-2 p-4">
+          {/* Donation Card — link to Mystery Garage */}
+          <Link
+            href="/mystery"
+            className="group mt-5 block rounded-xl bg-surface-2 p-4 border border-transparent transition-all duration-300 hover:border-green-500/40 hover:shadow-[0_0_20px_rgba(34,197,94,0.1)]"
+          >
             <div className="flex items-center gap-2.5">
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-red-500/20 flex-shrink-0">
                 <Heart className="h-5 w-5 text-red-400" />
@@ -173,9 +176,9 @@ export default function DashboardPage() {
               <p className="text-lg font-bold text-green-400 flex-shrink-0">
                 {(profile.donation_total || 0).toFixed(2)} zł
               </p>
-              <ChevronRight className="h-5 w-5 text-dark-400 transition-all" />
+              <ChevronRight className="h-5 w-5 text-dark-400 transition-all group-hover:translate-x-1 group-hover:text-green-400" />
             </div>
-          </div>
+          </Link>
         </div>
       </Card>
 
