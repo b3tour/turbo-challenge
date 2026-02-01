@@ -9,14 +9,14 @@ import { useToast } from '@/components/ui/Toast';
 import { MissionCard, QRScanner, PhotoUpload, Quiz, GPSChecker } from '@/components/missions';
 import { Mission, MissionType } from '@/types';
 import { missionTypeStyles, missionTypeNames } from '@/lib/utils';
-import { Target, Filter, X, Send, Camera, HelpCircle, MapPin, Hand } from 'lucide-react';
+import { Target, Filter, X, QrCode, Camera, HelpCircle, MapPin, ListTodo } from 'lucide-react';
 
 const missionIconMap: Record<string, React.ElementType> = {
-  qr_code: Send,
+  qr_code: QrCode,
   photo: Camera,
   quiz: HelpCircle,
   gps: MapPin,
-  manual: Hand,
+  manual: ListTodo,
 };
 
 type FilterType = 'all' | MissionType;
@@ -256,7 +256,7 @@ export default function MissionsPage() {
           <div className="p-4">
             <div className="text-center mb-6">
               <div className={`w-16 h-16 rounded-2xl ${(missionTypeStyles[selectedMission.type] || missionTypeStyles.manual).bgColor} flex items-center justify-center mx-auto mb-2`}>
-                {(() => { const Icon = missionIconMap[selectedMission.type] || Hand; const style = missionTypeStyles[selectedMission.type] || missionTypeStyles.manual; return <Icon className={`w-8 h-8 ${style.color}`} />; })()}
+                {(() => { const Icon = missionIconMap[selectedMission.type] || ListTodo; const style = missionTypeStyles[selectedMission.type] || missionTypeStyles.manual; return <Icon className={`w-8 h-8 ${style.color}`} />; })()}
               </div>
               <h3 className="text-xl font-bold text-white">{selectedMission.title}</h3>
               <Badge variant="turbo" className="mt-2">

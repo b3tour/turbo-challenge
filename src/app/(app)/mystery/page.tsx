@@ -20,6 +20,7 @@ import {
   Zap,
   Star,
   Crown,
+  Trophy,
   AlertCircle,
 } from 'lucide-react';
 import { MysteryPackType, MysteryPackPurchase, CollectibleCard } from '@/types';
@@ -101,12 +102,12 @@ export default function MysteryGaragePage() {
     }
   };
 
-  const getPackIcon = (size: string) => {
+  const getPackIcon = (size: string, className = 'h-8 w-8') => {
     switch (size) {
-      case 'small': return '📦';
-      case 'medium': return '🎁';
-      case 'large': return '🏆';
-      default: return '📦';
+      case 'small': return <Package className={`${className} text-slate-300`} />;
+      case 'medium': return <Gift className={`${className} text-purple-300`} />;
+      case 'large': return <Trophy className={`${className} text-yellow-300`} />;
+      default: return <Package className={`${className} text-slate-300`} />;
     }
   };
 
@@ -178,7 +179,7 @@ export default function MysteryGaragePage() {
 
                 <div className="relative flex items-center gap-4">
                   {/* Icon */}
-                  <div className={`w-16 h-16 rounded-xl bg-gradient-to-br ${getPackGradient(pack.size)} flex items-center justify-center text-3xl`}>
+                  <div className={`w-16 h-16 rounded-xl bg-gradient-to-br ${getPackGradient(pack.size)} flex items-center justify-center`}>
                     {getPackIcon(pack.size)}
                   </div>
 
@@ -342,7 +343,7 @@ export default function MysteryGaragePage() {
               <>
                 <div className={`p-4 rounded-xl bg-gradient-to-r ${getPackGradient(selectedPack.size)} bg-opacity-20`}>
                   <div className="flex items-center gap-4">
-                    <div className="text-4xl">{getPackIcon(selectedPack.size)}</div>
+                    <div>{getPackIcon(selectedPack.size, 'h-10 w-10')}</div>
                     <div>
                       <h3 className="font-bold text-white text-lg">{selectedPack.name}</h3>
                       <p className="text-dark-300">{selectedPack.card_count} losowych kart</p>

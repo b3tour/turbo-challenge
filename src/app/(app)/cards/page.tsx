@@ -38,6 +38,7 @@ import {
   Cog,
   Grid2X2,
   Grid3X3,
+  Gift,
 } from 'lucide-react';
 import Link from 'next/link';
 import { CollectibleCardDisplay } from '@/components/cards';
@@ -510,7 +511,7 @@ export default function CardsPage() {
         <Card className="mb-6 border-emerald-500/50 hover:border-emerald-400 transition-colors">
           <div className="flex items-center gap-4">
             <div className="w-14 h-14 rounded-xl bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
-              <span className="text-3xl animate-wiggle-intense">🎁</span>
+              <Gift className="h-7 w-7 text-emerald-400" />
             </div>
             <div className="flex-1 min-w-0">
               <h3 className="font-bold text-white text-lg">Mystery Garage</h3>

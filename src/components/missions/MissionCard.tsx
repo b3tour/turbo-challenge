@@ -3,14 +3,14 @@
 import { Mission, Submission } from '@/types';
 import { Card, Badge, Button } from '@/components/ui';
 import { missionTypeNames, missionTypeStyles, formatNumber } from '@/lib/utils';
-import { MapPin, Clock, Star, CheckCircle, Loader2, XCircle, Ban, Camera, Send, HelpCircle, Hand } from 'lucide-react';
+import { MapPin, Clock, Star, CheckCircle, Loader2, XCircle, Ban, Camera, QrCode, HelpCircle, ListTodo } from 'lucide-react';
 
 const missionIconMap: Record<string, React.ElementType> = {
-  qr_code: Send,
+  qr_code: QrCode,
   photo: Camera,
   quiz: HelpCircle,
   gps: MapPin,
-  manual: Hand,
+  manual: ListTodo,
 };
 
 interface MissionCardProps {
@@ -79,7 +79,7 @@ export function MissionCard({
       >
         <div className="flex items-center gap-3">
           <div className={`w-8 h-8 rounded-lg ${(missionTypeStyles[mission.type] || missionTypeStyles.manual).bgColor} flex items-center justify-center`}>
-            {(() => { const Icon = missionIconMap[mission.type] || Hand; const style = missionTypeStyles[mission.type] || missionTypeStyles.manual; return <Icon className={`w-4 h-4 ${style.color}`} />; })()}
+            {(() => { const Icon = missionIconMap[mission.type] || ListTodo; const style = missionTypeStyles[mission.type] || missionTypeStyles.manual; return <Icon className={`w-4 h-4 ${style.color}`} />; })()}
           </div>
           <div className="flex-1 min-w-0">
             <h4 className="font-medium text-white truncate">{mission.title}</h4>
@@ -110,7 +110,7 @@ export function MissionCard({
       <div className="flex items-start justify-between mb-3">
         <div className="flex items-center gap-3">
           <div className={`w-12 h-12 rounded-xl ${(missionTypeStyles[mission.type] || missionTypeStyles.manual).bgColor} flex items-center justify-center`}>
-            {(() => { const Icon = missionIconMap[mission.type] || Hand; const style = missionTypeStyles[mission.type] || missionTypeStyles.manual; return <Icon className={`w-6 h-6 ${style.color}`} />; })()}
+            {(() => { const Icon = missionIconMap[mission.type] || ListTodo; const style = missionTypeStyles[mission.type] || missionTypeStyles.manual; return <Icon className={`w-6 h-6 ${style.color}`} />; })()}
           </div>
           <div>
             <Badge variant="default" size="sm">

@@ -22,30 +22,31 @@ import {
   Swords,
   Package,
   Gift,
+  QrCode,
   HelpCircle,
   Camera,
   MapPin,
-  Navigation,
+  ListTodo,
   TrendingUp,
   Heart,
 } from 'lucide-react';
 
-// Mapowanie typu misji na ikonę (jak v0)
+// Mapowanie typu misji na ikonę — spójne z missions/page.tsx i MissionCard
 const missionIconMap: Record<string, React.ElementType> = {
-  qr_code: MapPin,
+  qr_code: QrCode,
   quiz: HelpCircle,
   photo: Camera,
-  gps: Navigation,
-  manual: Target,
+  gps: MapPin,
+  manual: ListTodo,
 };
 
-// Mapowanie typu misji na kolory (tło + tekst)
+// Mapowanie typu misji na kolory — spójne z missionTypeStyles w utils.ts
 const missionColorMap: Record<string, string> = {
   qr_code: 'bg-blue-500/20 text-blue-400',
   quiz: 'bg-amber-500/20 text-amber-400',
   photo: 'bg-purple-500/20 text-purple-400',
   gps: 'bg-green-500/20 text-green-400',
-  manual: 'bg-turbo-500/20 text-turbo-400',
+  manual: 'bg-orange-500/20 text-orange-400',
 };
 
 export default function DashboardPage() {
