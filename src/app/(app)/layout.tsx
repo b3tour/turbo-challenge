@@ -121,8 +121,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </main>
       </div>
 
-      {/* Mobile: bottom nav */}
+      {/* Mobile: bottom fade + nav */}
       <div className="lg:hidden">
+        <div className="fixed bottom-0 left-0 right-0 h-24 pointer-events-none z-30 bg-gradient-to-t from-[#0a0a0f] via-[#0a0a0f]/60 to-transparent" />
         <BottomNav />
       </div>
     </div>

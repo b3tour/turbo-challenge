@@ -24,8 +24,9 @@ export function BottomNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="fixed bottom-3 left-4 right-4 z-40 pb-safe">
-      <div className="max-w-sm mx-auto bg-dark-900/90 backdrop-blur-xl rounded-2xl border border-white/[0.08] shadow-lg shadow-black/40">
+    <nav className="fixed bottom-0 left-0 right-0 z-40">
+      <div className="px-4" style={{ paddingBottom: 'max(6px, env(safe-area-inset-bottom, 6px))' }}>
+      <div className="max-w-sm mx-auto bg-dark-900/95 backdrop-blur-2xl rounded-2xl border border-white/[0.08] shadow-xl shadow-black/60">
         <div className="flex items-center justify-around h-14 px-2">
           {navItems.map(item => {
             const isActive = pathname === item.href ||
@@ -82,6 +83,7 @@ export function BottomNav() {
             );
           })}
         </div>
+      </div>
       </div>
     </nav>
   );
