@@ -43,17 +43,15 @@ export function Modal({
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
         <div
           className={cn(
-            'w-full bg-dark-800/95 backdrop-blur-xl rounded-2xl shadow-surface-lg border border-white/[0.07] pointer-events-auto animate-slide-up max-h-[90vh] flex flex-col',
+            'relative w-full bg-dark-800/95 backdrop-blur-xl rounded-2xl shadow-surface-lg border border-white/[0.07] pointer-events-auto animate-slide-up max-h-[90vh] flex flex-col',
             sizes[size]
           )}
           onClick={e => e.stopPropagation()}
         >
           {/* Header */}
-          {(title || showCloseButton) && (
+          {title && (
             <div className="flex items-center justify-between p-4 border-b border-dark-700 flex-shrink-0">
-              {title && (
-                <h2 className="text-lg font-semibold text-white">{title}</h2>
-              )}
+              <h2 className="text-lg font-semibold text-white">{title}</h2>
               {showCloseButton && (
                 <button
                   onClick={onClose}
@@ -63,6 +61,14 @@ export function Modal({
                 </button>
               )}
             </div>
+          )}
+          {!title && showCloseButton && (
+            <button
+              onClick={onClose}
+              className="absolute top-3 right-3 z-10 p-1 text-dark-400 hover:text-white transition-colors rounded-lg hover:bg-dark-700"
+            >
+              <X size={20} />
+            </button>
           )}
 
           {/* Content */}
