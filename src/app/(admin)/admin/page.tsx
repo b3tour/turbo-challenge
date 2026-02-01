@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
@@ -160,7 +160,9 @@ export default function AdminPage() {
   // Owner card search
   const [ownerSearchQuery, setOwnerSearchQuery] = useState('');
   const [ownerSearchResults, setOwnerSearchResults] = useState<User[]>([]);
+  const [ownerSearchLoading, setOwnerSearchLoading] = useState(false);
   const [selectedOwnerUser, setSelectedOwnerUser] = useState<User | null>(null);
+  const ownerSearchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Photo preview
   const [showPhotoModal, setShowPhotoModal] = useState(false);
@@ -1154,23 +1156,30 @@ export default function AdminPage() {
     }
   };
 
-  // === OWNER CARD SEARCH ===
-  const handleOwnerSearch = async (query: string) => {
+  // === OWNER CARD SEARCH (debounced) ===
+  const handleOwnerSearch = (query: string) => {
     setOwnerSearchQuery(query);
+    if (ownerSearchTimer.current) clearTimeout(ownerSearchTimer.current);
+
     if (query.length < 2) {
       setOwnerSearchResults([]);
+      setOwnerSearchLoading(false);
       return;
     }
 
-    const { data } = await supabase
-      .from('users')
-      .select('id, nick, avatar_url, email')
-      .ilike('nick', `%${query}%`)
-      .limit(10);
+    setOwnerSearchLoading(true);
+    ownerSearchTimer.current = setTimeout(async () => {
+      const { data } = await supabase
+        .from('users')
+        .select('id, nick, avatar_url, email')
+        .ilike('nick', `%${query}%`)
+        .limit(10);
 
-    if (data) {
-      setOwnerSearchResults(data as User[]);
-    }
+      if (data) {
+        setOwnerSearchResults(data as User[]);
+      }
+      setOwnerSearchLoading(false);
+    }, 300);
   };
 
   // === BULK RESET & REDISTRIBUTE ===
@@ -5341,11 +5350,17 @@ export default function AdminPage() {
                           type="text"
                           value={ownerSearchQuery}
                           onChange={e => handleOwnerSearch(e.target.value)}
-                          placeholder="Szukaj gracza po nicku..."
+                          placeholder="Szukaj gracza po nicku (min. 2 znaki)..."
                           className="w-full bg-dark-800 border border-dark-600 rounded-xl px-4 py-2.5 text-white"
                         />
+                        {ownerSearchLoading && (
+                          <p className="mt-2 text-sm text-dark-400">Szukam...</p>
+                        )}
+                        {!ownerSearchLoading && ownerSearchQuery.length >= 2 && ownerSearchResults.length === 0 && (
+                          <p className="mt-2 text-sm text-dark-400">Nie znaleziono graczy</p>
+                        )}
                         {ownerSearchResults.length > 0 && (
-                          <div className="mt-2 space-y-1 max-h-40 overflow-y-auto">
+                          <div className="mt-2 space-y-1 max-h-48 overflow-y-auto border border-dark-600 rounded-xl">
                             {ownerSearchResults.map(user => (
                               <button
                                 key={user.id}
@@ -5355,10 +5370,18 @@ export default function AdminPage() {
                                   setOwnerSearchQuery('');
                                   setOwnerSearchResults([]);
                                 }}
-                                className="w-full flex items-center gap-2 p-2 hover:bg-dark-600 rounded-lg text-left"
+                                className="w-full flex items-center gap-3 p-2.5 hover:bg-dark-600 text-left transition-colors"
                               >
-                                <span className="text-white">{user.nick}</span>
-                                <span className="text-xs text-dark-500">{user.email}</span>
+                                <div className="w-7 h-7 rounded-full bg-dark-600 flex items-center justify-center overflow-hidden flex-shrink-0">
+                                  {user.avatar_url
+                                    ? <img src={user.avatar_url} className="w-full h-full rounded-full object-cover" alt="" />
+                                    : <span className="text-xs font-bold text-white">{user.nick?.charAt(0) || '?'}</span>
+                                  }
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="text-sm text-white font-medium truncate">{user.nick}</p>
+                                  <p className="text-xs text-dark-500 truncate">{user.email}</p>
+                                </div>
                               </button>
                             ))}
                           </div>
