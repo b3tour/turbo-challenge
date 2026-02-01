@@ -1195,36 +1195,65 @@ export default function AdminPage() {
     setResetProgress({ phase: 'deleting', current: 0, total: 0, assigned: 0 });
 
     try {
-      // 1. Pobierz karty z owner_user_id
-      const { data: ownerCards } = await supabase
-        .from('cards')
-        .select('id, owner_user_id')
-        .not('owner_user_id', 'is', null);
+      // 1. Pobierz karty z owner_user_id (karty właścicieli) — z paginacją
+      const ownerCards: { id: string; owner_user_id: string }[] = [];
+      let ocFrom = 0;
+      const ocPageSize = 1000;
+      while (true) {
+        const { data, error } = await supabase
+          .from('cards')
+          .select('id, owner_user_id')
+          .not('owner_user_id', 'is', null)
+          .range(ocFrom, ocFrom + ocPageSize - 1);
+        if (error) throw new Error(`Błąd pobierania owner cards: ${JSON.stringify(error)}`);
+        if (!data || data.length === 0) break;
+        ownerCards.push(...data);
+        if (data.length < ocPageSize) break;
+        ocFrom += ocPageSize;
+      }
 
       const ownerMap = new Map<string, string>();
-      (ownerCards || []).forEach((c: { id: string; owner_user_id: string | null }) => {
+      ownerCards.forEach((c: { id: string; owner_user_id: string }) => {
         if (c.owner_user_id) ownerMap.set(c.id, c.owner_user_id);
       });
 
-      // 2. Pobierz wszystkie user_cards
-      const { data: allUserCards } = await supabase
-        .from('user_cards')
-        .select('id, user_id, card_id');
+      // 2. Pobierz WSZYSTKIE user_cards (z paginacją, aby ominąć limit 1000)
+      const allUserCards: { id: string; user_id: string; card_id: string }[] = [];
+      let ucFrom = 0;
+      const ucPageSize = 1000;
+      while (true) {
+        const { data, error } = await supabase
+          .from('user_cards')
+          .select('id, user_id, card_id')
+          .range(ucFrom, ucFrom + ucPageSize - 1);
+        if (error) throw new Error(`Błąd pobierania user_cards: ${JSON.stringify(error)}`);
+        if (!data || data.length === 0) break;
+        allUserCards.push(...data);
+        if (data.length < ucPageSize) break;
+        ucFrom += ucPageSize;
+      }
 
-      if (!allUserCards) throw new Error('Nie udało się pobrać user_cards');
+      if (allUserCards.length === 0) {
+        showError('Info', 'Brak kart do usunięcia');
+        setResettingCards(false);
+        return;
+      }
 
-      // 3. Filtruj — zachowaj tylko owner-to-owner
-      const toDelete = allUserCards.filter((uc: { id: string; user_id: string; card_id: string }) => {
+      // 3. Filtruj — zachowaj tylko karty właściciela (owner card przypisana do właściciela)
+      const toDelete = allUserCards.filter(uc => {
         const ownerId = ownerMap.get(uc.card_id);
+        // Usuwamy wszystko OPRÓCZ kart, gdzie właściciel karty = użytkownik
         return !(ownerId && ownerId === uc.user_id);
       });
 
-      // 4. Usuń batchami
+      // 4. Usuń batchami po 100
+      setResetProgress({ phase: 'deleting', current: 0, total: toDelete.length, assigned: 0 });
       const batchSize = 100;
       for (let i = 0; i < toDelete.length; i += batchSize) {
         const batch = toDelete.slice(i, i + batchSize);
-        const ids = batch.map((uc: { id: string }) => uc.id);
-        await supabase.from('user_cards').delete().in('id', ids);
+        const ids = batch.map(uc => uc.id);
+        const { error } = await supabase.from('user_cards').delete().in('id', ids);
+        if (error) throw new Error(`Błąd usuwania kart: ${JSON.stringify(error)}`);
         setResetProgress(prev => ({
           ...prev,
           phase: 'deleting',
@@ -1233,26 +1262,55 @@ export default function AdminPage() {
         }));
       }
 
-      // 5. Pobierz dostępne karty (bez owner cards i hero)
-      const { data: availableCards } = await supabase
-        .from('cards')
-        .select('*')
-        .eq('card_type', 'car')
-        .eq('is_active', true)
-        .is('owner_user_id', null)
-        .is('is_hero', false);
+      // 5. Pobierz dostępne karty do losowania (bez owner cards i hero)
+      const availableCards: CollectibleCard[] = [];
+      let acFrom = 0;
+      const acPageSize = 1000;
+      while (true) {
+        const { data, error } = await supabase
+          .from('cards')
+          .select('*')
+          .eq('card_type', 'car')
+          .eq('is_active', true)
+          .is('owner_user_id', null)
+          .is('is_hero', false)
+          .range(acFrom, acFrom + acPageSize - 1);
+        if (error) throw new Error(`Błąd pobierania kart: ${JSON.stringify(error)}`);
+        if (!data || data.length === 0) break;
+        availableCards.push(...(data as CollectibleCard[]));
+        if (data.length < acPageSize) break;
+        acFrom += acPageSize;
+      }
 
-      if (!availableCards || availableCards.length === 0) {
+      if (availableCards.length === 0) {
         showError('Błąd', 'Brak dostępnych kart do rozdania');
         setResettingCards(false);
         return;
       }
 
-      // 6. Pobierz wszystkich użytkowników
-      const { data: allUsers } = await supabase.from('users').select('id, nick');
-      if (!allUsers) throw new Error('Nie udało się pobrać użytkowników');
+      // 6. Pobierz WSZYSTKICH użytkowników (z paginacją)
+      const allUsers: { id: string; nick: string }[] = [];
+      let uFrom = 0;
+      const uPageSize = 1000;
+      while (true) {
+        const { data, error } = await supabase
+          .from('users')
+          .select('id, nick')
+          .range(uFrom, uFrom + uPageSize - 1);
+        if (error) throw new Error(`Błąd pobierania użytkowników: ${JSON.stringify(error)}`);
+        if (!data || data.length === 0) break;
+        allUsers.push(...data);
+        if (data.length < uPageSize) break;
+        uFrom += uPageSize;
+      }
 
-      // 7. Losowo przydziel karty
+      if (allUsers.length === 0) {
+        showError('Błąd', 'Brak użytkowników');
+        setResettingCards(false);
+        return;
+      }
+
+      // 7. Losowo przydziel karty każdemu graczowi
       setResetProgress({ phase: 'assigning', current: 0, total: allUsers.length, assigned: 0 });
 
       const cardsByRarity = {
@@ -1298,13 +1356,14 @@ export default function AdminPage() {
         }
 
         if (selectedCards.length > 0) {
-          await supabase.from('user_cards').insert(
+          const { error } = await supabase.from('user_cards').insert(
             selectedCards.map(card => ({
               user_id: user.id,
               card_id: card.id,
               obtained_from: 'admin' as const,
             }))
           );
+          if (error) throw new Error(`Błąd przydzielania kart dla ${user.nick}: ${JSON.stringify(error)}`);
           totalAssigned += selectedCards.length;
         }
 
@@ -1321,7 +1380,7 @@ export default function AdminPage() {
       setResetConfirmText('');
     } catch (e: unknown) {
       const errorMessage = e instanceof Error ? e.message : 'Nieznany błąd';
-      showError('Błąd', errorMessage);
+      showError('Błąd resetu', errorMessage);
     } finally {
       setResettingCards(false);
     }
@@ -6044,10 +6103,13 @@ export default function AdminPage() {
             </div>
           </div>
 
-          <div className="p-3 bg-cyan-500/10 rounded-xl">
+          <div className="p-3 bg-cyan-500/10 rounded-xl space-y-1">
             <p className="text-sm text-cyan-400 flex items-center gap-2">
               <UserPlus className="w-4 h-4" />
               Karty Właścicieli będą chronione — nie zostaną usunięte.
+            </p>
+            <p className="text-xs text-cyan-400/70 ml-6">
+              Właściciel auta z kartą przypisaną jako swoje auto zachowa ją. Np. przy wyborze 20 kart, taki gracz będzie miał łącznie 21 (1 właścicielska + 20 nowych).
             </p>
           </div>
 
