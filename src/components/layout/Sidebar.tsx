@@ -21,7 +21,7 @@ import {
 const navItems = [
   { href: '/dashboard', label: 'Start', icon: Home },
   { href: '/missions', label: 'Misje', icon: Target },
-  { href: '/cards', label: 'Turbo Album', icon: Layers },
+  { href: '/cards', label: 'Turbo Karty', icon: Layers },
   { href: '/arena', label: 'Arena', icon: Swords },
   { href: '/mystery', label: 'Mystery Garage', icon: Package },
   { href: '/leaderboard', label: 'Ranking', icon: Trophy },

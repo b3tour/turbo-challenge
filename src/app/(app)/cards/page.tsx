@@ -500,7 +500,7 @@ export default function CardsPage() {
           <Layers className="w-7 h-7 text-purple-500" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold text-white">Turbo Album</h1>
+          <h1 className="text-2xl font-bold text-white">Turbo Karty</h1>
           <p className="text-dark-400">Zbierz karty z wymarzonymi samochodami</p>
         </div>
       </div>

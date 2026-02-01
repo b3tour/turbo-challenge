@@ -9,7 +9,7 @@ import { Home, Target, User, Layers, Swords } from 'lucide-react';
 const navItems = [
   { href: '/dashboard', label: 'Start', icon: Home },
   { href: '/missions', label: 'Misje', icon: Target },
-  { href: '/cards', label: 'Album', icon: Layers },
+  { href: '/cards', label: 'Karty', icon: Layers },
   { href: '/arena', label: 'Arena', icon: Swords },
   { href: '/profile', label: 'Profil', icon: User },
 ];
@@ -41,7 +41,7 @@ export function BottomNav() {
                   'flex flex-col items-center justify-center rounded-xl transition-colors duration-200 relative w-12 h-10',
                   isActive
                     ? 'text-[#22d3ee]'
-                    : 'text-dark-500 hover:text-dark-300'
+                    : 'text-dark-400 hover:text-dark-300'
                 )}
               >
                 {/* Animated indicator pill */}
