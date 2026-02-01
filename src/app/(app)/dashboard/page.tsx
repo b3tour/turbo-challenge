@@ -17,8 +17,6 @@ import {
   Target,
   Trophy,
   ChevronRight,
-  ChevronDown,
-  ChevronUp,
   Zap,
   Layers,
   Swords,
@@ -63,7 +61,6 @@ export default function DashboardPage() {
   const { incomingChallenges } = useBattles({ userId: profile?.id });
 
   const [showAppInfo, setShowAppInfo] = useState(false);
-  const [showAllMissions, setShowAllMissions] = useState(false);
 
   if (!profile) return null;
 
@@ -214,49 +211,35 @@ export default function DashboardPage() {
             <p className="text-dark-500 text-xs mt-1">Oczekuj na kolejne wyzwania!</p>
           </Card>
         ) : (
-          <>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {sortedMissions.slice(0, showAllMissions ? sortedMissions.length : 2).map((mission, index) => {
-                const Icon = missionIconMap[mission.type] || Target;
-                const colorClass = missionColorMap[mission.type] || missionColorMap.manual;
-                return (
-                  <Link
-                    key={mission.id}
-                    href="/missions"
-                    className="animate-slide-up group flex flex-col items-center gap-3 rounded-xl border border-dark-700/50 bg-surface-1 p-4 text-center transition-all hover:border-turbo-500/50 hover:bg-surface-2"
-                    style={{ animationDelay: `${index * 0.1}s`, animationFillMode: 'backwards' }}
-                  >
-                    {/* Ikona z badge XP */}
-                    <div className="relative">
-                      <div className={`flex h-14 w-14 items-center justify-center rounded-xl transition-transform group-hover:scale-110 ${colorClass}`}>
-                        <Icon className="h-6 w-6" />
-                      </div>
-                      <span className="absolute -right-2 -top-2 inline-flex items-center rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-bold leading-none text-white">
-                        +{mission.xp_reward} XP
-                      </span>
+          <div className="grid grid-cols-2 gap-3">
+            {sortedMissions.slice(0, 2).map((mission, index) => {
+              const Icon = missionIconMap[mission.type] || Target;
+              const colorClass = missionColorMap[mission.type] || missionColorMap.manual;
+              return (
+                <Link
+                  key={mission.id}
+                  href="/missions"
+                  className={`animate-slide-up group flex flex-col items-center gap-3 rounded-xl border border-dark-700/50 bg-surface-1 p-4 text-center transition-all hover:border-turbo-500/50 hover:bg-surface-2 ${sortedMissions.length === 1 ? 'col-span-2' : ''}`}
+                  style={{ animationDelay: `${index * 0.1}s`, animationFillMode: 'backwards' }}
+                >
+                  {/* Ikona z badge XP */}
+                  <div className="relative">
+                    <div className={`flex h-14 w-14 items-center justify-center rounded-xl transition-transform group-hover:scale-110 ${colorClass}`}>
+                      <Icon className="h-6 w-6" />
                     </div>
-
-                    {/* Tytuł misji */}
-                    <span className="line-clamp-2 text-xs font-medium leading-tight text-white">
-                      {mission.title}
+                    <span className="absolute -right-2 -top-2 inline-flex items-center rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-bold leading-none text-white">
+                      +{mission.xp_reward} XP
                     </span>
-                  </Link>
-                );
-              })}
-            </div>
-            {sortedMissions.length > 2 && (
-              <button
-                onClick={() => setShowAllMissions(!showAllMissions)}
-                className="flex items-center justify-center gap-1.5 w-full py-2 text-sm font-medium text-dark-400 hover:text-white transition-colors"
-              >
-                {showAllMissions ? (
-                  <span className="flex items-center gap-1.5">Zwiń <ChevronUp className="h-4 w-4" /></span>
-                ) : (
-                  <span className="flex items-center gap-1.5">Pokaż więcej ({sortedMissions.length - 2}) <ChevronDown className="h-4 w-4" /></span>
-                )}
-              </button>
-            )}
-          </>
+                  </div>
+
+                  {/* Tytuł misji */}
+                  <span className="line-clamp-2 text-xs font-medium leading-tight text-white">
+                    {mission.title}
+                  </span>
+                </Link>
+              );
+            })}
+          </div>
         )}
       </div>
 
