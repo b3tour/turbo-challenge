@@ -273,7 +273,7 @@ export default function DashboardPage() {
           </div>
 
           <p className="mt-2 text-xs text-dark-400">
-            Zbierz karty z wymarzonymi samochodami
+            Zbieraj karty z wymarzonymi samochodami
           </p>
         </div>
 
