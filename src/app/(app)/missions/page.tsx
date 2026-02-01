@@ -3,13 +3,14 @@
 import { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useMissions } from '@/hooks/useMissions';
+import { useLevels } from '@/hooks/useLevels';
 import { Card, Badge, Button, Modal } from '@/components/ui';
 import { SkeletonCard } from '@/components/ui/Skeleton';
 import { useToast } from '@/components/ui/Toast';
 import { MissionCard, QRScanner, PhotoUpload, Quiz, GPSChecker } from '@/components/missions';
 import { Mission, MissionType } from '@/types';
-import { missionTypeStyles, missionTypeNames } from '@/lib/utils';
-import { Target, Filter, X, QrCode, Camera, HelpCircle, MapPin, ListTodo } from 'lucide-react';
+import { missionTypeStyles, missionTypeNames, formatNumber } from '@/lib/utils';
+import { Target, Filter, Zap, QrCode, Camera, HelpCircle, MapPin, ListTodo, Lock, CheckCircle, Loader2, Ban } from 'lucide-react';
 
 const missionIconMap: Record<string, React.ElementType> = {
   qr_code: QrCode,
@@ -23,21 +24,26 @@ type FilterType = 'all' | MissionType;
 
 export default function MissionsPage() {
   const { profile } = useAuth();
+  const { calculateLevel } = useLevels();
+  const userLevel = profile ? calculateLevel(profile.total_xp) : null;
+
   const {
     missions,
     userSubmissions,
     loading,
+    isMissionLocked,
     completeMissionQR,
     completeMissionPhoto,
     completeMissionQuiz,
     completeMissionGPS,
-  } = useMissions({ userId: profile?.id });
+  } = useMissions({ userId: profile?.id, userLevel: userLevel?.id || 1 });
   const { success, error: showError, info } = useToast();
 
   const [filter, setFilter] = useState<FilterType>('all');
   const [selectedMission, setSelectedMission] = useState<Mission | null>(null);
   const [showMissionModal, setShowMissionModal] = useState(false);
   const [showQRScanner, setShowQRScanner] = useState(false);
+  const [missionPhase, setMissionPhase] = useState<'detail' | 'execute'>('detail');
 
   if (!profile) return null;
 
@@ -54,8 +60,11 @@ export default function MissionsPage() {
   };
 
   // Funkcja do określenia priorytetu statusu (niższy = wyżej w liście)
-  const getStatusPriority = (missionId: string): number => {
-    const submission = getUserSubmission(missionId);
+  const getStatusPriority = (mission: Mission): number => {
+    const lockStatus = isMissionLocked(mission);
+    if (lockStatus.locked) return 5; // Zablokowane poziomem — na dole
+
+    const submission = getUserSubmission(mission.id);
     if (!submission || submission.status === 'rejected' || submission.status === 'revoked') {
       return 0; // Do zrobienia - najwyższy priorytet
     }
@@ -71,66 +80,30 @@ export default function MissionsPage() {
     return 4;
   };
 
-  // Filtruj i sortuj misje: najpierw do zrobienia (najnowsze), potem oczekujące, potem ukończone
+  // Filtruj i sortuj misje
   const filteredMissions = missions
     .filter(m => filter === 'all' || m.type === filter)
     .sort((a, b) => {
-      const priorityA = getStatusPriority(a.id);
-      const priorityB = getStatusPriority(b.id);
+      const priorityA = getStatusPriority(a);
+      const priorityB = getStatusPriority(b);
 
-      // Najpierw sortuj według priorytetu statusu
       if (priorityA !== priorityB) {
         return priorityA - priorityB;
       }
 
-      // W ramach tego samego statusu sortuj od najnowszych
       return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
     });
 
   const handleMissionClick = (mission: Mission) => {
-    const submission = getUserSubmission(mission.id);
-
-    if (submission?.status === 'approved') {
-      info('Misja ukończona', 'Ta misja została już przez Ciebie wykonana');
-      return;
-    }
-
-    if (submission?.status === 'pending') {
-      info('Oczekuje na weryfikację', 'Twoje zgłoszenie jest weryfikowane');
-      return;
-    }
-
-    if (submission?.status === 'failed') {
-      info('Misja nieukończona', 'Nie możesz ponownie wykonać tej misji');
-      return;
-    }
-
     setSelectedMission(mission);
+    setMissionPhase('detail');
     setShowMissionModal(true);
   };
 
-  const handleStartMission = () => {
-    if (!selectedMission) return;
-
+  const closeModal = () => {
     setShowMissionModal(false);
-
-    switch (selectedMission.type) {
-      case 'qr_code':
-        setShowQRScanner(true);
-        break;
-      case 'photo':
-        // PhotoUpload będzie w modalu
-        setShowMissionModal(true);
-        break;
-      case 'quiz':
-        // Quiz będzie w modalu
-        setShowMissionModal(true);
-        break;
-      case 'gps':
-        // GPS będzie w modalu
-        setShowMissionModal(true);
-        break;
-    }
+    setSelectedMission(null);
+    setMissionPhase('detail');
   };
 
   const handleQRScan = async (code: string) => {
@@ -140,6 +113,7 @@ export default function MissionsPage() {
 
     setShowQRScanner(false);
     setSelectedMission(null);
+    setMissionPhase('detail');
 
     if (result.success) {
       success('Misja ukończona!', `Zdobyłeś +${result.xp} XP`);
@@ -152,9 +126,7 @@ export default function MissionsPage() {
     if (!selectedMission) return;
 
     const result = await completeMissionPhoto(selectedMission.id, url, profile.id);
-
-    setShowMissionModal(false);
-    setSelectedMission(null);
+    closeModal();
 
     if (result.success) {
       info('Zgłoszenie wysłane!', 'Twoje zdjęcie czeka na weryfikację');
@@ -168,9 +140,7 @@ export default function MissionsPage() {
 
     const isSpeedrun = selectedMission.quiz_data?.mode === 'speedrun';
     const result = await completeMissionQuiz(selectedMission.id, answers, profile.id, timeMs);
-
-    setShowMissionModal(false);
-    setSelectedMission(null);
+    closeModal();
 
     if (result.success) {
       if (result.passed) {
@@ -192,9 +162,7 @@ export default function MissionsPage() {
     if (!selectedMission) return;
 
     const result = await completeMissionGPS(selectedMission.id, lat, lng, profile.id);
-
-    setShowMissionModal(false);
-    setSelectedMission(null);
+    closeModal();
 
     if (result.success) {
       success('Lokalizacja potwierdzona!', `Zdobyłeś +${result.xp} XP`);
@@ -206,34 +174,123 @@ export default function MissionsPage() {
   const renderMissionContent = () => {
     if (!selectedMission) return null;
 
+    // Faza 1: Szczegóły misji
+    if (missionPhase === 'detail') {
+      const lockStatus = isMissionLocked(selectedMission);
+      const submission = getUserSubmission(selectedMission.id);
+      const isCompleted = submission?.status === 'approved';
+      const isPending = submission?.status === 'pending';
+      const isFailed = submission?.status === 'failed';
+      const style = missionTypeStyles[selectedMission.type] || missionTypeStyles.manual;
+      const Icon = missionIconMap[selectedMission.type] || ListTodo;
+
+      return (
+        <div className="p-4">
+          {/* Ikona + Tytuł */}
+          <div className="text-center mb-6">
+            <div className={`w-16 h-16 rounded-2xl ${style.bgColor} flex items-center justify-center mx-auto mb-3`}>
+              <Icon className={`w-8 h-8 ${style.color}`} />
+            </div>
+            <h3 className="text-xl font-bold text-white">{selectedMission.title}</h3>
+            <div className="flex items-center justify-center gap-2 mt-2">
+              <span className="inline-flex items-center gap-1 rounded-lg bg-pink-500/10 px-2.5 py-1 text-sm font-bold text-pink-500">
+                <Zap className="w-3.5 h-3.5" />
+                +{selectedMission.xp_reward} XP
+              </span>
+              {selectedMission.required_level > 1 && (
+                <span className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-sm font-medium ${
+                  lockStatus.locked
+                    ? 'bg-red-500/10 text-red-400'
+                    : 'bg-green-500/10 text-green-400'
+                }`}>
+                  <Lock className="w-3 h-3" />
+                  Poziom {selectedMission.required_level}
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Opis */}
+          <p className="text-dark-300 mb-6 text-sm leading-relaxed">{selectedMission.description}</p>
+
+          {/* Lokalizacja */}
+          {selectedMission.location_name && (
+            <div className="mb-4 p-3 bg-dark-700/50 rounded-xl flex items-center gap-2">
+              <MapPin className="w-4 h-4 text-dark-400" />
+              <span className="text-sm text-dark-300">{selectedMission.location_name}</span>
+            </div>
+          )}
+
+          {/* Typ misji */}
+          <div className="mb-6 p-3 bg-dark-700/50 rounded-xl flex items-center gap-2">
+            <Icon className={`w-4 h-4 ${style.color}`} />
+            <span className="text-sm text-dark-300">{missionTypeNames[selectedMission.type]}</span>
+          </div>
+
+          {/* Akcja lub status */}
+          {lockStatus.locked ? (
+            <div className="text-center p-4 bg-dark-700/30 rounded-xl">
+              <Lock className="w-8 h-8 text-dark-500 mx-auto mb-2" />
+              <p className="text-dark-400 text-sm">Wymaga poziomu {lockStatus.requiredLevel}</p>
+              <p className="text-dark-500 text-xs mt-1">Twój aktualny poziom: {userLevel?.id || 1}</p>
+            </div>
+          ) : isCompleted ? (
+            <div className="text-center p-4 bg-green-500/10 rounded-xl">
+              <CheckCircle className="w-8 h-8 text-green-400 mx-auto mb-2" />
+              <p className="text-green-400 font-medium">Misja ukończona</p>
+              <p className="text-dark-400 text-xs mt-1">+{formatNumber(submission?.xp_awarded || selectedMission.xp_reward)} XP</p>
+            </div>
+          ) : isPending ? (
+            <div className="text-center p-4 bg-yellow-500/10 rounded-xl">
+              <Loader2 className="w-8 h-8 text-yellow-400 mx-auto mb-2 animate-spin" />
+              <p className="text-yellow-400 font-medium">Oczekuje na weryfikację</p>
+            </div>
+          ) : isFailed ? (
+            <div className="text-center p-4 bg-red-500/10 rounded-xl">
+              <Ban className="w-8 h-8 text-red-400 mx-auto mb-2" />
+              <p className="text-red-400 font-medium">Misja nieukończona</p>
+            </div>
+          ) : (
+            <Button
+              fullWidth
+              size="lg"
+              onClick={() => {
+                if (selectedMission.type === 'qr_code') {
+                  setShowMissionModal(false);
+                  setShowQRScanner(true);
+                } else {
+                  setMissionPhase('execute');
+                }
+              }}
+            >
+              Rozpocznij misję
+            </Button>
+          )}
+        </div>
+      );
+    }
+
+    // Faza 2: Wykonanie misji
     switch (selectedMission.type) {
       case 'photo':
         return (
           <PhotoUpload
             onUpload={handlePhotoUpload}
-            onCancel={() => {
-              setShowMissionModal(false);
-              setSelectedMission(null);
-            }}
+            onCancel={closeModal}
             requirements={selectedMission.photo_requirements}
             userId={profile.id}
             missionId={selectedMission.id}
           />
         );
-
       case 'quiz':
         if (!selectedMission.quiz_data) return null;
         return (
           <Quiz
             quizData={selectedMission.quiz_data}
             onComplete={handleQuizComplete}
-            onCancel={() => {
-              setShowMissionModal(false);
-              setSelectedMission(null);
-            }}
+            onCancel={closeModal}
           />
         );
-
       case 'gps':
         if (!selectedMission.location_lat || !selectedMission.location_lng) return null;
         return (
@@ -243,41 +300,11 @@ export default function MissionsPage() {
             targetRadius={selectedMission.location_radius || 50}
             locationName={selectedMission.location_name}
             onSuccess={handleGPSSuccess}
-            onCancel={() => {
-              setShowMissionModal(false);
-              setSelectedMission(null);
-            }}
+            onCancel={closeModal}
           />
         );
-
       default:
-        // Domyślny widok szczegółów misji
-        return (
-          <div className="p-4">
-            <div className="text-center mb-6">
-              <div className={`w-16 h-16 rounded-2xl ${(missionTypeStyles[selectedMission.type] || missionTypeStyles.manual).bgColor} flex items-center justify-center mx-auto mb-2`}>
-                {(() => { const Icon = missionIconMap[selectedMission.type] || ListTodo; const style = missionTypeStyles[selectedMission.type] || missionTypeStyles.manual; return <Icon className={`w-8 h-8 ${style.color}`} />; })()}
-              </div>
-              <h3 className="text-xl font-bold text-white">{selectedMission.title}</h3>
-              <Badge variant="turbo" className="mt-2">
-                +{selectedMission.xp_reward} XP
-              </Badge>
-            </div>
-
-            <p className="text-dark-300 mb-6">{selectedMission.description}</p>
-
-            {selectedMission.location_name && (
-              <div className="mb-4 p-3 bg-dark-700 rounded-xl">
-                <p className="text-sm text-dark-400">Lokalizacja</p>
-                <p className="text-white">{selectedMission.location_name}</p>
-              </div>
-            )}
-
-            <Button fullWidth size="lg" onClick={handleStartMission}>
-              Rozpocznij misję
-            </Button>
-          </div>
-        );
+        return null;
     }
   };
 
@@ -317,21 +344,26 @@ export default function MissionsPage() {
 
       {/* Missions List */}
       {loading ? (
-        <div className="space-y-3">
+        <div className="space-y-2">
           {[1, 2, 3, 4].map(i => (
             <SkeletonCard key={i} />
           ))}
         </div>
       ) : filteredMissions.length > 0 ? (
-        <div className="space-y-3">
-          {filteredMissions.map(mission => (
-            <MissionCard
-              key={mission.id}
-              mission={mission}
-              userSubmission={getUserSubmission(mission.id)}
-              onClick={() => handleMissionClick(mission)}
-            />
-          ))}
+        <div className="space-y-2">
+          {filteredMissions.map(mission => {
+            const lockStatus = isMissionLocked(mission);
+            return (
+              <MissionCard
+                key={mission.id}
+                mission={mission}
+                userSubmission={getUserSubmission(mission.id)}
+                onClick={() => handleMissionClick(mission)}
+                isLevelLocked={lockStatus.locked}
+                requiredLevel={lockStatus.requiredLevel}
+              />
+            );
+          })}
         </div>
       ) : (
         <Card className="text-center py-12">
@@ -342,12 +374,9 @@ export default function MissionsPage() {
 
       {/* Mission Modal */}
       <Modal
-        isOpen={showMissionModal && selectedMission !== null && selectedMission.type !== 'qr_code'}
-        onClose={() => {
-          setShowMissionModal(false);
-          setSelectedMission(null);
-        }}
-        title={selectedMission?.type === 'qr_code' ? undefined : selectedMission?.title}
+        isOpen={showMissionModal && selectedMission !== null}
+        onClose={closeModal}
+        title={missionPhase === 'detail' ? undefined : selectedMission?.title}
         size="lg"
       >
         {renderMissionContent()}
@@ -361,6 +390,7 @@ export default function MissionsPage() {
           onClose={() => {
             setShowQRScanner(false);
             setSelectedMission(null);
+            setMissionPhase('detail');
           }}
         />
       )}

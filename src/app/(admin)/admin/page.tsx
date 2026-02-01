@@ -272,6 +272,7 @@ export default function AdminPage() {
     location_name: '',
     qr_code_value: '',
     status: 'active' as MissionStatus,
+    required_level: 1,
     quiz_passing_score: 70,
     quiz_time_limit: 0,
     quiz_mode: 'classic' as QuizMode,
@@ -437,6 +438,7 @@ export default function AdminPage() {
       location_name: '',
       qr_code_value: '',
       status: 'active',
+      required_level: 1,
       quiz_passing_score: 70,
       quiz_time_limit: 0,
       quiz_mode: 'classic',
@@ -460,6 +462,7 @@ export default function AdminPage() {
       location_name: mission.location_name || '',
       qr_code_value: mission.qr_code_value || '',
       status: mission.status,
+      required_level: mission.required_level || 1,
       quiz_passing_score: mission.quiz_data?.passing_score || 70,
       quiz_time_limit: mission.quiz_data?.time_limit || 0,
       quiz_mode: mission.quiz_data?.mode || 'classic',
@@ -618,6 +621,7 @@ export default function AdminPage() {
         ? (missionForm.qr_code_value || generateQRCode())
         : null,
       status: missionForm.status,
+      required_level: missionForm.required_level,
       quiz_data: quizData,
     };
 
@@ -3507,13 +3511,28 @@ export default function AdminPage() {
               </select>
             </div>
 
-            <Input
-              label="Lokalizacja"
-              value={missionForm.location_name}
-              onChange={e => setMissionForm(prev => ({ ...prev, location_name: e.target.value }))}
-              placeholder="np. Hala glowna"
-            />
+            <div>
+              <label className="block text-sm font-medium text-dark-200 mb-1.5">Wymagany poziom</label>
+              <select
+                value={missionForm.required_level}
+                onChange={e => setMissionForm(prev => ({ ...prev, required_level: parseInt(e.target.value) }))}
+                className="w-full bg-dark-800 border border-dark-600 rounded-xl px-4 py-2.5 text-white"
+              >
+                {Array.from({ length: 10 }, (_, i) => i + 1).map(level => (
+                  <option key={level} value={level}>
+                    {level === 1 ? '1 (brak wymagania)' : `Poziom ${level}`}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
+
+          <Input
+            label="Lokalizacja"
+            value={missionForm.location_name}
+            onChange={e => setMissionForm(prev => ({ ...prev, location_name: e.target.value }))}
+            placeholder="np. Hala glowna"
+          />
 
           {missionForm.type === 'qr_code' && (
             <Input

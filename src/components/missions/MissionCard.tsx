@@ -1,9 +1,10 @@
 'use client';
 
 import { Mission, Submission } from '@/types';
-import { Card, Badge, Button } from '@/components/ui';
+import { Badge } from '@/components/ui';
 import { missionTypeNames, missionTypeStyles, formatNumber } from '@/lib/utils';
-import { MapPin, Clock, Zap, CheckCircle, Loader2, XCircle, Ban, Camera, QrCode, HelpCircle, ListTodo } from 'lucide-react';
+import { Zap, CheckCircle, Loader2, XCircle, Ban, Camera, QrCode, HelpCircle, MapPin, ListTodo, Lock, ChevronRight } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 const missionIconMap: Record<string, React.ElementType> = {
   qr_code: QrCode,
@@ -17,22 +18,24 @@ interface MissionCardProps {
   mission: Mission;
   userSubmission?: Submission | null;
   onClick?: () => void;
-  compact?: boolean;
+  isLevelLocked?: boolean;
+  requiredLevel?: number;
 }
 
 export function MissionCard({
   mission,
   userSubmission,
   onClick,
-  compact = false,
+  isLevelLocked = false,
+  requiredLevel,
 }: MissionCardProps) {
   const isCompleted = userSubmission?.status === 'approved';
   const isPending = userSubmission?.status === 'pending';
   const isRejected = userSubmission?.status === 'rejected';
   const isFailed = userSubmission?.status === 'failed';
 
-  // Czy misja jest zablokowana (nie można wykonać)
-  const isBlocked = isCompleted || isPending || isFailed;
+  const style = missionTypeStyles[mission.type] || missionTypeStyles.manual;
+  const Icon = missionIconMap[mission.type] || ListTodo;
 
   const getStatusBadge = () => {
     if (isCompleted) {
@@ -70,113 +73,54 @@ export function MissionCard({
     return null;
   };
 
-  if (compact) {
-    return (
-      <Card
-        hover={!isBlocked}
-        onClick={!isBlocked ? onClick : undefined}
-        className={isBlocked ? 'opacity-60' : ''}
-      >
-        <div className="flex items-center gap-3">
-          <div className={`w-8 h-8 rounded-lg ${(missionTypeStyles[mission.type] || missionTypeStyles.manual).bgColor} flex items-center justify-center`}>
-            {(() => { const Icon = missionIconMap[mission.type] || ListTodo; const style = missionTypeStyles[mission.type] || missionTypeStyles.manual; return <Icon className={`w-4 h-4 ${style.color}`} />; })()}
-          </div>
-          <div className="flex-1 min-w-0">
-            <h4 className="font-medium text-white truncate">{mission.title}</h4>
-            <p className="text-sm text-dark-400">{missionTypeNames[mission.type]}</p>
-          </div>
-          <div className="flex items-center gap-2">
-            {getStatusBadge()}
-            <div className="text-right">
-              <div className="flex items-center font-bold text-pink-500">
-                <Zap className="w-4 h-4 mr-1" />
-                {formatNumber(mission.xp_reward)} XP
-              </div>
-            </div>
-          </div>
-        </div>
-      </Card>
-    );
-  }
+  const statusBadge = getStatusBadge();
+  const isBlocked = isCompleted || isPending || isFailed;
 
   return (
-    <Card
-      hover={!isBlocked}
-      onClick={!isBlocked ? onClick : undefined}
-      className={isBlocked ? 'opacity-70' : ''}
+    <div
+      onClick={onClick}
+      className={cn(
+        'group flex items-center gap-3 p-3 rounded-xl bg-surface-1 border border-dark-700/50 transition-all',
+        !isBlocked && !isLevelLocked && 'hover:bg-surface-2 hover:border-dark-600 cursor-pointer',
+        isLevelLocked && 'opacity-50',
+        isBlocked && !isLevelLocked && 'cursor-pointer',
+      )}
     >
-      {/* Header */}
-      <div className="flex items-start justify-between mb-3">
-        <div className="flex items-center gap-3">
-          <div className={`w-12 h-12 rounded-xl ${(missionTypeStyles[mission.type] || missionTypeStyles.manual).bgColor} flex items-center justify-center`}>
-            {(() => { const Icon = missionIconMap[mission.type] || ListTodo; const style = missionTypeStyles[mission.type] || missionTypeStyles.manual; return <Icon className={`w-6 h-6 ${style.color}`} />; })()}
-          </div>
-          <div>
-            <Badge variant="default" size="sm">
-              {missionTypeNames[mission.type]}
-            </Badge>
-          </div>
-        </div>
-        {getStatusBadge()}
-      </div>
-
-      {/* Content */}
-      <h3 className="text-lg font-semibold text-white mb-2">{mission.title}</h3>
-      <p className="text-dark-300 text-sm mb-4 line-clamp-2">{mission.description}</p>
-
-      {/* Meta */}
-      <div className="flex items-center gap-4 text-sm text-dark-400 mb-4">
-        {mission.location_name && (
-          <div className="flex items-center gap-1">
-            <MapPin className="w-4 h-4" />
-            <span>{mission.location_name}</span>
-          </div>
-        )}
-        {mission.end_date && (
-          <div className="flex items-center gap-1">
-            <Clock className="w-4 h-4" />
-            <span>
-              Do {new Date(mission.end_date).toLocaleDateString('pl-PL')}
-            </span>
-          </div>
+      {/* Mission type icon */}
+      <div className={cn(
+        'w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0',
+        isLevelLocked ? 'bg-dark-700' : style.bgColor,
+      )}>
+        {isLevelLocked ? (
+          <Lock className="w-5 h-5 text-dark-500" />
+        ) : (
+          <Icon className={`w-5 h-5 ${style.color}`} />
         )}
       </div>
 
-      {/* Footer */}
-      <div className="flex items-center justify-between pt-3 border-t border-dark-700">
-        <div className="flex items-center gap-1">
-          <Zap className="w-5 h-5 text-pink-500" />
-          <span className="text-xl font-bold text-pink-500">
-            {formatNumber(mission.xp_reward)} XP
-          </span>
-        </div>
+      {/* Title + description + status */}
+      <div className="flex-1 min-w-0">
+        <h4 className="font-medium text-white text-sm truncate">{mission.title}</h4>
+        <p className="text-xs text-dark-400 line-clamp-1 mt-0.5">{mission.description}</p>
+        {statusBadge && <div className="mt-1">{statusBadge}</div>}
+      </div>
 
-        {!isBlocked && (
-          <Button size="sm" onClick={onClick}>
-            Wykonaj misję
-          </Button>
-        )}
-
-        {isCompleted && (
-          <span className="text-sm text-green-400 flex items-center gap-1">
-            <CheckCircle className="w-4 h-4" />
-            +{formatNumber(userSubmission?.xp_awarded || mission.xp_reward)} XP
+      {/* Right side: XP + arrow or lock info */}
+      <div className="flex items-center gap-1.5 flex-shrink-0">
+        {isLevelLocked ? (
+          <span className="text-xs text-dark-500 font-medium whitespace-nowrap">
+            Poz. {requiredLevel}
           </span>
-        )}
-
-        {isPending && (
-          <span className="text-sm text-yellow-400">
-            Czeka na weryfikację
-          </span>
-        )}
-
-        {isFailed && (
-          <span className="text-sm text-red-400 flex items-center gap-1">
-            <Ban className="w-4 h-4" />
-            Zablokowane
-          </span>
+        ) : (
+          <>
+            <div className="flex items-center gap-0.5 text-pink-500 font-bold text-sm whitespace-nowrap">
+              <Zap className="w-3.5 h-3.5" />
+              {formatNumber(mission.xp_reward)} XP
+            </div>
+            <ChevronRight className="w-4 h-4 text-dark-500 group-hover:translate-x-1 transition-transform" />
+          </>
         )}
       </div>
-    </Card>
+    </div>
   );
 }

@@ -8,6 +8,7 @@ interface UseMissionsOptions {
   type?: MissionType;
   activeOnly?: boolean;
   userId?: string;
+  userLevel?: number;
 }
 
 export function useMissions(options: UseMissionsOptions = {}) {
@@ -69,6 +70,14 @@ export function useMissions(options: UseMissionsOptions = {}) {
     // Sprawdź czy misja jest aktywna
     if (mission.status !== 'active') {
       return { canComplete: false, reason: 'Misja nie jest aktywna' };
+    }
+
+    // Sprawdź wymagany poziom
+    if (mission.required_level && mission.required_level > 1) {
+      const currentLevel = options.userLevel || 1;
+      if (currentLevel < mission.required_level) {
+        return { canComplete: false, reason: `Wymaga poziomu ${mission.required_level}` };
+      }
     }
 
     // Sprawdź daty
@@ -324,6 +333,17 @@ export function useMissions(options: UseMissionsOptions = {}) {
     return { success: true, xp: mission.xp_reward };
   };
 
+  // Sprawdź czy misja jest zablokowana poziomem
+  const isMissionLocked = (mission: Mission): { locked: boolean; requiredLevel?: number } => {
+    if (mission.required_level && mission.required_level > 1) {
+      const currentLevel = options.userLevel || 1;
+      if (currentLevel < mission.required_level) {
+        return { locked: true, requiredLevel: mission.required_level };
+      }
+    }
+    return { locked: false };
+  };
+
   // Pobierz statystyki misji
   const getMissionStats = (missionId: string) => {
     const submissions = userSubmissions.filter(s => s.mission_id === missionId);
@@ -342,6 +362,7 @@ export function useMissions(options: UseMissionsOptions = {}) {
     error,
     refetch: fetchMissions,
     canCompleteMission,
+    isMissionLocked,
     completeMissionQR,
     completeMissionPhoto,
     completeMissionQuiz,
