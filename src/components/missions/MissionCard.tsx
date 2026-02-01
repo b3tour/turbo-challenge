@@ -88,8 +88,8 @@ export function MissionCard({
           <div className="flex items-center gap-2">
             {getStatusBadge()}
             <div className="text-right">
-              <div className="flex items-center text-turbo-400 font-bold">
-                <Star className="w-4 h-4 mr-1" />
+              <div className="flex items-center font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-500">
+                <Star className="w-4 h-4 mr-1 text-purple-400" />
                 {formatNumber(mission.xp_reward)}
               </div>
               <span className="text-xs text-dark-400">XP</span>
@@ -146,8 +146,8 @@ export function MissionCard({
       {/* Footer */}
       <div className="flex items-center justify-between pt-3 border-t border-dark-700">
         <div className="flex items-center gap-1">
-          <Star className="w-5 h-5 text-turbo-400" />
-          <span className="text-xl font-bold text-turbo-400">
+          <Star className="w-5 h-5 text-purple-400" />
+          <span className="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-500">
             {formatNumber(mission.xp_reward)}
           </span>
           <span className="text-dark-400 text-sm">XP</span>
