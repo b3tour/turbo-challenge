@@ -161,7 +161,7 @@ export default function DashboardPage() {
             href="/mystery"
             className="group mt-5 block rounded-xl bg-surface-2 p-4 border border-transparent transition-all duration-300 hover:border-green-500/40 hover:shadow-[0_0_20px_rgba(34,197,94,0.1)]"
           >
-            <div className="flex items-center gap-2.5">
+            <div className="flex items-center gap-4">
               <span className="text-2xl flex-shrink-0">❤️</span>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-white">Wsparcie Turbo Pomoc</p>
