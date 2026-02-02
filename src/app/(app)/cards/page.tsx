@@ -571,7 +571,7 @@ export default function CardsPage() {
             </div>
             <ProgressBar value={allCarStats.total > 0 ? Math.round((allCarStats.collected / allCarStats.total) * 100) : 0} />
 
-            <div className="grid grid-cols-4 gap-1.5 mt-3">
+            <div className="grid grid-cols-4 gap-2 mt-3">
               {(Object.keys(RARITY_CONFIG) as CardRarity[]).map(rarity => {
                 const config = RARITY_CONFIG[rarity];
                 const rarityStats = allCarStats.byRarity[rarity];
@@ -580,19 +580,17 @@ export default function CardsPage() {
                   <button
                     key={rarity}
                     onClick={() => setRarityFilter(rarityFilter === rarity ? 'all' : rarity)}
-                    className={`text-center px-1.5 py-1.5 rounded-lg transition-all duration-200 ${
+                    className={`p-2 rounded-lg transition-all duration-200 ${
                       isActive
-                        ? `${config.bgColor} ring-1 ${config.borderColor.replace('border-', 'ring-')}`
-                        : 'bg-surface-3 hover:bg-surface-4'
+                        ? `${config.bgColor} ring-2 ring-offset-2 ring-offset-dark-800 ${config.borderColor.replace('border-', 'ring-')}`
+                        : `${config.bgColor} hover:scale-105`
                     }`}
                   >
-                    <div className="flex items-center justify-center gap-1">
-                      <config.icon className={`w-3.5 h-3.5 ${config.color}`} />
-                      <span className={`text-[11px] ${isActive ? config.color : 'text-dark-300'}`}>
-                        {config.name}
-                      </span>
+                    <config.icon className={`w-5 h-5 ${config.color} mb-1`} />
+                    <div className={`text-[10px] ${config.color} opacity-70 text-left`}>
+                      {config.name}
                     </div>
-                    <div className={`text-xs font-bold ${config.color} mt-0.5`}>
+                    <div className={`text-xs font-medium ${config.color} text-left`}>
                       {rarityStats.collected}/{rarityStats.total}
                     </div>
                   </button>
