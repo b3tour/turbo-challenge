@@ -586,7 +586,7 @@ export default function CardsPage() {
                         : `${config.bgColor} hover:scale-105`
                     }`}
                   >
-                    <div className="flex items-start gap-1.5">
+                    <div className="inline-flex items-start gap-1.5 mx-auto">
                       <config.icon className={`w-4 h-4 ${config.color} mt-0.5 flex-shrink-0`} />
                       <div>
                         <div className={`text-[10px] ${config.color} opacity-70 text-left`}>
