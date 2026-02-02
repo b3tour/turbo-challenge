@@ -632,7 +632,7 @@ export default function CardsPage() {
                   <button
                     key={rarity}
                     onClick={() => setRarityFilter(rarityFilter === rarity ? 'all' : rarity)}
-                    className={`group relative overflow-hidden rounded-2xl p-2.5 sm:p-3.5 transition-all duration-200 border hover:scale-[1.03] active:scale-[0.98] ${
+                    className={`group relative overflow-hidden rounded-2xl p-2 sm:p-2.5 transition-all duration-200 border hover:scale-[1.03] active:scale-[0.98] ${
                       isActive
                         ? `${token.borderActive} ring-1 ring-white/10`
                         : `border-white/[0.06] ${token.borderHover}`
@@ -644,19 +644,16 @@ export default function CardsPage() {
                         : 'inset 0 1px 0 rgba(255,255,255,0.04)',
                     }}
                   >
-                    <div
-                      className="w-5 h-5 sm:w-6 sm:h-6 rounded-[10px] flex items-center justify-center mb-2"
-                      style={{ background: token.iconBg }}
-                    >
-                      <Icon className="w-2.5 h-2.5 sm:w-3 sm:h-3" style={{ color: token.accent }} />
+                    <div className="flex justify-center mb-1.5">
+                      <Icon className="w-4 h-4" style={{ color: token.accent }} />
                     </div>
-                    <p className="text-lg sm:text-xl font-semibold leading-tight text-white" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.4)' }}>
+                    <p className={`text-xs sm:text-sm font-semibold leading-tight text-center transition-colors ${isActive ? '' : 'text-white'}`} style={isActive ? { color: token.accent, textShadow: '0 1px 3px rgba(0,0,0,0.4)' } : { textShadow: '0 1px 3px rgba(0,0,0,0.4)' }}>
                       {rarityStats.collected}/{rarityStats.total}
                     </p>
-                    <p className="text-[11px] sm:text-xs font-medium text-white/80 mt-0.5 truncate">
+                    <p className={`text-[10px] sm:text-[11px] font-medium mt-0.5 truncate text-center transition-colors ${isActive ? '' : 'text-white/70'}`} style={isActive ? { color: token.accent, opacity: 0.85 } : undefined}>
                       {config.name}
                     </p>
-                    <div className="mt-2 h-1.5 sm:h-2 w-full rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.10)' }}>
+                    <div className="mt-1.5 h-1 sm:h-1.5 w-full rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.10)' }}>
                       <div
                         className="h-full rounded-full transition-all duration-300 ease-out"
                         style={{
@@ -668,10 +665,10 @@ export default function CardsPage() {
                     </div>
                     {isComplete && (
                       <div
-                        className="absolute top-1.5 right-1.5 sm:top-2 sm:right-2 w-4 h-4 rounded-full flex items-center justify-center"
+                        className="absolute top-1 right-1 sm:top-1.5 sm:right-1.5 w-3.5 h-3.5 rounded-full flex items-center justify-center"
                         style={{ background: token.accent }}
                       >
-                        <Check className="w-2.5 h-2.5 text-black" strokeWidth={3} />
+                        <Check className="w-2 h-2 text-black" strokeWidth={3} />
                       </div>
                     )}
                   </button>
@@ -876,25 +873,22 @@ export default function CardsPage() {
                 return (
                   <div
                     key={rarity}
-                    className="relative overflow-hidden rounded-2xl p-2.5 sm:p-3.5 border border-white/[0.06]"
+                    className="relative overflow-hidden rounded-2xl p-2 sm:p-2.5 border border-white/[0.06]"
                     style={{
                       background: `radial-gradient(ellipse at 30% 20%, ${token.bgGradientFrom}, ${token.bgGradientTo})`,
                       boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04)',
                     }}
                   >
-                    <div
-                      className="w-5 h-5 sm:w-6 sm:h-6 rounded-[10px] flex items-center justify-center mb-2"
-                      style={{ background: token.iconBg }}
-                    >
-                      <Icon className="w-2.5 h-2.5 sm:w-3 sm:h-3" style={{ color: token.accent }} />
+                    <div className="flex justify-center mb-1.5">
+                      <Icon className="w-4 h-4" style={{ color: token.accent }} />
                     </div>
-                    <p className="text-lg sm:text-xl font-semibold leading-tight text-white" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.4)' }}>
+                    <p className="text-xs sm:text-sm font-semibold leading-tight text-white text-center" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.4)' }}>
                       {rarityStats.collected}/{rarityStats.total}
                     </p>
-                    <p className="text-[11px] sm:text-xs font-medium text-white/80 mt-0.5 truncate">
+                    <p className="text-[10px] sm:text-[11px] font-medium text-white/70 mt-0.5 truncate text-center">
                       {config.name}
                     </p>
-                    <div className="mt-2 h-1.5 sm:h-2 w-full rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.10)' }}>
+                    <div className="mt-1.5 h-1 sm:h-1.5 w-full rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.10)' }}>
                       <div
                         className="h-full rounded-full transition-all duration-300 ease-out"
                         style={{
@@ -906,10 +900,10 @@ export default function CardsPage() {
                     </div>
                     {isComplete && (
                       <div
-                        className="absolute top-1.5 right-1.5 sm:top-2 sm:right-2 w-4 h-4 rounded-full flex items-center justify-center"
+                        className="absolute top-1 right-1 sm:top-1.5 sm:right-1.5 w-3.5 h-3.5 rounded-full flex items-center justify-center"
                         style={{ background: token.accent }}
                       >
-                        <Check className="w-2.5 h-2.5 text-black" strokeWidth={3} />
+                        <Check className="w-2 h-2 text-black" strokeWidth={3} />
                       </div>
                     )}
                   </div>
