@@ -622,15 +622,15 @@ export default function CardsPage() {
                     <div className={`absolute -right-4 -top-4 h-12 w-12 rounded-full ${glow.orbColor} blur-xl transition-opacity ${
                       isActive ? 'opacity-60' : 'opacity-0 group-hover:opacity-40'
                     }`} />
-                    <div className="relative">
-                      <div className="flex items-center justify-center gap-1.5">
-                        <config.icon className={`w-4 h-4 ${config.color} flex-shrink-0`} />
-                        <span className={`text-xs font-medium ${config.color}`}>
+                    <div className="relative inline-flex items-center gap-1.5 mx-auto">
+                      <config.icon className={`w-4 h-4 ${config.color} flex-shrink-0`} />
+                      <div>
+                        <div className={`text-xs font-medium ${config.color}`}>
                           {rarityStats.collected}/{rarityStats.total}
-                        </span>
-                      </div>
-                      <div className={`text-[10px] ${config.color} opacity-70 text-center mt-0.5`}>
-                        {config.name}
+                        </div>
+                        <div className={`text-[10px] ${config.color} opacity-70`}>
+                          {config.name}
+                        </div>
                       </div>
                     </div>
                   </button>
@@ -830,14 +830,16 @@ export default function CardsPage() {
                 const rarityStats = stats.byRarity[rarity];
                 return (
                   <div key={rarity} className={`py-2 px-2 rounded-lg ${config.bgColor}`}>
-                    <div className="flex items-center justify-center gap-1.5">
+                    <div className="inline-flex items-center gap-1.5 mx-auto">
                       <config.icon className={`w-4 h-4 ${config.color} flex-shrink-0`} />
-                      <span className={`text-xs font-medium ${config.color}`}>
-                        {rarityStats.collected}/{rarityStats.total}
-                      </span>
-                    </div>
-                    <div className={`text-[10px] ${config.color} opacity-70 text-center mt-0.5`}>
-                      {config.name}
+                      <div>
+                        <div className={`text-xs font-medium ${config.color}`}>
+                          {rarityStats.collected}/{rarityStats.total}
+                        </div>
+                        <div className={`text-[10px] ${config.color} opacity-70`}>
+                          {config.name}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 );
