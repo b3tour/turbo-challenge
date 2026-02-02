@@ -1,6 +1,6 @@
 ﻿'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useCards, RARITY_CONFIG } from '@/hooks/useCards';
 import { useCardOrders } from '@/hooks/useCardOrders';
@@ -39,41 +39,57 @@ import {
   Grid2X2,
   Grid3X3,
   Wrench,
+  Check,
 } from 'lucide-react';
 import { CollectibleCardDisplay } from '@/components/cards';
 import { TuningContent } from '@/components/arena/TuningContent';
 
 type ViewTab = 'car' | 'tuning' | 'achievement';
 
-const RARITY_GLOW: Record<CardRarity, {
-  activeShadow: string;
-  hoverBorder: string;
-  hoverShadow: string;
-  orbColor: string;
+const RARITY_TILE_TOKENS: Record<CardRarity, {
+  bgGradientFrom: string;
+  bgGradientTo: string;
+  accent: string;
+  iconBg: string;
+  accentGlow: string;
+  borderActive: string;
+  borderHover: string;
 }> = {
   common: {
-    activeShadow: 'shadow-[0_0_20px_rgba(107,114,128,0.25)]',
-    hoverBorder: 'hover:border-gray-500/40',
-    hoverShadow: 'hover:shadow-[0_0_20px_rgba(107,114,128,0.15)]',
-    orbColor: 'bg-gray-500/10',
+    bgGradientFrom: 'rgba(209,213,219,0.15)',
+    bgGradientTo: 'rgba(209,213,219,0.05)',
+    accent: '#D1D5DB',
+    iconBg: 'rgba(255,255,255,0.10)',
+    accentGlow: '0 0 20px rgba(209,213,219,0.35)',
+    borderActive: 'border-gray-400/50',
+    borderHover: 'hover:border-gray-400/30',
   },
   rare: {
-    activeShadow: 'shadow-[0_0_20px_rgba(59,130,246,0.3)]',
-    hoverBorder: 'hover:border-blue-500/40',
-    hoverShadow: 'hover:shadow-[0_0_20px_rgba(59,130,246,0.15)]',
-    orbColor: 'bg-blue-500/10',
+    bgGradientFrom: 'rgba(96,165,250,0.18)',
+    bgGradientTo: 'rgba(96,165,250,0.05)',
+    accent: '#60A5FA',
+    iconBg: 'rgba(255,255,255,0.12)',
+    accentGlow: '0 0 20px rgba(96,165,250,0.30)',
+    borderActive: 'border-blue-500/50',
+    borderHover: 'hover:border-blue-500/30',
   },
   epic: {
-    activeShadow: 'shadow-[0_0_20px_rgba(168,85,247,0.3)]',
-    hoverBorder: 'hover:border-purple-500/40',
-    hoverShadow: 'hover:shadow-[0_0_20px_rgba(168,85,247,0.15)]',
-    orbColor: 'bg-purple-500/10',
+    bgGradientFrom: 'rgba(167,139,250,0.18)',
+    bgGradientTo: 'rgba(167,139,250,0.05)',
+    accent: '#A78BFA',
+    iconBg: 'rgba(255,255,255,0.12)',
+    accentGlow: '0 0 20px rgba(167,139,250,0.30)',
+    borderActive: 'border-purple-500/50',
+    borderHover: 'hover:border-purple-500/30',
   },
   legendary: {
-    activeShadow: 'shadow-[0_0_20px_rgba(234,179,8,0.35)]',
-    hoverBorder: 'hover:border-yellow-500/40',
-    hoverShadow: 'hover:shadow-[0_0_20px_rgba(234,179,8,0.2)]',
-    orbColor: 'bg-yellow-500/10',
+    bgGradientFrom: 'rgba(251,191,36,0.18)',
+    bgGradientTo: 'rgba(251,191,36,0.05)',
+    accent: '#FBBF24',
+    iconBg: 'rgba(255,255,255,0.15)',
+    accentGlow: '0 0 20px rgba(251,191,36,0.35)',
+    borderActive: 'border-yellow-500/50',
+    borderHover: 'hover:border-yellow-500/30',
   },
 };
 
@@ -203,6 +219,18 @@ export default function CardsPage() {
   const [loadingImages, setLoadingImages] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [showGallery, setShowGallery] = useState(false);
+  const [animatedRarities, setAnimatedRarities] = useState<Set<CardRarity>>(new Set());
+
+  useEffect(() => {
+    if (!loading) {
+      const rarities: CardRarity[] = ['common', 'rare', 'epic', 'legendary'];
+      const timers = rarities.map((rarity, i) =>
+        setTimeout(() => setAnimatedRarities(prev => new Set(prev).add(rarity)), 100 + i * 200)
+      );
+      return () => timers.forEach(clearTimeout);
+    }
+    setAnimatedRarities(new Set());
+  }, [loading]);
 
   // Pobierz karty według typu
   const achievementCards = getCardsByType('achievement');
@@ -556,7 +584,7 @@ export default function CardsPage() {
       )}
 
       {/* Tabs */}
-      <div className="bg-surface-2 rounded-xl p-1 flex gap-1 mb-6">
+      <div className="bg-surface-2 rounded-xl p-1 flex gap-1 mb-4">
         {([
           { value: 'car' as ViewTab, label: 'Samochody', icon: Car },
           { value: 'tuning' as ViewTab, label: 'Strefa tuningu', icon: Wrench },
@@ -589,7 +617,7 @@ export default function CardsPage() {
           ))}
         </div>
       ) : activeTab === 'car' ? (
-        <div className="space-y-6">
+        <div className="space-y-4">
           {/* === STATYSTYKI SAMOCHODÓW === */}
           <Card>
             <div className="flex items-center justify-between mb-3">
@@ -597,8 +625,8 @@ export default function CardsPage() {
                 <Car className="w-5 h-5 text-turbo-400" />
                 <span className="font-semibold text-white">Karty samochodów</span>
               </div>
-              <span className="text-turbo-400 font-bold">
-                {allCarStats.collected}/{allCarStats.total}
+              <span className="text-turbo-400">
+                <span className="font-bold">{allCarStats.collected}</span><span className="font-normal opacity-60">/{allCarStats.total}</span>
               </span>
             </div>
             <ProgressBar value={allCarStats.total > 0 ? Math.round((allCarStats.collected / allCarStats.total) * 100) : 0} />
@@ -606,32 +634,55 @@ export default function CardsPage() {
             <div className="grid grid-cols-4 gap-2 mt-3">
               {(Object.keys(RARITY_CONFIG) as CardRarity[]).map(rarity => {
                 const config = RARITY_CONFIG[rarity];
-                const glow = RARITY_GLOW[rarity];
+                const token = RARITY_TILE_TOKENS[rarity];
                 const rarityStats = allCarStats.byRarity[rarity];
                 const isActive = rarityFilter === rarity;
+                const isComplete = rarityStats.collected > 0 && rarityStats.collected === rarityStats.total;
+                const progressPct = rarityStats.total > 0 ? (rarityStats.collected / rarityStats.total) * 100 : 0;
+                const Icon = config.icon;
                 return (
                   <button
                     key={rarity}
                     onClick={() => setRarityFilter(rarityFilter === rarity ? 'all' : rarity)}
-                    className={`group relative overflow-hidden py-2 px-2 rounded-lg transition-all duration-300 border ${
+                    className={`group relative overflow-hidden rounded-2xl p-2 sm:p-2.5 transition-all duration-200 border hover:scale-[1.03] active:scale-[0.98] ${
                       isActive
-                        ? `${config.bgColor} ${config.borderColor} ${glow.activeShadow}`
-                        : `${config.bgColor} border-transparent ${glow.hoverBorder} ${glow.hoverShadow}`
+                        ? `${token.borderActive} ring-1 ring-white/10`
+                        : `border-white/[0.06] ${token.borderHover}`
                     }`}
+                    style={{
+                      background: `radial-gradient(ellipse at 30% 20%, ${token.bgGradientFrom}, ${token.bgGradientTo})`,
+                      boxShadow: isActive
+                        ? `inset 0 1px 0 rgba(255,255,255,0.06), ${token.accentGlow}`
+                        : 'inset 0 1px 0 rgba(255,255,255,0.04)',
+                    }}
                   >
-                    <div className={`absolute -right-4 -top-4 h-12 w-12 rounded-full ${glow.orbColor} blur-xl transition-opacity ${
-                      isActive ? 'opacity-60' : 'opacity-0 group-hover:opacity-40'
-                    }`} />
-                    <div className="relative grid grid-cols-[1rem_auto] gap-x-1.5 items-center">
-                      <config.icon className={`w-4 h-4 ${config.color}`} />
-                      <span className={`text-xs font-medium ${config.color}`}>
-                        {rarityStats.collected}/{rarityStats.total}
-                      </span>
-                      <span />
-                      <span className={`text-[10px] ${config.color} opacity-70`}>
-                        {config.name}
-                      </span>
+                    <div className="flex justify-center mb-1">
+                      <Icon className="w-4 h-4 transition-all duration-200 group-hover:brightness-150 group-hover:drop-shadow-[0_0_4px_rgba(255,255,255,0.3)]" style={{ color: token.accent }} />
                     </div>
+                    <p className={`text-[11px] sm:text-xs leading-tight text-center transition-colors duration-200 ${isActive ? '' : 'text-white group-hover:text-white'}`} style={isActive ? { color: token.accent, textShadow: '0 1px 3px rgba(0,0,0,0.4)' } : { textShadow: '0 1px 3px rgba(0,0,0,0.4)' }}>
+                      <span className="font-bold">{rarityStats.collected}</span><span className="font-normal opacity-60">/{rarityStats.total}</span>
+                    </p>
+                    <p className={`text-[9px] sm:text-[10px] font-medium mt-0.5 truncate text-center transition-colors duration-200 ${isActive ? '' : 'text-white/70 group-hover:text-white/90'}`} style={isActive ? { color: token.accent, opacity: 0.85 } : undefined}>
+                      {config.name}
+                    </p>
+                    <div className="mt-1 h-1 w-full rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.10)' }}>
+                      <div
+                        className="h-full rounded-full transition-all duration-[800ms] ease-out"
+                        style={{
+                          width: animatedRarities.has(rarity) ? `${progressPct}%` : '0%',
+                          background: token.accent,
+                          boxShadow: isComplete && animatedRarities.has(rarity) ? `0 0 8px ${token.accent}` : 'none',
+                        }}
+                      />
+                    </div>
+                    {isComplete && (
+                      <div
+                        className="absolute top-1 right-1 sm:top-1.5 sm:right-1.5 w-3.5 h-3.5 rounded-full flex items-center justify-center"
+                        style={{ background: token.accent }}
+                      >
+                        <Check className="w-2 h-2 text-black" strokeWidth={3} />
+                      </div>
+                    )}
                   </button>
                 );
               })}
@@ -654,7 +705,7 @@ export default function CardsPage() {
           </Card>
 
           {/* Filtry kolekcji */}
-          <div className="flex gap-2 -mt-3">
+          <div className="flex gap-2 -mt-2">
             <button
               onClick={() => setCollectionFilter(collectionFilter === 'owned' ? 'all' : 'owned')}
               className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
@@ -817,8 +868,8 @@ export default function CardsPage() {
                 <Star className="w-5 h-5 text-yellow-500" />
                 <span className="font-semibold text-white">Karty osiągnięć</span>
               </div>
-              <span className="text-turbo-400 font-bold">
-                {stats.collected}/{stats.total}
+              <span className="text-turbo-400">
+                <span className="font-bold">{stats.collected}</span><span className="font-normal opacity-60">/{stats.total}</span>
               </span>
             </div>
             <ProgressBar value={stats.total > 0 ? Math.round((stats.collected / stats.total) * 100) : 0} />
@@ -826,19 +877,47 @@ export default function CardsPage() {
             <div className="grid grid-cols-4 gap-2 mt-3">
               {(Object.keys(RARITY_CONFIG) as CardRarity[]).map(rarity => {
                 const config = RARITY_CONFIG[rarity];
+                const token = RARITY_TILE_TOKENS[rarity];
                 const rarityStats = stats.byRarity[rarity];
+                const isComplete = rarityStats.collected > 0 && rarityStats.collected === rarityStats.total;
+                const progressPct = rarityStats.total > 0 ? (rarityStats.collected / rarityStats.total) * 100 : 0;
+                const Icon = config.icon;
                 return (
-                  <div key={rarity} className={`py-2 px-2 rounded-lg ${config.bgColor}`}>
-                    <div className="grid grid-cols-[1rem_auto] gap-x-1.5 items-center">
-                      <config.icon className={`w-4 h-4 ${config.color}`} />
-                      <span className={`text-xs font-medium ${config.color}`}>
-                        {rarityStats.collected}/{rarityStats.total}
-                      </span>
-                      <span />
-                      <span className={`text-[10px] ${config.color} opacity-70`}>
-                        {config.name}
-                      </span>
+                  <div
+                    key={rarity}
+                    className="relative overflow-hidden rounded-2xl p-2 sm:p-2.5 border border-white/[0.06]"
+                    style={{
+                      background: `radial-gradient(ellipse at 30% 20%, ${token.bgGradientFrom}, ${token.bgGradientTo})`,
+                      boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04)',
+                    }}
+                  >
+                    <div className="flex justify-center mb-1">
+                      <Icon className="w-4 h-4" style={{ color: token.accent }} />
                     </div>
+                    <p className="text-[11px] sm:text-xs leading-tight text-white text-center" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.4)' }}>
+                      <span className="font-bold">{rarityStats.collected}</span><span className="font-normal opacity-60">/{rarityStats.total}</span>
+                    </p>
+                    <p className="text-[9px] sm:text-[10px] font-medium text-white/70 mt-0.5 truncate text-center">
+                      {config.name}
+                    </p>
+                    <div className="mt-1 h-1 w-full rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.10)' }}>
+                      <div
+                        className="h-full rounded-full transition-all duration-[800ms] ease-out"
+                        style={{
+                          width: animatedRarities.has(rarity) ? `${progressPct}%` : '0%',
+                          background: token.accent,
+                          boxShadow: isComplete && animatedRarities.has(rarity) ? `0 0 8px ${token.accent}` : 'none',
+                        }}
+                      />
+                    </div>
+                    {isComplete && (
+                      <div
+                        className="absolute top-1 right-1 sm:top-1.5 sm:right-1.5 w-3.5 h-3.5 rounded-full flex items-center justify-center"
+                        style={{ background: token.accent }}
+                      >
+                        <Check className="w-2 h-2 text-black" strokeWidth={3} />
+                      </div>
+                    )}
                   </div>
                 );
               })}

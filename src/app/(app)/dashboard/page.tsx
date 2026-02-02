@@ -258,9 +258,8 @@ export default function DashboardPage() {
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between">
             <h3 className="font-semibold text-white">Turbo Karty</h3>
-            <span className="text-sm font-bold text-turbo-400">
-              {collectionStats.collected}
-              <span className="text-dark-400">/{collectionStats.total}</span>
+            <span className="text-sm text-turbo-400">
+              <span className="font-bold">{collectionStats.collected}</span><span className="font-normal opacity-60">/{collectionStats.total}</span>
             </span>
           </div>
 
