@@ -1,6 +1,6 @@
 ﻿'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useCards, RARITY_CONFIG } from '@/hooks/useCards';
 import { useCardOrders } from '@/hooks/useCardOrders';
@@ -219,6 +219,15 @@ export default function CardsPage() {
   const [loadingImages, setLoadingImages] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [showGallery, setShowGallery] = useState(false);
+  const [barsAnimated, setBarsAnimated] = useState(false);
+
+  useEffect(() => {
+    if (!loading) {
+      const timer = setTimeout(() => setBarsAnimated(true), 50);
+      return () => clearTimeout(timer);
+    }
+    setBarsAnimated(false);
+  }, [loading]);
 
   // Pobierz karty według typu
   const achievementCards = getCardsByType('achievement');
@@ -572,7 +581,7 @@ export default function CardsPage() {
       )}
 
       {/* Tabs */}
-      <div className="bg-surface-2 rounded-xl p-1 flex gap-1 mb-6">
+      <div className="bg-surface-2 rounded-xl p-1 flex gap-1 mb-4">
         {([
           { value: 'car' as ViewTab, label: 'Samochody', icon: Car },
           { value: 'tuning' as ViewTab, label: 'Strefa tuningu', icon: Wrench },
@@ -605,7 +614,7 @@ export default function CardsPage() {
           ))}
         </div>
       ) : activeTab === 'car' ? (
-        <div className="space-y-6">
+        <div className="space-y-4">
           {/* === STATYSTYKI SAMOCHODÓW === */}
           <Card>
             <div className="flex items-center justify-between mb-3">
@@ -644,22 +653,22 @@ export default function CardsPage() {
                         : 'inset 0 1px 0 rgba(255,255,255,0.04)',
                     }}
                   >
-                    <div className="flex justify-center mb-1.5">
+                    <div className="flex justify-center mb-1">
                       <Icon className="w-4 h-4 transition-all duration-200 group-hover:brightness-150 group-hover:drop-shadow-[0_0_4px_rgba(255,255,255,0.3)]" style={{ color: token.accent }} />
                     </div>
-                    <p className={`text-xs sm:text-sm font-semibold leading-tight text-center transition-colors duration-200 ${isActive ? '' : 'text-white group-hover:text-white'}`} style={isActive ? { color: token.accent, textShadow: '0 1px 3px rgba(0,0,0,0.4)' } : { textShadow: '0 1px 3px rgba(0,0,0,0.4)' }}>
-                      {rarityStats.collected}/{rarityStats.total}
+                    <p className={`text-[11px] sm:text-xs leading-tight text-center transition-colors duration-200 ${isActive ? '' : 'text-white group-hover:text-white'}`} style={isActive ? { color: token.accent, textShadow: '0 1px 3px rgba(0,0,0,0.4)' } : { textShadow: '0 1px 3px rgba(0,0,0,0.4)' }}>
+                      <span className="font-bold">{rarityStats.collected}</span><span className="font-normal opacity-60">/{rarityStats.total}</span>
                     </p>
-                    <p className={`text-[10px] sm:text-[11px] font-medium mt-0.5 truncate text-center transition-colors duration-200 ${isActive ? '' : 'text-white/70 group-hover:text-white/90'}`} style={isActive ? { color: token.accent, opacity: 0.85 } : undefined}>
+                    <p className={`text-[9px] sm:text-[10px] font-medium mt-0.5 truncate text-center transition-colors duration-200 ${isActive ? '' : 'text-white/70 group-hover:text-white/90'}`} style={isActive ? { color: token.accent, opacity: 0.85 } : undefined}>
                       {config.name}
                     </p>
-                    <div className="mt-1.5 h-1 sm:h-1.5 w-full rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.10)' }}>
+                    <div className="mt-1 h-1 w-full rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.10)' }}>
                       <div
-                        className="h-full rounded-full transition-all duration-300 ease-out"
+                        className="h-full rounded-full transition-all duration-500 ease-out"
                         style={{
-                          width: `${progressPct}%`,
+                          width: barsAnimated ? `${progressPct}%` : '0%',
                           background: token.accent,
-                          boxShadow: isComplete ? `0 0 8px ${token.accent}` : 'none',
+                          boxShadow: isComplete && barsAnimated ? `0 0 8px ${token.accent}` : 'none',
                         }}
                       />
                     </div>
@@ -693,7 +702,7 @@ export default function CardsPage() {
           </Card>
 
           {/* Filtry kolekcji */}
-          <div className="flex gap-2 -mt-3">
+          <div className="flex gap-2 -mt-2">
             <button
               onClick={() => setCollectionFilter(collectionFilter === 'owned' ? 'all' : 'owned')}
               className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
@@ -879,22 +888,22 @@ export default function CardsPage() {
                       boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04)',
                     }}
                   >
-                    <div className="flex justify-center mb-1.5">
+                    <div className="flex justify-center mb-1">
                       <Icon className="w-4 h-4" style={{ color: token.accent }} />
                     </div>
-                    <p className="text-xs sm:text-sm font-semibold leading-tight text-white text-center" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.4)' }}>
-                      {rarityStats.collected}/{rarityStats.total}
+                    <p className="text-[11px] sm:text-xs leading-tight text-white text-center" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.4)' }}>
+                      <span className="font-bold">{rarityStats.collected}</span><span className="font-normal opacity-60">/{rarityStats.total}</span>
                     </p>
-                    <p className="text-[10px] sm:text-[11px] font-medium text-white/70 mt-0.5 truncate text-center">
+                    <p className="text-[9px] sm:text-[10px] font-medium text-white/70 mt-0.5 truncate text-center">
                       {config.name}
                     </p>
-                    <div className="mt-1.5 h-1 sm:h-1.5 w-full rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.10)' }}>
+                    <div className="mt-1 h-1 w-full rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.10)' }}>
                       <div
-                        className="h-full rounded-full transition-all duration-300 ease-out"
+                        className="h-full rounded-full transition-all duration-500 ease-out"
                         style={{
-                          width: `${progressPct}%`,
+                          width: barsAnimated ? `${progressPct}%` : '0%',
                           background: token.accent,
-                          boxShadow: isComplete ? `0 0 8px ${token.accent}` : 'none',
+                          boxShadow: isComplete && barsAnimated ? `0 0 8px ${token.accent}` : 'none',
                         }}
                       />
                     </div>
