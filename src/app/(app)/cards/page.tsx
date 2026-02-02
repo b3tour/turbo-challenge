@@ -586,12 +586,16 @@ export default function CardsPage() {
                         : `${config.bgColor} hover:scale-105`
                     }`}
                   >
-                    <config.icon className={`w-5 h-5 ${config.color} mb-1`} />
-                    <div className={`text-[10px] ${config.color} opacity-70 text-left`}>
-                      {config.name}
-                    </div>
-                    <div className={`text-xs font-medium ${config.color} text-left`}>
-                      {rarityStats.collected}/{rarityStats.total}
+                    <div className="flex items-start gap-1.5">
+                      <config.icon className={`w-4 h-4 ${config.color} mt-0.5 flex-shrink-0`} />
+                      <div>
+                        <div className={`text-[10px] ${config.color} opacity-70 text-left`}>
+                          {config.name}
+                        </div>
+                        <div className={`text-xs font-medium ${config.color} text-left`}>
+                          {rarityStats.collected}/{rarityStats.total}
+                        </div>
+                      </div>
                     </div>
                   </button>
                 );
