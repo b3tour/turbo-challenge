@@ -22,8 +22,8 @@ import {
   Crown,
   Trophy,
   AlertCircle,
-  Circle,
-  Diamond,
+  Hexagon,
+  Club,
   Flame,
 } from 'lucide-react';
 import { MysteryPackType, MysteryPackPurchase, CollectibleCard } from '@/types';
@@ -360,11 +360,11 @@ export default function MysteryGaragePage() {
                   <p className="text-sm text-dark-400 mb-2">Szanse na rzadkość:</p>
                   <div className="grid grid-cols-4 gap-2">
                     <div className="text-center">
-                      <Circle className="w-5 h-5 mx-auto text-gray-400" />
+                      <Hexagon className="w-5 h-5 mx-auto text-gray-400" />
                       <div className="text-xs text-slate-400 mt-1">{selectedPack.common_chance}%</div>
                     </div>
                     <div className="text-center">
-                      <Diamond className="w-5 h-5 mx-auto text-blue-400" />
+                      <Club className="w-5 h-5 mx-auto text-blue-400" />
                       <div className="text-xs text-green-400 mt-1">{selectedPack.rare_chance}%</div>
                     </div>
                     <div className="text-center">

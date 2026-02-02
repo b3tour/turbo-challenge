@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Circle, Diamond, Flame, Crown } from 'lucide-react';
+import { Hexagon, Club, Flame, Crown } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { CollectibleCard, UserCard, CardRarity, CardType, CardImage } from '@/types';
 
@@ -44,7 +44,7 @@ export const RARITY_CONFIG: Record<CardRarity, {
     bgColor: 'bg-gray-500/20',
     borderColor: 'border-gray-500/50',
     glowColor: '',
-    icon: Circle,
+    icon: Hexagon,
   },
   rare: {
     name: 'Rare',
@@ -52,7 +52,7 @@ export const RARITY_CONFIG: Record<CardRarity, {
     bgColor: 'bg-blue-500/20',
     borderColor: 'border-blue-500/50',
     glowColor: 'shadow-blue-500/30',
-    icon: Diamond,
+    icon: Club,
   },
   epic: {
     name: 'Epic',
