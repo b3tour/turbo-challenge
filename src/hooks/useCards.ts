@@ -63,7 +63,7 @@ export const RARITY_CONFIG: Record<CardRarity, {
     icon: Flame,
   },
   legendary: {
-    name: 'Legendary',
+    name: 'Legend',
     color: 'text-yellow-400',
     bgColor: 'bg-yellow-500/20',
     borderColor: 'border-yellow-500/50',

@@ -85,7 +85,7 @@ const RARITY_OPTIONS: { value: CardRarity; label: string; color: string }[] = [
   { value: 'common', label: 'Common', color: 'text-gray-400' },
   { value: 'rare', label: 'Rare', color: 'text-blue-400' },
   { value: 'epic', label: 'Epic', color: 'text-purple-400' },
-  { value: 'legendary', label: 'Legendary', color: 'text-yellow-400' },
+  { value: 'legendary', label: 'Legend', color: 'text-yellow-400' },
 ];
 
 export default function AdminPage() {
