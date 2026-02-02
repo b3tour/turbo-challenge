@@ -179,7 +179,7 @@ export default function CardsPage() {
   // Użyj demo kart jeśli brak kart w bazie
   const allCarCards = carCards.length > 0 ? carCards : [...DEMO_HERO_CARDS, ...DEMO_CAR_CARDS];
   const displayAchievementCards = achievementCards.length > 0 ? achievementCards : DEMO_ACHIEVEMENT_CARDS;
-  const isDemoMode = allCards.length === 0;
+  const isDemoMode = !loading && allCards.length === 0;
 
   // Rozdziel Heroes i zwykłe samochody
   const heroCardsRaw = allCarCards.filter(c => c.is_hero);
