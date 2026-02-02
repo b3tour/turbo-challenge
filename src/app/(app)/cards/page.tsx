@@ -557,7 +557,7 @@ export default function CardsPage() {
           ))}
         </div>
       ) : activeTab === 'car' ? (
-        <div className="space-y-8">
+        <div className="space-y-6">
           {/* === STATYSTYKI SAMOCHODÓW === */}
           <Card>
             <div className="flex items-center justify-between mb-3">
@@ -615,7 +615,7 @@ export default function CardsPage() {
           </Card>
 
           {/* Filtry kolekcji */}
-          <div className="flex gap-2 -mt-4">
+          <div className="flex gap-2 -mt-3">
             <button
               onClick={() => setCollectionFilter(collectionFilter === 'owned' ? 'all' : 'owned')}
               className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
