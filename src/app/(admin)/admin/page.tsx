@@ -82,10 +82,10 @@ const tabs: { id: AdminTab; label: string; icon: React.ElementType; description:
 ];
 
 const RARITY_OPTIONS: { value: CardRarity; label: string; color: string }[] = [
-  { value: 'common', label: 'Zwykła', color: 'text-gray-400' },
-  { value: 'rare', label: 'Rzadka', color: 'text-blue-400' },
-  { value: 'epic', label: 'Epicka', color: 'text-purple-400' },
-  { value: 'legendary', label: 'Legendarna', color: 'text-yellow-400' },
+  { value: 'common', label: 'Common', color: 'text-gray-400' },
+  { value: 'rare', label: 'Rare', color: 'text-blue-400' },
+  { value: 'epic', label: 'Epic', color: 'text-purple-400' },
+  { value: 'legendary', label: 'Legendary', color: 'text-yellow-400' },
 ];
 
 export default function AdminPage() {
@@ -5972,19 +5972,19 @@ export default function AdminPage() {
             <p className="text-sm text-dark-400 mb-2">Szanse na rzadkość:</p>
             <div className="grid grid-cols-4 gap-2 text-center text-xs">
               <div>
-                <span className="text-gray-400">Zwykła</span>
+                <span className="text-gray-400">Common</span>
                 <p className="font-bold text-white">60%</p>
               </div>
               <div>
-                <span className="text-blue-400">Rzadka</span>
+                <span className="text-blue-400">Rare</span>
                 <p className="font-bold text-white">25%</p>
               </div>
               <div>
-                <span className="text-purple-400">Epicka</span>
+                <span className="text-purple-400">Epic</span>
                 <p className="font-bold text-white">12%</p>
               </div>
               <div>
-                <span className="text-yellow-400">Legendarna</span>
+                <span className="text-yellow-400">Legendary</span>
                 <p className="font-bold text-white">3%</p>
               </div>
             </div>
@@ -6085,19 +6085,19 @@ export default function AdminPage() {
             <p className="text-sm text-dark-400 mb-2">Szanse na rzadkość:</p>
             <div className="grid grid-cols-4 gap-2 text-center text-xs">
               <div>
-                <span className="text-gray-400">Zwykła</span>
+                <span className="text-gray-400">Common</span>
                 <p className="font-bold text-white">60%</p>
               </div>
               <div>
-                <span className="text-blue-400">Rzadka</span>
+                <span className="text-blue-400">Rare</span>
                 <p className="font-bold text-white">25%</p>
               </div>
               <div>
-                <span className="text-purple-400">Epicka</span>
+                <span className="text-purple-400">Epic</span>
                 <p className="font-bold text-white">12%</p>
               </div>
               <div>
-                <span className="text-yellow-400">Legendarna</span>
+                <span className="text-yellow-400">Legendary</span>
                 <p className="font-bold text-white">3%</p>
               </div>
             </div>

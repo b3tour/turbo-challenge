@@ -38,7 +38,7 @@ export const RARITY_CONFIG: Record<CardRarity, {
   icon: string;
 }> = {
   common: {
-    name: 'Zwykła',
+    name: 'Common',
     color: 'text-gray-400',
     bgColor: 'bg-gray-500/20',
     borderColor: 'border-gray-500/50',
@@ -46,7 +46,7 @@ export const RARITY_CONFIG: Record<CardRarity, {
     icon: '⚪',
   },
   rare: {
-    name: 'Rzadka',
+    name: 'Rare',
     color: 'text-blue-400',
     bgColor: 'bg-blue-500/20',
     borderColor: 'border-blue-500/50',
@@ -54,7 +54,7 @@ export const RARITY_CONFIG: Record<CardRarity, {
     icon: '🔵',
   },
   epic: {
-    name: 'Epicka',
+    name: 'Epic',
     color: 'text-purple-400',
     bgColor: 'bg-purple-500/20',
     borderColor: 'border-purple-500/50',
@@ -62,7 +62,7 @@ export const RARITY_CONFIG: Record<CardRarity, {
     icon: '🟣',
   },
   legendary: {
-    name: 'Legendarna',
+    name: 'Legendary',
     color: 'text-yellow-400',
     bgColor: 'bg-yellow-500/20',
     borderColor: 'border-yellow-500/50',
