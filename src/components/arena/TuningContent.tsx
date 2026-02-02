@@ -7,9 +7,11 @@ import { useTuning } from '@/hooks/useTuning';
 import { useToast } from '@/components/ui/Toast';
 import { Card, Button, Modal } from '@/components/ui';
 import { SkeletonCard } from '@/components/ui/Skeleton';
-import { CollectibleCard, TunedCar } from '@/types';
+import { CollectibleCard, TunedCar, TuningCategory } from '@/types';
 import {
   MOD_DEFINITIONS,
+  CATEGORY_WEIGHTS,
+  CATEGORY_LABELS,
   getCumulativeBonus,
   getUpgradeCost,
 } from '@/config/tuningConfig';
@@ -22,7 +24,26 @@ import {
   Timer,
   ChevronUp,
   Car,
+  Trophy,
+  Flame,
+  Mountain,
+  Flag,
+  Clock,
 } from 'lucide-react';
+
+const CATEGORY_ICONS: Record<TuningCategory, React.ElementType> = {
+  drag: Flame,
+  hill_climb: Mountain,
+  track: Flag,
+  time_attack: Clock,
+};
+
+const CATEGORY_COLORS: Record<TuningCategory, { text: string; bg: string; bar: string }> = {
+  drag: { text: 'text-orange-400', bg: 'bg-orange-500/20', bar: 'bg-orange-500' },
+  hill_climb: { text: 'text-emerald-400', bg: 'bg-emerald-500/20', bar: 'bg-emerald-500' },
+  track: { text: 'text-cyan-400', bg: 'bg-cyan-500/20', bar: 'bg-cyan-500' },
+  time_attack: { text: 'text-violet-400', bg: 'bg-violet-500/20', bar: 'bg-violet-500' },
+};
 
 export function TuningContent() {
   const { profile } = useAuth();
@@ -35,6 +56,7 @@ export function TuningContent() {
     addCarToTuning,
     removeCarFromTuning,
     upgradeMod,
+    calculateScore,
   } = useTuning({ userId: profile?.id });
   const { success, error: toastError } = useToast();
 
@@ -370,6 +392,54 @@ export function TuningContent() {
                   );
                 })}
               </div>
+
+              {/* Sila w kategoriach */}
+              {(() => {
+                const hpTotal = (card.car_horsepower || 0) + getCumulativeBonus(MOD_DEFINITIONS[0], tc.engine_stage);
+                const torqueTotal = (card.car_torque || 0) + getCumulativeBonus(MOD_DEFINITIONS[1], tc.turbo_stage);
+                const speedTotal = (card.car_max_speed || 0) + getCumulativeBonus(MOD_DEFINITIONS[2], tc.weight_stage);
+                const maxPossible = (hpTotal + torqueTotal + speedTotal) * 1.5;
+                const categories: TuningCategory[] = ['drag', 'hill_climb', 'track', 'time_attack'];
+                const scores = categories.map(cat => ({ cat, score: calculateScore(tc, cat) }));
+                const bestCat = scores.reduce((a, b) => b.score > a.score ? b : a).cat;
+
+                return (
+                  <div className="p-3 rounded-xl bg-surface-2">
+                    <div className="flex items-center gap-2 mb-2.5">
+                      <Trophy className="w-4 h-4 text-amber-400" />
+                      <span className="text-sm font-medium text-white">Sila w kategoriach</span>
+                    </div>
+                    <div className="space-y-2">
+                      {scores.map(({ cat, score }) => {
+                        const pct = maxPossible > 0 ? (score / maxPossible) * 100 : 0;
+                        const catConfig = CATEGORY_COLORS[cat];
+                        const CatIcon = CATEGORY_ICONS[cat];
+                        const isBest = cat === bestCat;
+                        return (
+                          <div key={cat} className="flex items-center gap-2">
+                            <div className={`p-1 rounded-md ${catConfig.bg} flex-shrink-0`}>
+                              <CatIcon className={`w-3 h-3 ${catConfig.text}`} />
+                            </div>
+                            <span className={`text-[10px] w-16 truncate ${isBest ? 'text-white font-medium' : 'text-dark-400'}`}>
+                              {CATEGORY_LABELS[cat].name}
+                            </span>
+                            <div className="flex-1 h-1.5 bg-white/5 rounded-full overflow-hidden">
+                              <div
+                                className={`h-full rounded-full transition-all duration-500 ${catConfig.bar}`}
+                                style={{ width: `${Math.min(pct, 100)}%` }}
+                              />
+                            </div>
+                            <span className={`text-[10px] w-8 text-right tabular-nums ${isBest ? 'text-white font-semibold' : 'text-dark-400'}`}>
+                              {score}
+                            </span>
+                            {isBest && <Trophy className="w-3 h-3 text-amber-400 flex-shrink-0" />}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Usun z tuningu */}
               <button
