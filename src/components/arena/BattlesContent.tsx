@@ -407,9 +407,9 @@ export function BattlesContent({ activeSubTab }: BattlesContentProps = {}) {
                 <button
                   key={t.value}
                   onClick={() => setActiveTab(t.value)}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${
                     activeTab === t.value
-                      ? 'bg-turbo-500 text-white shadow-sm'
+                      ? 'bg-red-500 text-white shadow-sm'
                       : 'bg-transparent text-dark-400 hover:text-dark-300'
                   }`}
                 >

@@ -136,36 +136,36 @@ export default function LeaderboardPage() {
       <div className="bg-surface-1 rounded-xl p-1 flex gap-1 mb-6">
         <button
           onClick={() => setActiveTab('xp')}
-          className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg font-medium transition-all ${
+          className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition-all ${
             activeTab === 'xp'
-              ? 'bg-turbo-500 text-white shadow-sm'
+              ? 'bg-amber-500 text-white shadow-sm'
               : 'bg-transparent text-dark-400 hover:text-dark-300'
           }`}
         >
           <Zap className="w-4 h-4" />
-          <span className="text-sm">XP</span>
+          XP
         </button>
         <button
           onClick={() => setActiveTab('donation')}
-          className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg font-medium transition-all ${
+          className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition-all ${
             activeTab === 'donation'
-              ? 'bg-red-500 text-white shadow-sm'
+              ? 'bg-amber-500 text-white shadow-sm'
               : 'bg-transparent text-dark-400 hover:text-dark-300'
           }`}
         >
           <Heart className="w-4 h-4" />
-          <span className="text-sm">Wsparcie</span>
+          Wsparcie
         </button>
         <button
           onClick={() => setActiveTab('speedrun')}
-          className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg font-medium transition-all ${
+          className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition-all ${
             activeTab === 'speedrun'
-              ? 'bg-yellow-500 text-black shadow-sm'
+              ? 'bg-amber-500 text-white shadow-sm'
               : 'bg-transparent text-dark-400 hover:text-dark-300'
           }`}
         >
           <Timer className="w-4 h-4" />
-          <span className="text-sm">Speedrun</span>
+          Speedrun
         </button>
       </div>
 
