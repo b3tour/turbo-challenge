@@ -223,7 +223,7 @@ export default function CardsPage() {
 
   useEffect(() => {
     if (!loading) {
-      const timer = setTimeout(() => setBarsAnimated(true), 50);
+      const timer = setTimeout(() => setBarsAnimated(true), 300);
       return () => clearTimeout(timer);
     }
     setBarsAnimated(false);
@@ -664,7 +664,7 @@ export default function CardsPage() {
                     </p>
                     <div className="mt-1 h-1 w-full rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.10)' }}>
                       <div
-                        className="h-full rounded-full transition-all duration-500 ease-out"
+                        className="h-full rounded-full transition-all duration-[800ms] ease-out"
                         style={{
                           width: barsAnimated ? `${progressPct}%` : '0%',
                           background: token.accent,
@@ -899,7 +899,7 @@ export default function CardsPage() {
                     </p>
                     <div className="mt-1 h-1 w-full rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.10)' }}>
                       <div
-                        className="h-full rounded-full transition-all duration-500 ease-out"
+                        className="h-full rounded-full transition-all duration-[800ms] ease-out"
                         style={{
                           width: barsAnimated ? `${progressPct}%` : '0%',
                           background: token.accent,
