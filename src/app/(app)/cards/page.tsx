@@ -625,8 +625,8 @@ export default function CardsPage() {
                 <Car className="w-5 h-5 text-turbo-400" />
                 <span className="font-semibold text-white">Karty samochodów</span>
               </div>
-              <span className="text-turbo-400 font-bold">
-                {allCarStats.collected}/{allCarStats.total}
+              <span className="text-turbo-400">
+                <span className="font-bold">{allCarStats.collected}</span><span className="font-normal opacity-60">/{allCarStats.total}</span>
               </span>
             </div>
             <ProgressBar value={allCarStats.total > 0 ? Math.round((allCarStats.collected / allCarStats.total) * 100) : 0} />
@@ -868,8 +868,8 @@ export default function CardsPage() {
                 <Star className="w-5 h-5 text-yellow-500" />
                 <span className="font-semibold text-white">Karty osiągnięć</span>
               </div>
-              <span className="text-turbo-400 font-bold">
-                {stats.collected}/{stats.total}
+              <span className="text-turbo-400">
+                <span className="font-bold">{stats.collected}</span><span className="font-normal opacity-60">/{stats.total}</span>
               </span>
             </div>
             <ProgressBar value={stats.total > 0 ? Math.round((stats.collected / stats.total) * 100) : 0} />
