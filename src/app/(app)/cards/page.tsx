@@ -612,33 +612,33 @@ export default function CardsPage() {
                 </button>
               </div>
             )}
-
-            {/* Filtry kolekcji + widok siatki */}
-            <div className="flex gap-2 mt-4">
-              <button
-                onClick={() => setCollectionFilter(collectionFilter === 'owned' ? 'all' : 'owned')}
-                className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-medium transition-all duration-200 ${
-                  collectionFilter === 'owned'
-                    ? 'bg-gradient-to-r from-green-500 to-green-600 text-white shadow-lg shadow-green-500/30'
-                    : 'bg-gradient-to-r from-green-500/10 to-green-600/10 text-green-400 border border-green-500/20 hover:from-green-500/20 hover:to-green-600/20'
-                }`}
-              >
-                <CheckCircle className="w-5 h-5" />
-                Twoja kolekcja ({allCarStats.collected})
-              </button>
-              <button
-                onClick={() => setCollectionFilter(collectionFilter === 'to_collect' ? 'all' : 'to_collect')}
-                className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-medium transition-all duration-200 ${
-                  collectionFilter === 'to_collect'
-                    ? 'bg-gradient-to-r from-red-500 to-orange-500 text-white shadow-lg shadow-red-500/30'
-                    : 'bg-gradient-to-r from-red-500/10 to-orange-500/10 text-red-400 border border-red-500/20 hover:from-red-500/20 hover:to-orange-500/20'
-                }`}
-              >
-                <Lock className="w-5 h-5" />
-                Do zdobycia ({allCarStats.total - allCarStats.collected})
-              </button>
-            </div>
           </Card>
+
+          {/* Filtry kolekcji */}
+          <div className="flex gap-2 -mt-4">
+            <button
+              onClick={() => setCollectionFilter(collectionFilter === 'owned' ? 'all' : 'owned')}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                collectionFilter === 'owned'
+                  ? 'bg-green-500/20 text-green-400 ring-1 ring-green-500/40'
+                  : 'bg-surface-2 text-dark-400 hover:text-dark-300'
+              }`}
+            >
+              <Layers className="w-3.5 h-3.5" />
+              Posiadane ({allCarStats.collected})
+            </button>
+            <button
+              onClick={() => setCollectionFilter(collectionFilter === 'to_collect' ? 'all' : 'to_collect')}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                collectionFilter === 'to_collect'
+                  ? 'bg-red-500/20 text-red-400 ring-1 ring-red-500/40'
+                  : 'bg-surface-2 text-dark-400 hover:text-dark-300'
+              }`}
+            >
+              <Star className="w-3.5 h-3.5" />
+              Do zdobycia ({allCarStats.total - allCarStats.collected})
+            </button>
+          </div>
 
           {/* === TURBO HEROES === */}
           {filteredHeroCards.length > 0 && (
