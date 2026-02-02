@@ -45,6 +45,38 @@ import { TuningContent } from '@/components/arena/TuningContent';
 
 type ViewTab = 'car' | 'tuning' | 'achievement';
 
+const RARITY_GLOW: Record<CardRarity, {
+  activeShadow: string;
+  hoverBorder: string;
+  hoverShadow: string;
+  orbColor: string;
+}> = {
+  common: {
+    activeShadow: 'shadow-[0_0_20px_rgba(107,114,128,0.25)]',
+    hoverBorder: 'hover:border-gray-500/40',
+    hoverShadow: 'hover:shadow-[0_0_20px_rgba(107,114,128,0.15)]',
+    orbColor: 'bg-gray-500/10',
+  },
+  rare: {
+    activeShadow: 'shadow-[0_0_20px_rgba(59,130,246,0.3)]',
+    hoverBorder: 'hover:border-blue-500/40',
+    hoverShadow: 'hover:shadow-[0_0_20px_rgba(59,130,246,0.15)]',
+    orbColor: 'bg-blue-500/10',
+  },
+  epic: {
+    activeShadow: 'shadow-[0_0_20px_rgba(168,85,247,0.3)]',
+    hoverBorder: 'hover:border-purple-500/40',
+    hoverShadow: 'hover:shadow-[0_0_20px_rgba(168,85,247,0.15)]',
+    orbColor: 'bg-purple-500/10',
+  },
+  legendary: {
+    activeShadow: 'shadow-[0_0_20px_rgba(234,179,8,0.35)]',
+    hoverBorder: 'hover:border-yellow-500/40',
+    hoverShadow: 'hover:shadow-[0_0_20px_rgba(234,179,8,0.2)]',
+    orbColor: 'bg-yellow-500/10',
+  },
+};
+
 // Demo karty Heroes
 const DEMO_HERO_CARDS: CollectibleCard[] = [
   {
@@ -574,27 +606,31 @@ export default function CardsPage() {
             <div className="grid grid-cols-4 gap-2 mt-3">
               {(Object.keys(RARITY_CONFIG) as CardRarity[]).map(rarity => {
                 const config = RARITY_CONFIG[rarity];
+                const glow = RARITY_GLOW[rarity];
                 const rarityStats = allCarStats.byRarity[rarity];
                 const isActive = rarityFilter === rarity;
                 return (
                   <button
                     key={rarity}
                     onClick={() => setRarityFilter(rarityFilter === rarity ? 'all' : rarity)}
-                    className={`p-2 rounded-lg transition-all duration-200 ${
+                    className={`group relative overflow-hidden py-2 px-2 rounded-lg transition-all duration-300 border ${
                       isActive
-                        ? `${config.bgColor} ring-2 ring-offset-2 ring-offset-dark-800 ${config.borderColor.replace('border-', 'ring-')}`
-                        : `${config.bgColor} hover:scale-105`
+                        ? `${config.bgColor} ${config.borderColor} ${glow.activeShadow}`
+                        : `${config.bgColor} border-transparent ${glow.hoverBorder} ${glow.hoverShadow}`
                     }`}
                   >
-                    <div className="inline-flex items-start gap-1.5 mx-auto">
-                      <config.icon className={`w-4 h-4 ${config.color} mt-0.5 flex-shrink-0`} />
-                      <div>
-                        <div className={`text-xs font-medium ${config.color} text-left`}>
+                    <div className={`absolute -right-4 -top-4 h-12 w-12 rounded-full ${glow.orbColor} blur-xl transition-opacity ${
+                      isActive ? 'opacity-60' : 'opacity-0 group-hover:opacity-40'
+                    }`} />
+                    <div className="relative">
+                      <div className="flex items-center justify-center gap-1.5">
+                        <config.icon className={`w-4 h-4 ${config.color} flex-shrink-0`} />
+                        <span className={`text-xs font-medium ${config.color}`}>
                           {rarityStats.collected}/{rarityStats.total}
-                        </div>
-                        <div className={`text-[10px] ${config.color} opacity-70 text-left`}>
-                          {config.name}
-                        </div>
+                        </span>
+                      </div>
+                      <div className={`text-[10px] ${config.color} opacity-70 text-center mt-0.5`}>
+                        {config.name}
                       </div>
                     </div>
                   </button>
@@ -788,18 +824,20 @@ export default function CardsPage() {
             </div>
             <ProgressBar value={stats.total > 0 ? Math.round((stats.collected / stats.total) * 100) : 0} />
 
-            <div className="grid grid-cols-4 gap-2 mt-4">
+            <div className="grid grid-cols-4 gap-2 mt-3">
               {(Object.keys(RARITY_CONFIG) as CardRarity[]).map(rarity => {
                 const config = RARITY_CONFIG[rarity];
                 const rarityStats = stats.byRarity[rarity];
                 return (
-                  <div key={rarity} className={`text-center p-2 rounded-lg ${config.bgColor}`}>
-                    <config.icon className={`w-5 h-5 mx-auto ${config.color}`} />
-                    <div className={`text-[10px] ${config.color} opacity-70 mt-1`}>
-                      {config.name}
+                  <div key={rarity} className={`py-2 px-2 rounded-lg ${config.bgColor}`}>
+                    <div className="flex items-center justify-center gap-1.5">
+                      <config.icon className={`w-4 h-4 ${config.color} flex-shrink-0`} />
+                      <span className={`text-xs font-medium ${config.color}`}>
+                        {rarityStats.collected}/{rarityStats.total}
+                      </span>
                     </div>
-                    <div className={`text-xs font-medium ${config.color}`}>
-                      {rarityStats.collected}/{rarityStats.total}
+                    <div className={`text-[10px] ${config.color} opacity-70 text-center mt-0.5`}>
+                      {config.name}
                     </div>
                   </div>
                 );
