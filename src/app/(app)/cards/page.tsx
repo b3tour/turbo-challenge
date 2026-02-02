@@ -571,7 +571,7 @@ export default function CardsPage() {
             </div>
             <ProgressBar value={allCarStats.total > 0 ? Math.round((allCarStats.collected / allCarStats.total) * 100) : 0} />
 
-            <div className="grid grid-cols-4 gap-2 mt-4">
+            <div className="grid grid-cols-4 gap-2 mt-3">
               {(Object.keys(RARITY_CONFIG) as CardRarity[]).map(rarity => {
                 const config = RARITY_CONFIG[rarity];
                 const rarityStats = allCarStats.byRarity[rarity];
@@ -580,18 +580,20 @@ export default function CardsPage() {
                   <button
                     key={rarity}
                     onClick={() => setRarityFilter(rarityFilter === rarity ? 'all' : rarity)}
-                    className={`text-center p-2 rounded-lg transition-all duration-200 ${
+                    className={`text-center px-2 py-1.5 rounded-lg transition-all duration-200 ${
                       isActive
                         ? `${config.bgColor} ring-2 ring-offset-2 ring-offset-dark-800 ${config.borderColor.replace('border-', 'ring-')}`
                         : `${config.bgColor} hover:scale-105`
                     }`}
                   >
-                    <config.icon className={`w-5 h-5 mx-auto ${config.color}`} />
-                    <div className={`text-[10px] ${config.color} opacity-70 mt-1`}>
-                      {config.name}
+                    <div className="flex items-center justify-center gap-1">
+                      <config.icon className={`w-3.5 h-3.5 ${config.color}`} />
+                      <span className={`text-xs font-medium ${config.color}`}>
+                        {rarityStats.collected}/{rarityStats.total}
+                      </span>
                     </div>
-                    <div className={`text-xs font-medium ${config.color}`}>
-                      {rarityStats.collected}/{rarityStats.total}
+                    <div className={`text-[10px] ${config.color} opacity-60`}>
+                      {config.name}
                     </div>
                   </button>
                 );
@@ -625,7 +627,7 @@ export default function CardsPage() {
               }`}
             >
               <Layers className="w-3.5 h-3.5" />
-              Posiadane ({allCarStats.collected})
+              Moja kolekcja
             </button>
             <button
               onClick={() => setCollectionFilter(collectionFilter === 'to_collect' ? 'all' : 'to_collect')}
@@ -635,8 +637,8 @@ export default function CardsPage() {
                   : 'bg-surface-2 text-dark-400 hover:text-dark-300'
               }`}
             >
-              <Star className="w-3.5 h-3.5" />
-              Do zdobycia ({allCarStats.total - allCarStats.collected})
+              <Lock className="w-3.5 h-3.5" />
+              Do zdobycia
             </button>
           </div>
 
