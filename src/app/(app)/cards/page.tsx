@@ -56,13 +56,13 @@ const RARITY_TILE_TOKENS: Record<CardRarity, {
   borderHover: string;
 }> = {
   common: {
-    bgGradientFrom: 'rgba(156,163,175,0.15)',
-    bgGradientTo: 'rgba(156,163,175,0.05)',
-    accent: '#9CA3AF',
+    bgGradientFrom: 'rgba(209,213,219,0.15)',
+    bgGradientTo: 'rgba(209,213,219,0.05)',
+    accent: '#D1D5DB',
     iconBg: 'rgba(255,255,255,0.10)',
-    accentGlow: '0 0 20px rgba(156,163,175,0.25)',
-    borderActive: 'border-gray-500/50',
-    borderHover: 'hover:border-gray-500/30',
+    accentGlow: '0 0 20px rgba(209,213,219,0.35)',
+    borderActive: 'border-gray-400/50',
+    borderHover: 'hover:border-gray-400/30',
   },
   rare: {
     bgGradientFrom: 'rgba(96,165,250,0.18)',
@@ -645,12 +645,12 @@ export default function CardsPage() {
                     }}
                   >
                     <div className="flex justify-center mb-1.5">
-                      <Icon className="w-4 h-4" style={{ color: token.accent }} />
+                      <Icon className="w-4 h-4 transition-all duration-200 group-hover:brightness-150 group-hover:drop-shadow-[0_0_4px_rgba(255,255,255,0.3)]" style={{ color: token.accent }} />
                     </div>
-                    <p className={`text-xs sm:text-sm font-semibold leading-tight text-center transition-colors ${isActive ? '' : 'text-white'}`} style={isActive ? { color: token.accent, textShadow: '0 1px 3px rgba(0,0,0,0.4)' } : { textShadow: '0 1px 3px rgba(0,0,0,0.4)' }}>
+                    <p className={`text-xs sm:text-sm font-semibold leading-tight text-center transition-colors duration-200 ${isActive ? '' : 'text-white group-hover:text-white'}`} style={isActive ? { color: token.accent, textShadow: '0 1px 3px rgba(0,0,0,0.4)' } : { textShadow: '0 1px 3px rgba(0,0,0,0.4)' }}>
                       {rarityStats.collected}/{rarityStats.total}
                     </p>
-                    <p className={`text-[10px] sm:text-[11px] font-medium mt-0.5 truncate text-center transition-colors ${isActive ? '' : 'text-white/70'}`} style={isActive ? { color: token.accent, opacity: 0.85 } : undefined}>
+                    <p className={`text-[10px] sm:text-[11px] font-medium mt-0.5 truncate text-center transition-colors duration-200 ${isActive ? '' : 'text-white/70 group-hover:text-white/90'}`} style={isActive ? { color: token.accent, opacity: 0.85 } : undefined}>
                       {config.name}
                     </p>
                     <div className="mt-1.5 h-1 sm:h-1.5 w-full rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.10)' }}>
