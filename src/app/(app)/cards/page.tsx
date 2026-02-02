@@ -622,12 +622,11 @@ export default function CardsPage() {
                     <div className={`absolute -right-4 -top-4 h-12 w-12 rounded-full ${glow.orbColor} blur-xl transition-opacity ${
                       isActive ? 'opacity-60' : 'opacity-0 group-hover:opacity-40'
                     }`} />
-                    <div className="relative inline-grid grid-cols-[1rem_auto] gap-x-1.5 mx-auto items-center">
-                      <config.icon className={`w-4 h-4 ${config.color}`} />
+                    <div className="relative inline-grid grid-cols-[1.25rem_auto] gap-x-2 mx-auto">
+                      <config.icon className={`w-5 h-5 ${config.color} row-span-2 self-center`} />
                       <span className={`text-xs font-medium ${config.color}`}>
                         {rarityStats.collected}/{rarityStats.total}
                       </span>
-                      <span />
                       <span className={`text-[10px] ${config.color} opacity-70`}>
                         {config.name}
                       </span>
@@ -829,12 +828,11 @@ export default function CardsPage() {
                 const rarityStats = stats.byRarity[rarity];
                 return (
                   <div key={rarity} className={`py-2 px-2 rounded-lg ${config.bgColor}`}>
-                    <div className="inline-grid grid-cols-[1rem_auto] gap-x-1.5 mx-auto items-center">
-                      <config.icon className={`w-4 h-4 ${config.color}`} />
+                    <div className="inline-grid grid-cols-[1.25rem_auto] gap-x-2 mx-auto">
+                      <config.icon className={`w-5 h-5 ${config.color} row-span-2 self-center`} />
                       <span className={`text-xs font-medium ${config.color}`}>
                         {rarityStats.collected}/{rarityStats.total}
                       </span>
-                      <span />
                       <span className={`text-[10px] ${config.color} opacity-70`}>
                         {config.name}
                       </span>
