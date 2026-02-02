@@ -39,41 +39,57 @@ import {
   Grid2X2,
   Grid3X3,
   Wrench,
+  Check,
 } from 'lucide-react';
 import { CollectibleCardDisplay } from '@/components/cards';
 import { TuningContent } from '@/components/arena/TuningContent';
 
 type ViewTab = 'car' | 'tuning' | 'achievement';
 
-const RARITY_GLOW: Record<CardRarity, {
-  activeShadow: string;
-  hoverBorder: string;
-  hoverShadow: string;
-  orbColor: string;
+const RARITY_TILE_TOKENS: Record<CardRarity, {
+  bgGradientFrom: string;
+  bgGradientTo: string;
+  accent: string;
+  iconBg: string;
+  accentGlow: string;
+  borderActive: string;
+  borderHover: string;
 }> = {
   common: {
-    activeShadow: 'shadow-[0_0_20px_rgba(107,114,128,0.25)]',
-    hoverBorder: 'hover:border-gray-500/40',
-    hoverShadow: 'hover:shadow-[0_0_20px_rgba(107,114,128,0.15)]',
-    orbColor: 'bg-gray-500/10',
+    bgGradientFrom: 'rgba(156,163,175,0.15)',
+    bgGradientTo: 'rgba(156,163,175,0.05)',
+    accent: '#9CA3AF',
+    iconBg: 'rgba(255,255,255,0.10)',
+    accentGlow: '0 0 20px rgba(156,163,175,0.25)',
+    borderActive: 'border-gray-500/50',
+    borderHover: 'hover:border-gray-500/30',
   },
   rare: {
-    activeShadow: 'shadow-[0_0_20px_rgba(59,130,246,0.3)]',
-    hoverBorder: 'hover:border-blue-500/40',
-    hoverShadow: 'hover:shadow-[0_0_20px_rgba(59,130,246,0.15)]',
-    orbColor: 'bg-blue-500/10',
+    bgGradientFrom: 'rgba(96,165,250,0.18)',
+    bgGradientTo: 'rgba(96,165,250,0.05)',
+    accent: '#60A5FA',
+    iconBg: 'rgba(255,255,255,0.12)',
+    accentGlow: '0 0 20px rgba(96,165,250,0.30)',
+    borderActive: 'border-blue-500/50',
+    borderHover: 'hover:border-blue-500/30',
   },
   epic: {
-    activeShadow: 'shadow-[0_0_20px_rgba(168,85,247,0.3)]',
-    hoverBorder: 'hover:border-purple-500/40',
-    hoverShadow: 'hover:shadow-[0_0_20px_rgba(168,85,247,0.15)]',
-    orbColor: 'bg-purple-500/10',
+    bgGradientFrom: 'rgba(167,139,250,0.18)',
+    bgGradientTo: 'rgba(167,139,250,0.05)',
+    accent: '#A78BFA',
+    iconBg: 'rgba(255,255,255,0.12)',
+    accentGlow: '0 0 20px rgba(167,139,250,0.30)',
+    borderActive: 'border-purple-500/50',
+    borderHover: 'hover:border-purple-500/30',
   },
   legendary: {
-    activeShadow: 'shadow-[0_0_20px_rgba(234,179,8,0.35)]',
-    hoverBorder: 'hover:border-yellow-500/40',
-    hoverShadow: 'hover:shadow-[0_0_20px_rgba(234,179,8,0.2)]',
-    orbColor: 'bg-yellow-500/10',
+    bgGradientFrom: 'rgba(251,191,36,0.18)',
+    bgGradientTo: 'rgba(251,191,36,0.05)',
+    accent: '#FBBF24',
+    iconBg: 'rgba(255,255,255,0.15)',
+    accentGlow: '0 0 20px rgba(251,191,36,0.35)',
+    borderActive: 'border-yellow-500/50',
+    borderHover: 'hover:border-yellow-500/30',
   },
 };
 
@@ -606,32 +622,58 @@ export default function CardsPage() {
             <div className="grid grid-cols-4 gap-2 mt-3">
               {(Object.keys(RARITY_CONFIG) as CardRarity[]).map(rarity => {
                 const config = RARITY_CONFIG[rarity];
-                const glow = RARITY_GLOW[rarity];
+                const token = RARITY_TILE_TOKENS[rarity];
                 const rarityStats = allCarStats.byRarity[rarity];
                 const isActive = rarityFilter === rarity;
+                const isComplete = rarityStats.collected > 0 && rarityStats.collected === rarityStats.total;
+                const progressPct = rarityStats.total > 0 ? (rarityStats.collected / rarityStats.total) * 100 : 0;
+                const Icon = config.icon;
                 return (
                   <button
                     key={rarity}
                     onClick={() => setRarityFilter(rarityFilter === rarity ? 'all' : rarity)}
-                    className={`group relative overflow-hidden py-2 px-2 rounded-lg transition-all duration-300 border ${
+                    className={`group relative overflow-hidden rounded-2xl p-2.5 sm:p-3.5 transition-all duration-200 border hover:scale-[1.03] active:scale-[0.98] ${
                       isActive
-                        ? `${config.bgColor} ${config.borderColor} ${glow.activeShadow}`
-                        : `${config.bgColor} border-transparent ${glow.hoverBorder} ${glow.hoverShadow}`
+                        ? `${token.borderActive} ring-1 ring-white/10`
+                        : `border-white/[0.06] ${token.borderHover}`
                     }`}
+                    style={{
+                      background: `radial-gradient(ellipse at 30% 20%, ${token.bgGradientFrom}, ${token.bgGradientTo})`,
+                      boxShadow: isActive
+                        ? `inset 0 1px 0 rgba(255,255,255,0.06), ${token.accentGlow}`
+                        : 'inset 0 1px 0 rgba(255,255,255,0.04)',
+                    }}
                   >
-                    <div className={`absolute -right-4 -top-4 h-12 w-12 rounded-full ${glow.orbColor} blur-xl transition-opacity ${
-                      isActive ? 'opacity-60' : 'opacity-0 group-hover:opacity-40'
-                    }`} />
-                    <div className="relative grid grid-cols-[1rem_auto] gap-x-1.5 items-center">
-                      <config.icon className={`w-4 h-4 ${config.color}`} />
-                      <span className={`text-xs font-medium ${config.color}`}>
-                        {rarityStats.collected}/{rarityStats.total}
-                      </span>
-                      <span />
-                      <span className={`text-[10px] ${config.color} opacity-70`}>
-                        {config.name}
-                      </span>
+                    <div
+                      className="w-5 h-5 sm:w-6 sm:h-6 rounded-[10px] flex items-center justify-center mb-2"
+                      style={{ background: token.iconBg }}
+                    >
+                      <Icon className="w-2.5 h-2.5 sm:w-3 sm:h-3" style={{ color: token.accent }} />
                     </div>
+                    <p className="text-lg sm:text-xl font-semibold leading-tight text-white" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.4)' }}>
+                      {rarityStats.collected}/{rarityStats.total}
+                    </p>
+                    <p className="text-[11px] sm:text-xs font-medium text-white/80 mt-0.5 truncate">
+                      {config.name}
+                    </p>
+                    <div className="mt-2 h-1.5 sm:h-2 w-full rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.10)' }}>
+                      <div
+                        className="h-full rounded-full transition-all duration-300 ease-out"
+                        style={{
+                          width: `${progressPct}%`,
+                          background: token.accent,
+                          boxShadow: isComplete ? `0 0 8px ${token.accent}` : 'none',
+                        }}
+                      />
+                    </div>
+                    {isComplete && (
+                      <div
+                        className="absolute top-1.5 right-1.5 sm:top-2 sm:right-2 w-4 h-4 rounded-full flex items-center justify-center"
+                        style={{ background: token.accent }}
+                      >
+                        <Check className="w-2.5 h-2.5 text-black" strokeWidth={3} />
+                      </div>
+                    )}
                   </button>
                 );
               })}
@@ -826,19 +868,50 @@ export default function CardsPage() {
             <div className="grid grid-cols-4 gap-2 mt-3">
               {(Object.keys(RARITY_CONFIG) as CardRarity[]).map(rarity => {
                 const config = RARITY_CONFIG[rarity];
+                const token = RARITY_TILE_TOKENS[rarity];
                 const rarityStats = stats.byRarity[rarity];
+                const isComplete = rarityStats.collected > 0 && rarityStats.collected === rarityStats.total;
+                const progressPct = rarityStats.total > 0 ? (rarityStats.collected / rarityStats.total) * 100 : 0;
+                const Icon = config.icon;
                 return (
-                  <div key={rarity} className={`py-2 px-2 rounded-lg ${config.bgColor}`}>
-                    <div className="grid grid-cols-[1rem_auto] gap-x-1.5 items-center">
-                      <config.icon className={`w-4 h-4 ${config.color}`} />
-                      <span className={`text-xs font-medium ${config.color}`}>
-                        {rarityStats.collected}/{rarityStats.total}
-                      </span>
-                      <span />
-                      <span className={`text-[10px] ${config.color} opacity-70`}>
-                        {config.name}
-                      </span>
+                  <div
+                    key={rarity}
+                    className="relative overflow-hidden rounded-2xl p-2.5 sm:p-3.5 border border-white/[0.06]"
+                    style={{
+                      background: `radial-gradient(ellipse at 30% 20%, ${token.bgGradientFrom}, ${token.bgGradientTo})`,
+                      boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04)',
+                    }}
+                  >
+                    <div
+                      className="w-5 h-5 sm:w-6 sm:h-6 rounded-[10px] flex items-center justify-center mb-2"
+                      style={{ background: token.iconBg }}
+                    >
+                      <Icon className="w-2.5 h-2.5 sm:w-3 sm:h-3" style={{ color: token.accent }} />
                     </div>
+                    <p className="text-lg sm:text-xl font-semibold leading-tight text-white" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.4)' }}>
+                      {rarityStats.collected}/{rarityStats.total}
+                    </p>
+                    <p className="text-[11px] sm:text-xs font-medium text-white/80 mt-0.5 truncate">
+                      {config.name}
+                    </p>
+                    <div className="mt-2 h-1.5 sm:h-2 w-full rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.10)' }}>
+                      <div
+                        className="h-full rounded-full transition-all duration-300 ease-out"
+                        style={{
+                          width: `${progressPct}%`,
+                          background: token.accent,
+                          boxShadow: isComplete ? `0 0 8px ${token.accent}` : 'none',
+                        }}
+                      />
+                    </div>
+                    {isComplete && (
+                      <div
+                        className="absolute top-1.5 right-1.5 sm:top-2 sm:right-2 w-4 h-4 rounded-full flex items-center justify-center"
+                        style={{ background: token.accent }}
+                      >
+                        <Check className="w-2.5 h-2.5 text-black" strokeWidth={3} />
+                      </div>
+                    )}
                   </div>
                 );
               })}
