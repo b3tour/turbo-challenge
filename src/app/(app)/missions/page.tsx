@@ -309,8 +309,8 @@ export default function MissionsPage() {
     <div className="py-6">
       {/* Header */}
       <div className="flex items-center gap-4 mb-6">
-        <div className="w-14 h-14 rounded-xl bg-turbo-500/20 flex items-center justify-center flex-shrink-0">
-          <Target className="w-7 h-7 text-turbo-500" />
+        <div className="w-14 h-14 rounded-xl bg-amber-500/20 flex items-center justify-center flex-shrink-0">
+          <Target className="w-7 h-7 text-amber-500" />
         </div>
         <div className="flex-1">
           <h1 className="text-2xl font-bold text-white">Misje</h1>
@@ -329,7 +329,7 @@ export default function MissionsPage() {
             onClick={() => setFilter(f.value)}
             className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition-all ${
               filter === f.value
-                ? 'bg-turbo-500 text-white shadow-sm'
+                ? 'bg-amber-500 text-white shadow-sm'
                 : 'bg-transparent text-dark-400 hover:text-dark-300'
             }`}
           >

@@ -40,7 +40,7 @@ export default function ArenaPage() {
               onClick={() => setActiveTab(t.value)}
               className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition-all ${
                 activeTab === t.value
-                  ? 'bg-turbo-500 text-white shadow-sm'
+                  ? 'bg-red-500 text-white shadow-sm'
                   : 'bg-transparent text-dark-400 hover:text-dark-300'
               }`}
             >
