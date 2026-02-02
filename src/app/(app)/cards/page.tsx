@@ -219,14 +219,17 @@ export default function CardsPage() {
   const [loadingImages, setLoadingImages] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [showGallery, setShowGallery] = useState(false);
-  const [barsAnimated, setBarsAnimated] = useState(false);
+  const [animatedRarities, setAnimatedRarities] = useState<Set<CardRarity>>(new Set());
 
   useEffect(() => {
     if (!loading) {
-      const timer = setTimeout(() => setBarsAnimated(true), 300);
-      return () => clearTimeout(timer);
+      const rarities: CardRarity[] = ['common', 'rare', 'epic', 'legendary'];
+      const timers = rarities.map((rarity, i) =>
+        setTimeout(() => setAnimatedRarities(prev => new Set(prev).add(rarity)), 100 + i * 200)
+      );
+      return () => timers.forEach(clearTimeout);
     }
-    setBarsAnimated(false);
+    setAnimatedRarities(new Set());
   }, [loading]);
 
   // Pobierz karty według typu
@@ -666,9 +669,9 @@ export default function CardsPage() {
                       <div
                         className="h-full rounded-full transition-all duration-[800ms] ease-out"
                         style={{
-                          width: barsAnimated ? `${progressPct}%` : '0%',
+                          width: animatedRarities.has(rarity) ? `${progressPct}%` : '0%',
                           background: token.accent,
-                          boxShadow: isComplete && barsAnimated ? `0 0 8px ${token.accent}` : 'none',
+                          boxShadow: isComplete && animatedRarities.has(rarity) ? `0 0 8px ${token.accent}` : 'none',
                         }}
                       />
                     </div>
@@ -901,9 +904,9 @@ export default function CardsPage() {
                       <div
                         className="h-full rounded-full transition-all duration-[800ms] ease-out"
                         style={{
-                          width: barsAnimated ? `${progressPct}%` : '0%',
+                          width: animatedRarities.has(rarity) ? `${progressPct}%` : '0%',
                           background: token.accent,
-                          boxShadow: isComplete && barsAnimated ? `0 0 8px ${token.accent}` : 'none',
+                          boxShadow: isComplete && animatedRarities.has(rarity) ? `0 0 8px ${token.accent}` : 'none',
                         }}
                       />
                     </div>
