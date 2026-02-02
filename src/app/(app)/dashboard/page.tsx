@@ -185,17 +185,17 @@ export default function DashboardPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Zap className="h-5 w-5 text-amber-500" />
+            <Zap className="h-5 w-5 text-pink-500" />
             <h2 className="text-lg font-semibold text-white">Dostępne misje</h2>
             {availableMissions.length > 0 && (
-              <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-500/20 px-1.5 text-xs font-medium text-amber-500">
+              <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-pink-500/20 px-1.5 text-xs font-medium text-pink-500">
                 {availableMissions.length}
               </span>
             )}
           </div>
           <Link
             href="/missions"
-            className="flex items-center gap-1 text-sm font-medium text-amber-500 hover:text-amber-400"
+            className="flex items-center gap-1 text-sm font-medium text-pink-500 hover:text-pink-400"
           >
             Zobacz wszystkie
             <ChevronRight className="h-4 w-4" />
@@ -336,16 +336,16 @@ export default function DashboardPage() {
         {/* Ranking */}
         <Link
           href="/leaderboard"
-          className="group relative animate-slide-up overflow-hidden rounded-2xl border border-pink-500/30 bg-surface-1 p-4 transition-all duration-300 hover:border-pink-500/60 hover:shadow-[0_0_30px_rgba(236,72,153,0.15)]"
+          className="group relative animate-slide-up overflow-hidden rounded-2xl border border-amber-500/30 bg-surface-1 p-4 transition-all duration-300 hover:border-amber-500/60 hover:shadow-[0_0_30px_rgba(245,158,11,0.15)]"
           style={{ animationDelay: '0.4s', animationFillMode: 'backwards' }}
         >
-          <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-pink-500/10 opacity-30 blur-2xl transition-opacity group-hover:opacity-50" />
+          <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-amber-500/10 opacity-30 blur-2xl transition-opacity group-hover:opacity-50" />
           <div className="relative space-y-3">
             <div className="flex items-start justify-between">
-              <div className="rounded-xl bg-pink-500/10 p-2.5">
-                <Trophy className="h-6 w-6 text-pink-400" />
+              <div className="rounded-xl bg-amber-500/10 p-2.5">
+                <Trophy className="h-6 w-6 text-amber-400" />
               </div>
-              <span className="rounded-lg bg-pink-500/10 px-2 py-1 text-xs font-bold text-pink-400">
+              <span className="rounded-lg bg-amber-500/10 px-2 py-1 text-xs font-bold text-amber-400">
                 #{userRank || '?'}
               </span>
             </div>
