@@ -31,7 +31,7 @@ export default function ArenaPage() {
       </div>
 
       {/* Filter bar — missions style */}
-      <div className="bg-surface-1 rounded-xl p-1 flex gap-1">
+      <div className="bg-surface-2 rounded-xl p-1 flex gap-1">
         {tabs.map(t => {
           const Icon = t.icon;
           return (

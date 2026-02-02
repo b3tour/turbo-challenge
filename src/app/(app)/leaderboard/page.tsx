@@ -133,7 +133,7 @@ export default function LeaderboardPage() {
       </div>
 
       {/* Tabs */}
-      <div className="bg-surface-1 rounded-xl p-1 flex gap-1 mb-6">
+      <div className="bg-surface-2 rounded-xl p-1 flex gap-1 mb-6">
         <button
           onClick={() => setActiveTab('xp')}
           className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition-all ${

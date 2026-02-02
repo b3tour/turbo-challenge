@@ -524,7 +524,7 @@ export default function CardsPage() {
       )}
 
       {/* Tabs */}
-      <div className="bg-surface-1 rounded-xl p-1 flex gap-1 mb-6">
+      <div className="bg-surface-2 rounded-xl p-1 flex gap-1 mb-6">
         {([
           { value: 'car' as ViewTab, label: 'Samochody', icon: Car },
           { value: 'tuning' as ViewTab, label: 'Strefa tuningu', icon: Wrench },

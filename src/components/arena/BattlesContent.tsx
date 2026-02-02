@@ -400,7 +400,7 @@ export function BattlesContent({ activeSubTab }: BattlesContentProps = {}) {
             </div>
           </div>
 
-          <div className="bg-surface-1 rounded-xl p-1 flex gap-1 overflow-x-auto">
+          <div className="bg-surface-2 rounded-xl p-1 flex gap-1 overflow-x-auto">
             {tabs.map(t => {
               const Icon = t.icon;
               return (

@@ -91,7 +91,7 @@ export default function AnnouncementsPage() {
       </div>
 
       {/* Filters */}
-      <div className="bg-surface-1 rounded-xl p-1 flex gap-1 mb-4 overflow-x-auto">
+      <div className="bg-surface-2 rounded-xl p-1 flex gap-1 mb-4 overflow-x-auto">
         {filters.map(f => {
           const Icon = f.icon;
           const count = f.value === 'all'
