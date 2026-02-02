@@ -453,7 +453,7 @@ export default function CardsPage() {
               <img src={card.image_url} alt={card.name} className={`w-full h-full object-cover ${!owned ? 'grayscale' : ''}`} />
             ) : (
               <div className="text-center p-4">
-                <div className="text-4xl mb-2">{config.icon}</div>
+                <config.icon className={`w-10 h-10 mx-auto mb-2 ${config.color}`} />
                 <Sparkles className={`w-8 h-8 mx-auto ${config.color}`} />
               </div>
             )}
@@ -586,8 +586,8 @@ export default function CardsPage() {
                         : `${config.bgColor} hover:scale-105`
                     }`}
                   >
-                    <div className="text-lg">{config.icon}</div>
-                    <div className={`text-[10px] ${config.color} opacity-70`}>
+                    <config.icon className={`w-5 h-5 mx-auto ${config.color}`} />
+                    <div className={`text-[10px] ${config.color} opacity-70 mt-1`}>
                       {config.name}
                     </div>
                     <div className={`text-xs font-medium ${config.color}`}>
@@ -790,8 +790,8 @@ export default function CardsPage() {
                 const rarityStats = stats.byRarity[rarity];
                 return (
                   <div key={rarity} className={`text-center p-2 rounded-lg ${config.bgColor}`}>
-                    <div className="text-lg">{config.icon}</div>
-                    <div className={`text-[10px] ${config.color} opacity-70`}>
+                    <config.icon className={`w-5 h-5 mx-auto ${config.color}`} />
+                    <div className={`text-[10px] ${config.color} opacity-70 mt-1`}>
                       {config.name}
                     </div>
                     <div className={`text-xs font-medium ${config.color}`}>
@@ -1097,7 +1097,7 @@ export default function CardsPage() {
                       <img src={selectedCard.image_url} alt={selectedCard.name} className={`w-full h-full object-cover ${!owned ? 'grayscale' : ''}`} />
                     ) : (
                       <div className="text-center">
-                        <div className="text-8xl mb-4">{config.icon}</div>
+                        <config.icon className={`w-20 h-20 mx-auto mb-4 ${config.color}`} />
                         <Sparkles className={`w-16 h-16 mx-auto ${config.color}`} />
                       </div>
                     )}

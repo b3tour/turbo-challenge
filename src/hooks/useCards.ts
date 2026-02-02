@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { Circle, Diamond, Flame, Crown } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { CollectibleCard, UserCard, CardRarity, CardType, CardImage } from '@/types';
 
@@ -35,7 +36,7 @@ export const RARITY_CONFIG: Record<CardRarity, {
   bgColor: string;
   borderColor: string;
   glowColor: string;
-  icon: string;
+  icon: React.ElementType;
 }> = {
   common: {
     name: 'Common',
@@ -43,7 +44,7 @@ export const RARITY_CONFIG: Record<CardRarity, {
     bgColor: 'bg-gray-500/20',
     borderColor: 'border-gray-500/50',
     glowColor: '',
-    icon: '⚪',
+    icon: Circle,
   },
   rare: {
     name: 'Rare',
@@ -51,7 +52,7 @@ export const RARITY_CONFIG: Record<CardRarity, {
     bgColor: 'bg-blue-500/20',
     borderColor: 'border-blue-500/50',
     glowColor: 'shadow-blue-500/30',
-    icon: '🔵',
+    icon: Diamond,
   },
   epic: {
     name: 'Epic',
@@ -59,7 +60,7 @@ export const RARITY_CONFIG: Record<CardRarity, {
     bgColor: 'bg-purple-500/20',
     borderColor: 'border-purple-500/50',
     glowColor: 'shadow-purple-500/30',
-    icon: '🟣',
+    icon: Flame,
   },
   legendary: {
     name: 'Legendary',
@@ -67,7 +68,7 @@ export const RARITY_CONFIG: Record<CardRarity, {
     bgColor: 'bg-yellow-500/20',
     borderColor: 'border-yellow-500/50',
     glowColor: 'shadow-yellow-500/40',
-    icon: '🌟',
+    icon: Crown,
   },
 };
 

@@ -22,6 +22,9 @@ import {
   Crown,
   Trophy,
   AlertCircle,
+  Circle,
+  Diamond,
+  Flame,
 } from 'lucide-react';
 import { MysteryPackType, MysteryPackPurchase, CollectibleCard } from '@/types';
 
@@ -230,8 +233,8 @@ export default function MysteryGaragePage() {
             const config = RARITY_CONFIG[rarity];
             return (
               <div key={rarity} className={`text-center p-2 rounded-lg ${config.bgColor}`}>
-                <div className="text-xl">{config.icon}</div>
-                <div className={`text-xs font-medium ${config.color}`}>{config.name}</div>
+                <config.icon className={`w-5 h-5 mx-auto ${config.color}`} />
+                <div className={`text-xs font-medium ${config.color} mt-1`}>{config.name}</div>
               </div>
             );
           })}
@@ -357,20 +360,20 @@ export default function MysteryGaragePage() {
                   <p className="text-sm text-dark-400 mb-2">Szanse na rzadkość:</p>
                   <div className="grid grid-cols-4 gap-2">
                     <div className="text-center">
-                      <div className="text-lg">{RARITY_CONFIG.common.icon}</div>
-                      <div className="text-xs text-slate-400">{selectedPack.common_chance}%</div>
+                      <Circle className="w-5 h-5 mx-auto text-gray-400" />
+                      <div className="text-xs text-slate-400 mt-1">{selectedPack.common_chance}%</div>
                     </div>
                     <div className="text-center">
-                      <div className="text-lg">{RARITY_CONFIG.rare.icon}</div>
-                      <div className="text-xs text-green-400">{selectedPack.rare_chance}%</div>
+                      <Diamond className="w-5 h-5 mx-auto text-blue-400" />
+                      <div className="text-xs text-green-400 mt-1">{selectedPack.rare_chance}%</div>
                     </div>
                     <div className="text-center">
-                      <div className="text-lg">{RARITY_CONFIG.epic.icon}</div>
-                      <div className="text-xs text-purple-400">{selectedPack.epic_chance}%</div>
+                      <Flame className="w-5 h-5 mx-auto text-purple-400" />
+                      <div className="text-xs text-purple-400 mt-1">{selectedPack.epic_chance}%</div>
                     </div>
                     <div className="text-center">
-                      <div className="text-lg">{RARITY_CONFIG.legendary.icon}</div>
-                      <div className="text-xs text-yellow-400">{selectedPack.legendary_chance}%</div>
+                      <Crown className="w-5 h-5 mx-auto text-yellow-400" />
+                      <div className="text-xs text-yellow-400 mt-1">{selectedPack.legendary_chance}%</div>
                     </div>
                   </div>
                 </div>
@@ -511,7 +514,7 @@ export default function MysteryGaragePage() {
                           />
                         ) : (
                           <div className={`w-full h-full ${config.bgColor} flex items-center justify-center`}>
-                            {config.icon}
+                            <config.icon className={`w-5 h-5 ${config.color}`} />
                           </div>
                         )}
                       </div>
@@ -524,7 +527,7 @@ export default function MysteryGaragePage() {
                             card.rarity === 'epic' ? 'info' :
                             card.rarity === 'rare' ? 'success' : 'default'
                           } size="sm">
-                            {config.icon} x{count}
+                            <config.icon className={`w-3 h-3 inline ${config.color}`} /> x{count}
                           </Badge>
                           <span className="text-xs text-dark-400">
                             +{xpReward} XP za oddanie
