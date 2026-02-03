@@ -171,7 +171,7 @@ export function TuningContent() {
         <div className="bg-surface-2 rounded-xl p-3">
           <div className="flex items-center gap-1.5 mb-1">
             <CircleGauge className="w-3.5 h-3.5 text-green-400" />
-            <span className="text-[11px] text-dark-400">Mody</span>
+            <span className="text-[11px] text-dark-400">Tuning</span>
           </div>
           <div className="text-lg font-bold text-white leading-tight">
             {totalMods}
@@ -183,7 +183,7 @@ export function TuningContent() {
               style={{ width: `${Math.min(modsPct, 100)}%` }}
             />
           </div>
-          <div className="text-[10px] text-dark-500 mt-0.5">ulepszen zainstalowanych</div>
+          <div className="text-[10px] text-dark-500 mt-0.5">ulepszeń</div>
         </div>
 
         {/* Zainwestowane XP */}
@@ -206,7 +206,7 @@ export function TuningContent() {
         <div className="bg-surface-2 rounded-xl p-3">
           <div className="flex items-center gap-1.5 mb-1">
             <Zap className="w-3.5 h-3.5 text-turbo-400" />
-            <span className="text-[11px] text-dark-400">Dostepne XP</span>
+            <span className="text-[11px] text-dark-400">Dostępne XP</span>
           </div>
           <div className="text-lg font-bold text-white leading-tight">{availableXP}</div>
           <div className="mt-1.5 h-1 bg-white/5 rounded-full overflow-hidden">
@@ -289,9 +289,9 @@ export function TuningContent() {
                         setSelectedTunedCar(tc);
                         setShowModifyModal(true);
                       }}
-                      className="px-3 py-1.5 text-xs font-medium bg-turbo-500/20 text-turbo-400 rounded-lg hover:bg-turbo-500/30"
+                      className="px-3 py-1.5 text-xs font-medium bg-green-500/20 text-green-400 rounded-lg hover:bg-green-500/30"
                     >
-                      Mody
+                      Tuning
                     </button>
                   </div>
                 </div>
