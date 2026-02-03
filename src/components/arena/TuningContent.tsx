@@ -47,6 +47,12 @@ const CATEGORY_COLORS: Record<TuningCategory, { text: string; bg: string; bar: s
   time_attack: { text: 'text-violet-400', bg: 'bg-violet-500/20', bar: 'bg-violet-500' },
 };
 
+function pluralAut(n: number): string {
+  if (n === 1) return 'auto';
+  if (n >= 2 && n <= 4) return 'auta';
+  return 'aut';
+}
+
 export function TuningContent() {
   const { profile } = useAuth();
   const { userCards, allCards } = useCards({ userId: profile?.id });
@@ -147,16 +153,16 @@ export function TuningContent() {
         <div className="bg-surface-2 rounded-xl p-3">
           <div className="flex items-center gap-1.5 mb-1">
             <Car className="w-3.5 h-3.5 text-cyan-400" />
-            <span className="text-[11px] text-dark-400">Garaz</span>
+            <span className="text-[11px] text-dark-400">Garaż</span>
           </div>
           <div className="text-lg font-bold text-white leading-tight">
             {tunedCars.length}
             <span className="text-sm font-normal text-dark-500 ml-1">
-              {tunedCars.length === 1 ? 'auto' : 'aut'}
+              {pluralAut(tunedCars.length)}
             </span>
           </div>
           <div className="text-[10px] text-dark-500 mt-2.5">
-            {availableCarCards.length} dostepnych
+            {availableCarCards.length} dostępnych
           </div>
         </div>
 
