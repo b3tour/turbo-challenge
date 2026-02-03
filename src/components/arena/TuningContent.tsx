@@ -24,6 +24,7 @@ import {
   Timer,
   ChevronUp,
   Car,
+  CarFront,
   Trophy,
   Flame,
   Mountain,
@@ -152,7 +153,7 @@ export function TuningContent() {
         {/* Garaz */}
         <div className="bg-surface-2 rounded-xl p-3">
           <div className="flex items-center gap-1.5 mb-1">
-            <Car className="w-3.5 h-3.5 text-cyan-400" />
+            <CarFront className="w-3.5 h-3.5 text-cyan-400" />
             <span className="text-[11px] text-dark-400">Garaż</span>
           </div>
           <div className="text-lg font-bold text-white leading-tight">
