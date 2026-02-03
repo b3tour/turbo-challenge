@@ -156,9 +156,9 @@ export function TuningContent() {
             <CarFront className="w-3.5 h-3.5 text-cyan-400" />
             <span className="text-[11px] text-dark-400">Garaż</span>
           </div>
-          <div className="text-lg font-bold text-white leading-tight">
+          <div className="text-[16px] font-bold text-white leading-tight">
             {tunedCars.length}
-            <span className="text-sm font-normal text-dark-500 ml-1">
+            <span className="text-[13px] font-normal text-dark-500 ml-1">
               {pluralAut(tunedCars.length)}
             </span>
           </div>
@@ -173,9 +173,9 @@ export function TuningContent() {
             <CircleGauge className="w-3.5 h-3.5 text-green-400" />
             <span className="text-[11px] text-dark-400">Tuning</span>
           </div>
-          <div className="text-lg font-bold text-white leading-tight">
+          <div className="text-[16px] font-bold text-white leading-tight">
             {totalMods}
-            <span className="text-sm font-normal text-dark-500">/{maxMods}</span>
+            <span className="text-[13px] font-normal text-dark-500">/{maxMods}</span>
           </div>
           <div className="mt-1.5 h-1 bg-white/5 rounded-full overflow-hidden">
             <div
@@ -192,7 +192,7 @@ export function TuningContent() {
             <Coins className="w-3.5 h-3.5 text-amber-400" />
             <span className="text-[11px] text-dark-400">Zainwestowane</span>
           </div>
-          <div className="text-lg font-bold text-white leading-tight">{investedXP}</div>
+          <div className="text-[16px] font-bold text-white leading-tight">{investedXP}</div>
           <div className="mt-1.5 h-1 bg-white/5 rounded-full overflow-hidden">
             <div
               className="h-full rounded-full bg-amber-500 transition-all duration-500"
@@ -208,7 +208,7 @@ export function TuningContent() {
             <Zap className="w-3.5 h-3.5 text-turbo-400" />
             <span className="text-[11px] text-dark-400">Dostępne XP</span>
           </div>
-          <div className="text-lg font-bold text-white leading-tight">{availableXP}</div>
+          <div className="text-[16px] font-bold text-white leading-tight">{availableXP}</div>
           <div className="mt-1.5 h-1 bg-white/5 rounded-full overflow-hidden">
             <div
               className="h-full rounded-full bg-turbo-500 transition-all duration-500"
