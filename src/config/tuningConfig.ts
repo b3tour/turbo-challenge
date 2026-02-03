@@ -97,3 +97,9 @@ export function getUpgradeCost(mod: ModDefinition, currentStage: number): number
   if (currentStage >= 3) return null;
   return mod.stages[currentStage].cost;
 }
+
+// Oblicz zwrot XP za downgrade (50% kosztu, zaokraglone w dol)
+export function getDowngradeRefund(mod: ModDefinition, currentStage: number): number | null {
+  if (currentStage <= 0) return null;
+  return Math.floor(mod.stages[currentStage - 1].cost * 0.5);
+}
