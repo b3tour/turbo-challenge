@@ -24,11 +24,14 @@ import {
   Timer,
   ChevronUp,
   Car,
+  CarFront,
   Trophy,
   Flame,
   Mountain,
   Flag,
   Clock,
+  Coins,
+  CircleGauge,
 } from 'lucide-react';
 
 const CATEGORY_ICONS: Record<TuningCategory, React.ElementType> = {
@@ -44,6 +47,12 @@ const CATEGORY_COLORS: Record<TuningCategory, { text: string; bg: string; bar: s
   track: { text: 'text-cyan-400', bg: 'bg-cyan-500/20', bar: 'bg-cyan-500' },
   time_attack: { text: 'text-violet-400', bg: 'bg-violet-500/20', bar: 'bg-violet-500' },
 };
+
+function pluralAut(n: number): string {
+  if (n === 1) return 'auto';
+  if (n >= 2 && n <= 4) return 'auta';
+  return 'aut';
+}
 
 export function TuningContent() {
   const { profile } = useAuth();
@@ -77,6 +86,15 @@ export function TuningContent() {
     .filter(c => !c.car_horsepower || c.car_horsepower <= MAX_TUNING_HP);
 
   const investedXP = totalXP - availableXP;
+
+  // Stats bar data
+  const totalMods = tunedCars.reduce(
+    (sum, tc) => sum + tc.engine_stage + tc.turbo_stage + tc.weight_stage,
+    0
+  );
+  const maxMods = tunedCars.length * 9;
+  const xpPct = totalXP > 0 ? (availableXP / totalXP) * 100 : 0;
+  const modsPct = maxMods > 0 ? (totalMods / maxMods) * 100 : 0;
 
   // === HANDLERS ===
 
@@ -130,20 +148,74 @@ export function TuningContent() {
   // === RENDER ===
   return (
     <div className="py-4 space-y-4">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-          <Wrench className="w-7 h-7 text-turbo-500" />
-          Strefa Tuningu
-        </h1>
-        <div className="text-right">
-          <div className="text-sm text-dark-400">Dostepne XP</div>
-          <div className="text-lg font-bold text-turbo-400">
-            {availableXP} <span className="text-xs text-dark-500">/ {totalXP}</span>
+      {/* Stats bar */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        {/* Garaz */}
+        <div className="bg-surface-2 rounded-xl p-3">
+          <div className="flex items-center gap-1.5 mb-1">
+            <CarFront className="w-3.5 h-3.5 text-cyan-400" />
+            <span className="text-[11px] text-dark-400">Garaż</span>
           </div>
-          {investedXP > 0 && (
-            <div className="text-xs text-dark-500">Zainwestowane: {investedXP}</div>
-          )}
+          <div className="text-[16px] font-bold text-white leading-tight">
+            {tunedCars.length}
+            <span className="text-[13px] font-normal text-dark-500 ml-1">
+              {pluralAut(tunedCars.length)}
+            </span>
+          </div>
+          <div className="text-[10px] text-dark-500 mt-2.5">
+            {availableCarCards.length} dostępnych
+          </div>
+        </div>
+
+        {/* Mody */}
+        <div className="bg-surface-2 rounded-xl p-3">
+          <div className="flex items-center gap-1.5 mb-1">
+            <CircleGauge className="w-3.5 h-3.5 text-green-400" />
+            <span className="text-[11px] text-dark-400">Tuning</span>
+          </div>
+          <div className="text-[16px] font-bold text-white leading-tight">
+            {totalMods}
+            <span className="text-[13px] font-normal text-dark-500">/{maxMods}</span>
+          </div>
+          <div className="mt-1.5 h-1 bg-white/5 rounded-full overflow-hidden">
+            <div
+              className="h-full rounded-full bg-green-500 transition-all duration-500"
+              style={{ width: `${Math.min(modsPct, 100)}%` }}
+            />
+          </div>
+          <div className="text-[10px] text-dark-500 mt-0.5">ulepszeń</div>
+        </div>
+
+        {/* Zainwestowane XP */}
+        <div className="bg-surface-2 rounded-xl p-3">
+          <div className="flex items-center gap-1.5 mb-1">
+            <Coins className="w-3.5 h-3.5 text-amber-400" />
+            <span className="text-[11px] text-dark-400">Zainwestowane</span>
+          </div>
+          <div className="text-[16px] font-bold text-white leading-tight">{investedXP}</div>
+          <div className="mt-1.5 h-1 bg-white/5 rounded-full overflow-hidden">
+            <div
+              className="h-full rounded-full bg-amber-500 transition-all duration-500"
+              style={{ width: `${totalXP > 0 ? Math.min((investedXP / totalXP) * 100, 100) : 0}%` }}
+            />
+          </div>
+          <div className="text-[10px] text-dark-500 mt-0.5">XP w modach</div>
+        </div>
+
+        {/* Dostepne XP */}
+        <div className="bg-surface-2 rounded-xl p-3">
+          <div className="flex items-center gap-1.5 mb-1">
+            <Zap className="w-3.5 h-3.5 text-turbo-400" />
+            <span className="text-[11px] text-dark-400">Dostępne XP</span>
+          </div>
+          <div className="text-[16px] font-bold text-white leading-tight">{availableXP}</div>
+          <div className="mt-1.5 h-1 bg-white/5 rounded-full overflow-hidden">
+            <div
+              className="h-full rounded-full bg-turbo-500 transition-all duration-500"
+              style={{ width: `${Math.min(xpPct, 100)}%` }}
+            />
+          </div>
+          <div className="text-[10px] text-dark-500 mt-0.5">z {totalXP} total</div>
         </div>
       </div>
 
@@ -217,9 +289,9 @@ export function TuningContent() {
                         setSelectedTunedCar(tc);
                         setShowModifyModal(true);
                       }}
-                      className="px-3 py-1.5 text-xs font-medium bg-turbo-500/20 text-turbo-400 rounded-lg hover:bg-turbo-500/30"
+                      className="px-3 py-1.5 text-xs font-medium bg-green-500/20 text-green-400 rounded-lg hover:bg-green-500/30"
                     >
-                      Mody
+                      Modyfikuj
                     </button>
                   </div>
                 </div>
