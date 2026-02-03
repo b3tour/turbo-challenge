@@ -291,7 +291,7 @@ export function TuningContent() {
                       }}
                       className="px-3 py-1.5 text-xs font-medium bg-green-500/20 text-green-400 rounded-lg hover:bg-green-500/30"
                     >
-                      Tuning
+                      Modyfikuj
                     </button>
                   </div>
                 </div>
