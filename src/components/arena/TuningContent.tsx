@@ -14,6 +14,7 @@ import {
   CATEGORY_LABELS,
   getCumulativeBonus,
   getUpgradeCost,
+  getDowngradeRefund,
 } from '@/config/tuningConfig';
 import {
   Wrench,
@@ -23,6 +24,7 @@ import {
   Gauge,
   Timer,
   ChevronUp,
+  ChevronDown,
   Car,
   CarFront,
   Trophy,
@@ -65,6 +67,7 @@ export function TuningContent() {
     addCarToTuning,
     removeCarFromTuning,
     upgradeMod,
+    downgradeMod,
     calculateScore,
   } = useTuning({ userId: profile?.id });
   const { success, error: toastError } = useToast();
@@ -133,6 +136,27 @@ export function TuningContent() {
       toastError('Blad', result.error || 'Nie udalo sie ulepszyc');
     }
     setActionLoading(false);
+  };
+
+  const handleDowngrade = async (tunedCarId: string, modType: 'engine' | 'turbo' | 'weight') => {
+    setActionLoading(true);
+    const result = await downgradeMod(tunedCarId, modType);
+    if (result.success) {
+      const updated = tunedCars.find(tc => tc.id === tunedCarId);
+      if (updated) setSelectedTunedCar({ ...updated });
+      success('Cofnieto mod', `Zwrot ${result.refund} XP (50%)`);
+    } else {
+      toastError('Blad', result.error || 'Nie udalo sie cofnac');
+    }
+    setActionLoading(false);
+  };
+
+  // === STAGE COLORS ===
+  const stageColor = (stage: number, active: boolean) => {
+    if (!active) return 'bg-dark-600';
+    if (stage === 1) return 'bg-green-500';
+    if (stage === 2) return 'bg-amber-500';
+    return 'bg-red-500';
   };
 
   // === STAT ICONS ===
@@ -270,9 +294,7 @@ export function TuningContent() {
                           {[1, 2, 3].map(s => (
                             <div
                               key={s}
-                              className={`w-1.5 h-1.5 rounded-full ${
-                                s <= stage ? 'bg-turbo-500' : 'bg-dark-600'
-                              }`}
+                              className={`w-1.5 h-1.5 rounded-full ${stageColor(s, s <= stage)}`}
                             />
                           ))}
                           {idx < 2 && <div className="w-1" />}
@@ -423,9 +445,7 @@ export function TuningContent() {
                           {[1, 2, 3].map(s => (
                             <div
                               key={s}
-                              className={`w-3 h-3 rounded-full ${
-                                s <= currentStage ? 'bg-turbo-500' : 'bg-dark-600'
-                              }`}
+                              className={`w-3 h-3 rounded-full ${stageColor(s, s <= currentStage)}`}
                             />
                           ))}
                         </div>
@@ -442,24 +462,44 @@ export function TuningContent() {
                         </span>
                       </div>
 
-                      {upgradeCost !== null ? (
-                        <button
-                          onClick={() => handleUpgrade(tc.id, mod.id)}
-                          disabled={actionLoading || availableXP < upgradeCost}
-                          className={`w-full flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-medium transition-colors ${
-                            availableXP >= upgradeCost
-                              ? 'bg-turbo-500/20 text-turbo-400 hover:bg-turbo-500/30'
-                              : 'bg-dark-600 text-dark-500 cursor-not-allowed'
-                          }`}
-                        >
-                          <ChevronUp className="w-3 h-3" />
-                          Stage {currentStage + 1} — {upgradeCost} XP
-                        </button>
-                      ) : (
-                        <div className="w-full text-center py-2 rounded-lg bg-green-500/20 text-green-400 text-xs font-medium">
-                          MAX
-                        </div>
-                      )}
+                      <div className="flex gap-2">
+                        {/* Downgrade */}
+                        {currentStage > 0 ? (
+                          <button
+                            onClick={() => handleDowngrade(tc.id, mod.id)}
+                            disabled={actionLoading}
+                            className="flex items-center justify-center gap-1 py-2 px-3 rounded-lg text-xs font-medium transition-colors bg-red-500/15 text-red-400 hover:bg-red-500/25"
+                          >
+                            <ChevronDown className="w-3 h-3" />
+                            -{getDowngradeRefund(mod, currentStage)} XP
+                          </button>
+                        ) : (
+                          <div className="py-2 px-3 rounded-lg bg-dark-600/50 text-dark-600 text-xs font-medium flex items-center gap-1">
+                            <ChevronDown className="w-3 h-3" />
+                            MIN
+                          </div>
+                        )}
+
+                        {/* Upgrade */}
+                        {upgradeCost !== null ? (
+                          <button
+                            onClick={() => handleUpgrade(tc.id, mod.id)}
+                            disabled={actionLoading || availableXP < upgradeCost}
+                            className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-medium transition-colors ${
+                              availableXP >= upgradeCost
+                                ? 'bg-turbo-500/20 text-turbo-400 hover:bg-turbo-500/30'
+                                : 'bg-dark-600 text-dark-500 cursor-not-allowed'
+                            }`}
+                          >
+                            <ChevronUp className="w-3 h-3" />
+                            Stage {currentStage + 1} — {upgradeCost} XP
+                          </button>
+                        ) : (
+                          <div className="flex-1 text-center py-2 rounded-lg bg-green-500/20 text-green-400 text-xs font-medium">
+                            MAX
+                          </div>
+                        )}
+                      </div>
                     </div>
                   );
                 })}

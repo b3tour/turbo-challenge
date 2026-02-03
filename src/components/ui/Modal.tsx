@@ -72,7 +72,7 @@ export function Modal({
           )}
 
           {/* Content */}
-          <div className="flex-1 overflow-y-auto min-h-0">{children}</div>
+          <div className="flex-1 overflow-y-auto min-h-0 p-4">{children}</div>
         </div>
       </div>
     </Fragment>

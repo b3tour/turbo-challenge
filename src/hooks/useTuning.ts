@@ -306,6 +306,50 @@ export function useTuning({ userId }: UseTuningProps) {
     return { success: true, error: null };
   };
 
+  // Cofnij mod o 1 stage (zwrot 50% kosztu)
+  const downgradeMod = async (tunedCarId: string, modType: 'engine' | 'turbo' | 'weight') => {
+    if (!userId) return { success: false, error: 'Nie zalogowany' };
+
+    const tunedCar = tunedCars.find(tc => tc.id === tunedCarId);
+    if (!tunedCar) return { success: false, error: 'Nie znaleziono auta' };
+
+    const mod = MOD_DEFINITIONS.find(m => m.id === modType);
+    if (!mod) return { success: false, error: 'Nieznany typ moda' };
+
+    const stageField = `${modType}_stage` as 'engine_stage' | 'turbo_stage' | 'weight_stage';
+    const currentStage = tunedCar[stageField];
+
+    if (currentStage <= 0) {
+      return { success: false, error: 'Minimalny poziom moda' };
+    }
+
+    const refund = Math.floor(mod.stages[currentStage - 1].cost * 0.5);
+
+    const { error } = await supabase
+      .from('tuned_cars')
+      .update({
+        [stageField]: currentStage - 1,
+        xp_invested: Math.max(0, tunedCar.xp_invested - mod.stages[currentStage - 1].cost),
+      })
+      .eq('id', tunedCarId)
+      .eq('user_id', userId);
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    // Zwrot 50% XP — dodaj do total_xp... nie, XP nie jest odejmowane z users.total_xp
+    // xp_invested jest odejmowane, wiec availableXP = totalXP - invested rosnie automatycznie
+    // Ale zwrot 50% oznacza ze tracimy 50% — wiec xp_invested spada o pelny koszt,
+    // a totalXP spada o 50% kosztu (strata)
+    // Korekta: zmniejszamy total_xp o strate (50% kosztu)
+    const loss = mod.stages[currentStage - 1].cost - refund;
+    await supabase.rpc('add_xp', { user_id: userId, xp_amount: -loss });
+
+    await Promise.all([fetchMyTunedCars(), fetchAvailableXP()]);
+    return { success: true, error: null, refund };
+  };
+
   // Oblicz score auta w danej kategorii (pure function)
   const calculateScore = (tunedCar: TunedCar, category: TuningCategory): number => {
     const card = tunedCar.card;
@@ -543,6 +587,7 @@ export function useTuning({ userId }: UseTuningProps) {
     addCarToTuning,
     removeCarFromTuning,
     upgradeMod,
+    downgradeMod,
     calculateScore,
     postChallenge,
     cancelChallenge,
