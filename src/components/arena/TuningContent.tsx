@@ -143,20 +143,40 @@ export function TuningContent() {
     <div className="py-4 space-y-4">
       {/* Stats bar */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-        {/* Dostepne XP */}
+        {/* Garaz */}
         <div className="bg-surface-2 rounded-xl p-3">
           <div className="flex items-center gap-1.5 mb-1">
-            <Zap className="w-3.5 h-3.5 text-turbo-400" />
-            <span className="text-[11px] text-dark-400">Dostepne XP</span>
+            <Car className="w-3.5 h-3.5 text-cyan-400" />
+            <span className="text-[11px] text-dark-400">Garaz</span>
           </div>
-          <div className="text-lg font-bold text-white leading-tight">{availableXP}</div>
+          <div className="text-lg font-bold text-white leading-tight">
+            {tunedCars.length}
+            <span className="text-sm font-normal text-dark-500 ml-1">
+              {tunedCars.length === 1 ? 'auto' : 'aut'}
+            </span>
+          </div>
+          <div className="text-[10px] text-dark-500 mt-2.5">
+            {availableCarCards.length} dostepnych
+          </div>
+        </div>
+
+        {/* Mody */}
+        <div className="bg-surface-2 rounded-xl p-3">
+          <div className="flex items-center gap-1.5 mb-1">
+            <CircleGauge className="w-3.5 h-3.5 text-green-400" />
+            <span className="text-[11px] text-dark-400">Mody</span>
+          </div>
+          <div className="text-lg font-bold text-white leading-tight">
+            {totalMods}
+            <span className="text-sm font-normal text-dark-500">/{maxMods}</span>
+          </div>
           <div className="mt-1.5 h-1 bg-white/5 rounded-full overflow-hidden">
             <div
-              className="h-full rounded-full bg-turbo-500 transition-all duration-500"
-              style={{ width: `${Math.min(xpPct, 100)}%` }}
+              className="h-full rounded-full bg-green-500 transition-all duration-500"
+              style={{ width: `${Math.min(modsPct, 100)}%` }}
             />
           </div>
-          <div className="text-[10px] text-dark-500 mt-0.5">z {totalXP} total</div>
+          <div className="text-[10px] text-dark-500 mt-0.5">ulepszen zainstalowanych</div>
         </div>
 
         {/* Zainwestowane XP */}
@@ -175,40 +195,20 @@ export function TuningContent() {
           <div className="text-[10px] text-dark-500 mt-0.5">XP w modach</div>
         </div>
 
-        {/* Garaz */}
+        {/* Dostepne XP */}
         <div className="bg-surface-2 rounded-xl p-3">
           <div className="flex items-center gap-1.5 mb-1">
-            <Car className="w-3.5 h-3.5 text-cyan-400" />
-            <span className="text-[11px] text-dark-400">Garaz</span>
+            <Zap className="w-3.5 h-3.5 text-turbo-400" />
+            <span className="text-[11px] text-dark-400">Dostepne XP</span>
           </div>
-          <div className="text-lg font-bold text-white leading-tight">
-            {tunedCars.length}
-            <span className="text-sm font-normal text-dark-500 ml-1">
-              {tunedCars.length === 1 ? 'auto' : 'aut'}
-            </span>
-          </div>
-          <div className="text-[10px] text-dark-500 mt-2.5">
-            {availableCarCards.length} dostepnych
-          </div>
-        </div>
-
-        {/* Poziom modow */}
-        <div className="bg-surface-2 rounded-xl p-3">
-          <div className="flex items-center gap-1.5 mb-1">
-            <CircleGauge className="w-3.5 h-3.5 text-green-400" />
-            <span className="text-[11px] text-dark-400">Mody</span>
-          </div>
-          <div className="text-lg font-bold text-white leading-tight">
-            {totalMods}
-            <span className="text-sm font-normal text-dark-500">/{maxMods}</span>
-          </div>
+          <div className="text-lg font-bold text-white leading-tight">{availableXP}</div>
           <div className="mt-1.5 h-1 bg-white/5 rounded-full overflow-hidden">
             <div
-              className="h-full rounded-full bg-green-500 transition-all duration-500"
-              style={{ width: `${Math.min(modsPct, 100)}%` }}
+              className="h-full rounded-full bg-turbo-500 transition-all duration-500"
+              style={{ width: `${Math.min(xpPct, 100)}%` }}
             />
           </div>
-          <div className="text-[10px] text-dark-500 mt-0.5">ulepszen zainstalowanych</div>
+          <div className="text-[10px] text-dark-500 mt-0.5">z {totalXP} total</div>
         </div>
       </div>
 
