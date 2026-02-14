@@ -21,8 +21,13 @@ export default function RegisterPage() {
   const [phone, setPhone] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
 
   const validateForm = (): string | null => {
+    if (!termsAccepted) {
+      return 'Musisz zaakceptować regulamin i politykę prywatności';
+    }
+
     if (!email || !password || !confirmPassword) {
       return 'Wypełnij wszystkie wymagane pola';
     }
@@ -74,6 +79,10 @@ export default function RegisterPage() {
   };
 
   const handleGoogleRegister = async () => {
+    if (!termsAccepted) {
+      showError('Regulamin', 'Zaakceptuj regulamin i politykę prywatności przed rejestracją');
+      return;
+    }
     await signInWithGoogle();
   };
 
@@ -150,11 +159,42 @@ export default function RegisterPage() {
             disabled={isSubmitting || loading}
           />
 
+          {/* Terms checkbox */}
+          <label className="flex items-start gap-3 cursor-pointer group">
+            <div className="relative flex-shrink-0 mt-0.5">
+              <input
+                type="checkbox"
+                checked={termsAccepted}
+                onChange={e => setTermsAccepted(e.target.checked)}
+                className="sr-only peer"
+                disabled={isSubmitting || loading}
+              />
+              <div className="w-5 h-5 border-2 border-dark-500 rounded bg-surface-2 peer-checked:bg-turbo-500 peer-checked:border-turbo-500 transition-colors flex items-center justify-center group-hover:border-dark-400">
+                {termsAccepted && (
+                  <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                )}
+              </div>
+            </div>
+            <span className="text-xs text-dark-400 leading-relaxed">
+              Akceptuję{' '}
+              <Link href="/terms" className="text-turbo-400 hover:underline" target="_blank">
+                regulamin
+              </Link>{' '}
+              oraz{' '}
+              <Link href="/privacy" className="text-turbo-400 hover:underline" target="_blank">
+                politykę prywatności
+              </Link>{' '}
+              Turbo Challenge.
+            </span>
+          </label>
+
           <Button
             type="submit"
             fullWidth
             loading={isSubmitting}
-            disabled={loading}
+            disabled={loading || !termsAccepted}
           >
             Zarejestruj się
           </Button>
@@ -176,7 +216,7 @@ export default function RegisterPage() {
           variant="secondary"
           fullWidth
           onClick={handleGoogleRegister}
-          disabled={loading || isSubmitting}
+          disabled={loading || isSubmitting || !termsAccepted}
         >
           <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
             <path
@@ -208,18 +248,6 @@ export default function RegisterPage() {
         </p>
       </Card>
 
-      {/* Terms */}
-      <p className="mt-6 text-xs text-dark-500 text-center max-w-sm">
-        Rejestrując się, akceptujesz{' '}
-        <Link href="/terms" className="text-turbo-400 hover:underline">
-          regulamin
-        </Link>{' '}
-        oraz{' '}
-        <Link href="/privacy" className="text-turbo-400 hover:underline">
-          politykę prywatności
-        </Link>
-        .
-      </p>
     </div>
   );
 }

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
 import { useLeaderboard } from '@/hooks/useLeaderboard';
 import { Card, Badge, Button, Avatar, ProgressBar, Modal, Input, AvatarEditor } from '@/components/ui';
@@ -17,6 +18,8 @@ import {
   Shield,
   Camera,
   Loader2,
+  FileText,
+  ShieldCheck,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
@@ -411,6 +414,32 @@ export default function ProfilePage() {
           Panel Admina
         </Button>
       )}
+
+      {/* Legal */}
+      <Card>
+        <h2 className="text-lg font-semibold text-white mb-4">Informacje prawne</h2>
+        <div className="space-y-2">
+          <Link
+            href="/terms"
+            className="flex items-center gap-3 p-3 bg-surface-2 rounded-xl hover:bg-surface-3 transition-colors"
+          >
+            <FileText className="w-5 h-5 text-dark-400" />
+            <span className="text-white text-sm">Regulamin</span>
+          </Link>
+          <Link
+            href="/privacy"
+            className="flex items-center gap-3 p-3 bg-surface-2 rounded-xl hover:bg-surface-3 transition-colors"
+          >
+            <ShieldCheck className="w-5 h-5 text-dark-400" />
+            <span className="text-white text-sm">Polityka prywatności</span>
+          </Link>
+        </div>
+        {profile.terms_accepted_at && (
+          <p className="text-xs text-dark-500 mt-3">
+            Regulamin zaakceptowany: {formatDate(profile.terms_accepted_at)}
+          </p>
+        )}
+      </Card>
 
       {/* Logout */}
       <Button

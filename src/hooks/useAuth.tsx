@@ -376,6 +376,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         level: 1,
         class: 'solo',
         is_admin: false,
+        terms_accepted_at: new Date().toISOString(),
       };
 
       console.log('createProfile: Inserting profile...', newProfile);

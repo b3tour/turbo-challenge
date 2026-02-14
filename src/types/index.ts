@@ -18,6 +18,8 @@ export interface User {
   pending_nick_requested_at?: string;
   // Suma datków (zakup kart samochodów)
   donation_total?: number;
+  // Akceptacja regulaminu
+  terms_accepted_at?: string;
 }
 
 // Typy dla poziomu
