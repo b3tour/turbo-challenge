@@ -107,6 +107,16 @@ export function useMissions(options: UseMissionsOptions = {}) {
       }
     }
 
+    // Ankieta - jednorazowe głosowanie
+    if (mission.type === 'survey') {
+      const anySurveyAttempt = userSubmissions.find(
+        s => s.mission_id === mission.id
+      );
+      if (anySurveyAttempt) {
+        return { canComplete: false, reason: 'Już oddałeś głos w tej ankiecie' };
+      }
+    }
+
     // Sprawdź czy użytkownik już wykonał
     const userCompletions = userSubmissions.filter(
       s => s.mission_id === mission.id && s.status === 'approved'
@@ -333,6 +343,78 @@ export function useMissions(options: UseMissionsOptions = {}) {
     return { success: true, xp: mission.xp_reward };
   };
 
+  // Wykonaj ankietę (Survey)
+  const completeMissionSurvey = async (
+    missionId: string,
+    answer: string,
+    userId: string
+  ): Promise<{ success: boolean; xp?: number; error?: string }> => {
+    const mission = missions.find(m => m.id === missionId);
+
+    if (!mission) {
+      return { success: false, error: 'Nie znaleziono ankiety' };
+    }
+
+    const { canComplete, reason } = canCompleteMission(mission);
+    if (!canComplete) {
+      return { success: false, error: reason };
+    }
+
+    const { error: submitError } = await supabase
+      .from('submissions')
+      .insert({
+        user_id: userId,
+        mission_id: missionId,
+        status: 'approved',
+        survey_answers: answer,
+        xp_awarded: mission.xp_reward,
+      });
+
+    if (submitError) {
+      return { success: false, error: submitError.message };
+    }
+
+    await supabase.rpc('add_user_xp', {
+      p_user_id: userId,
+      p_xp_amount: mission.xp_reward,
+    });
+
+    await fetchUserSubmissions();
+    return { success: true, xp: mission.xp_reward };
+  };
+
+  // Pobierz zagregowane wyniki ankiety
+  const getSurveyResults = async (missionId: string) => {
+    const { data, error: fetchError } = await supabase
+      .from('submissions')
+      .select('survey_answers')
+      .eq('mission_id', missionId)
+      .eq('status', 'approved')
+      .not('survey_answers', 'is', null);
+
+    if (fetchError || !data) {
+      return null;
+    }
+
+    const votes: Record<string, number> = {};
+    const otherAnswers: string[] = [];
+
+    for (const row of data) {
+      const ans = row.survey_answers as string;
+      if (ans.startsWith('other:')) {
+        otherAnswers.push(ans.substring(6));
+      } else {
+        votes[ans] = (votes[ans] || 0) + 1;
+      }
+    }
+
+    return {
+      total_votes: data.length,
+      votes,
+      other_answers: otherAnswers.length > 0 ? otherAnswers : undefined,
+    };
+  };
+
   // Sprawdź czy misja jest zablokowana poziomem
   const isMissionLocked = (mission: Mission): { locked: boolean; requiredLevel?: number } => {
     if (mission.required_level && mission.required_level > 1) {
@@ -367,6 +449,8 @@ export function useMissions(options: UseMissionsOptions = {}) {
     completeMissionPhoto,
     completeMissionQuiz,
     completeMissionGPS,
+    completeMissionSurvey,
+    getSurveyResults,
     getMissionStats,
   };
 }

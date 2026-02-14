@@ -7,10 +7,11 @@ import { useLevels } from '@/hooks/useLevels';
 import { Card, Badge, Button, Modal } from '@/components/ui';
 import { SkeletonCard } from '@/components/ui/Skeleton';
 import { useToast } from '@/components/ui/Toast';
-import { MissionCard, QRScanner, PhotoUpload, Quiz, GPSChecker } from '@/components/missions';
-import { Mission, MissionType } from '@/types';
+import { MissionCard, QRScanner, PhotoUpload, Quiz, GPSChecker, Survey } from '@/components/missions';
+import type { SurveyResults } from '@/components/missions/Survey';
+import { Mission, MissionType, SurveyData } from '@/types';
 import { missionTypeStyles, missionTypeNames, formatNumber } from '@/lib/utils';
-import { Target, Filter, Zap, QrCode, Camera, HelpCircle, MapPin, ListTodo, Lock, CheckCircle, Loader2, Ban } from 'lucide-react';
+import { Target, Filter, Zap, QrCode, Camera, HelpCircle, MapPin, ListTodo, ClipboardList, Lock, CheckCircle, Loader2, Ban } from 'lucide-react';
 
 const missionIconMap: Record<string, React.ElementType> = {
   qr_code: QrCode,
@@ -18,6 +19,7 @@ const missionIconMap: Record<string, React.ElementType> = {
   quiz: HelpCircle,
   gps: MapPin,
   manual: ListTodo,
+  survey: ClipboardList,
 };
 
 type FilterType = 'all' | MissionType;
@@ -36,6 +38,8 @@ export default function MissionsPage() {
     completeMissionPhoto,
     completeMissionQuiz,
     completeMissionGPS,
+    completeMissionSurvey,
+    getSurveyResults,
   } = useMissions({ userId: profile?.id, userLevel: userLevel?.id || 1 });
   const { success, error: showError, info } = useToast();
 
@@ -44,6 +48,7 @@ export default function MissionsPage() {
   const [showMissionModal, setShowMissionModal] = useState(false);
   const [showQRScanner, setShowQRScanner] = useState(false);
   const [missionPhase, setMissionPhase] = useState<'detail' | 'execute'>('detail');
+  const [surveyResults, setSurveyResults] = useState<SurveyResults | null>(null);
 
   if (!profile) return null;
 
@@ -53,6 +58,7 @@ export default function MissionsPage() {
     { value: 'photo', label: 'Zdjęcie', iconType: 'photo' },
     { value: 'quiz', label: 'Quiz', iconType: 'quiz' },
     { value: 'gps', label: 'GPS', iconType: 'gps' },
+    { value: 'survey', label: 'Ankieta', iconType: 'survey' },
   ];
 
   const getUserSubmission = (missionId: string) => {
@@ -176,6 +182,19 @@ export default function MissionsPage() {
     }
   };
 
+  const handleSurveyComplete = async (answer: string) => {
+    if (!selectedMission) return;
+
+    const result = await completeMissionSurvey(selectedMission.id, answer, profile.id);
+    closeModal();
+
+    if (result.success) {
+      success('Głos zapisany!', `Dziękujemy za udział. Zdobyłeś +${result.xp} XP`);
+    } else {
+      showError('Błąd', result.error || 'Nie udało się zapisać głosu');
+    }
+  };
+
   const renderMissionContent = () => {
     if (!selectedMission) return null;
 
@@ -256,6 +275,13 @@ export default function MissionsPage() {
                   setShowMissionModal(false);
                   setShowQRScanner(true);
                 } else {
+                  // Pre-load survey results if needed
+                  if (selectedMission.type === 'survey') {
+                    const sd = selectedMission.survey_data || selectedMission.quiz_data as unknown as SurveyData | undefined;
+                    if (sd?.show_results) {
+                      getSurveyResults(selectedMission.id).then(r => setSurveyResults(r));
+                    }
+                  }
                   setMissionPhase('execute');
                 }
               }}
@@ -300,6 +326,18 @@ export default function MissionsPage() {
             onCancel={closeModal}
           />
         );
+      case 'survey': {
+        const sd = selectedMission.survey_data || selectedMission.quiz_data as unknown as SurveyData | undefined;
+        if (!sd) return null;
+        return (
+          <Survey
+            surveyData={sd}
+            onComplete={handleSurveyComplete}
+            onCancel={closeModal}
+            results={surveyResults}
+          />
+        );
+      }
       default:
         return null;
     }

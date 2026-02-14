@@ -7,7 +7,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 import { Card, Button, Badge, Input, Modal, AlertDialog } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
-import { Mission, MissionStatus, Submission, User, QuizData, QuizQuestion, QuizMode, Reward, CollectibleCard, CardRarity, CardType, CardOrder, CardOrderStatus, MysteryPackPurchase, MysteryPackStatus } from '@/types';
+import { Mission, MissionStatus, Submission, User, QuizData, QuizQuestion, QuizMode, SurveyData, SurveyOption, Reward, CollectibleCard, CardRarity, CardType, CardOrder, CardOrderStatus, MysteryPackPurchase, MysteryPackStatus } from '@/types';
 import {
   formatNumber,
   formatDateTime,
@@ -63,7 +63,7 @@ import { Level } from '@/types';
 import AnnouncementsAdmin from '@/components/admin/AnnouncementsAdmin';
 import AppContentAdmin from '@/components/admin/AppContentAdmin';
 import { sendUserNotification } from '@/hooks/useAnnouncements';
-import { Bell, FileText } from 'lucide-react';
+import { Bell, FileText, ClipboardList } from 'lucide-react';
 
 type AdminTab = 'overview' | 'submissions' | 'missions' | 'users' | 'levels' | 'rewards' | 'cards' | 'orders' | 'mystery' | 'announcements' | 'content';
 
@@ -175,6 +175,12 @@ export default function AdminPage() {
   const [showDeleteUserDialog, setShowDeleteUserDialog] = useState(false);
   const [userToDelete, setUserToDelete] = useState<User | null>(null);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
+
+  // Survey results
+  const [showSurveyResultsModal, setShowSurveyResultsModal] = useState(false);
+  const [surveyResultsMission, setSurveyResultsMission] = useState<Mission | null>(null);
+  const [surveyResults, setSurveyResults] = useState<{ total_votes: number; votes: Record<string, number>; other_answers?: string[] } | null>(null);
+  const [loadingSurveyResults, setLoadingSurveyResults] = useState(false);
 
   // Change nick
   const [showChangeNickModal, setShowChangeNickModal] = useState(false);
@@ -299,6 +305,10 @@ export default function AdminPage() {
     quiz_time_limit: 0,
     quiz_mode: 'classic' as QuizMode,
     quiz_questions: [] as QuizQuestion[],
+    survey_question: '',
+    survey_options: [{ id: 'opt_1', text: '' }, { id: 'opt_2', text: '' }] as SurveyOption[],
+    survey_allow_other: true,
+    survey_show_results: false,
   });
 
   // Sprawdz czy uzytkownik jest adminem
@@ -465,6 +475,10 @@ export default function AdminPage() {
       quiz_time_limit: 0,
       quiz_mode: 'classic',
       quiz_questions: [],
+      survey_question: '',
+      survey_options: [{ id: 'opt_1', text: '' }, { id: 'opt_2', text: '' }],
+      survey_allow_other: true,
+      survey_show_results: false,
     });
     setSelectedMission(null);
     setIsEditing(false);
@@ -489,6 +503,10 @@ export default function AdminPage() {
       quiz_time_limit: mission.quiz_data?.time_limit || 0,
       quiz_mode: mission.quiz_data?.mode || 'classic',
       quiz_questions: mission.quiz_data?.questions || [],
+      survey_question: (mission.survey_data as SurveyData | undefined)?.question || '',
+      survey_options: (mission.survey_data as SurveyData | undefined)?.options || [{ id: 'opt_1', text: '' }, { id: 'opt_2', text: '' }],
+      survey_allow_other: (mission.survey_data as SurveyData | undefined)?.allow_other ?? true,
+      survey_show_results: (mission.survey_data as SurveyData | undefined)?.show_results ?? false,
     });
     setSelectedMission(mission);
     setIsEditing(true);
@@ -622,6 +640,33 @@ export default function AdminPage() {
       }
     }
 
+    // Walidacja ankiety
+    if (missionForm.type === 'survey') {
+      if (!missionForm.survey_question.trim()) {
+        showError('Blad', 'Ankieta musi miec pytanie');
+        return;
+      }
+      if (missionForm.survey_options.length < 2) {
+        showError('Blad', 'Ankieta musi miec co najmniej 2 opcje');
+        return;
+      }
+      for (const opt of missionForm.survey_options) {
+        if (!opt.text.trim()) {
+          showError('Blad', 'Wszystkie opcje musza miec tresc');
+          return;
+        }
+      }
+    }
+
+    const surveyData: SurveyData | null = missionForm.type === 'survey'
+      ? {
+          question: missionForm.survey_question,
+          options: missionForm.survey_options,
+          allow_other: missionForm.survey_allow_other,
+          show_results: missionForm.survey_show_results,
+        }
+      : null;
+
     const quizData: QuizData | null = missionForm.type === 'quiz'
       ? {
           questions: missionForm.quiz_questions,
@@ -645,6 +690,7 @@ export default function AdminPage() {
       status: missionForm.status,
       required_level: missionForm.required_level,
       quiz_data: quizData,
+      survey_data: surveyData,
     };
 
     if (isEditing && selectedMission) {
@@ -675,6 +721,44 @@ export default function AdminPage() {
     setShowMissionModal(false);
     resetMissionForm();
     fetchData();
+  };
+
+  const openSurveyResults = async (mission: Mission) => {
+    setSurveyResultsMission(mission);
+    setShowSurveyResultsModal(true);
+    setLoadingSurveyResults(true);
+
+    const { data, error: fetchError } = await supabase
+      .from('submissions')
+      .select('survey_answers')
+      .eq('mission_id', mission.id)
+      .eq('status', 'approved')
+      .not('survey_answers', 'is', null);
+
+    if (fetchError || !data) {
+      setSurveyResults(null);
+      setLoadingSurveyResults(false);
+      return;
+    }
+
+    const votes: Record<string, number> = {};
+    const otherAnswers: string[] = [];
+
+    for (const row of data) {
+      const ans = row.survey_answers as string;
+      if (ans.startsWith('other:')) {
+        otherAnswers.push(ans.substring(6));
+      } else {
+        votes[ans] = (votes[ans] || 0) + 1;
+      }
+    }
+
+    setSurveyResults({
+      total_votes: data.length,
+      votes,
+      other_answers: otherAnswers.length > 0 ? otherAnswers : undefined,
+    });
+    setLoadingSurveyResults(false);
   };
 
   const handleToggleMissionStatus = async (mission: Mission) => {
@@ -3019,6 +3103,17 @@ export default function AdminPage() {
                               Edytuj
                             </Button>
 
+                            {mission.type === 'survey' && (
+                              <Button
+                                size="sm"
+                                variant="secondary"
+                                onClick={() => openSurveyResults(mission)}
+                              >
+                                <BarChart3 className="w-4 h-4 mr-1" />
+                                Wyniki
+                              </Button>
+                            )}
+
                             <Button
                               size="sm"
                               variant="secondary"
@@ -3915,6 +4010,7 @@ export default function AdminPage() {
                 <option value="quiz">❓ Quiz</option>
                 <option value="gps">📍 Lokalizacja GPS</option>
                 <option value="manual">✋ Reczna weryfikacja</option>
+                <option value="survey">📊 Ankieta</option>
               </select>
             </div>
 
@@ -4103,6 +4199,104 @@ export default function AdminPage() {
                   ))}
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Survey Editor */}
+          {missionForm.type === 'survey' && (
+            <div className="space-y-4 border-t border-dark-700 pt-4">
+              <div className="flex items-center gap-2">
+                <ClipboardList className="w-5 h-5 text-teal-400" />
+                <h4 className="font-medium text-white">Edytor Ankiety</h4>
+              </div>
+
+              {/* Pytanie */}
+              <div>
+                <label className="block text-sm font-medium text-dark-200 mb-1.5">
+                  Pytanie ankiety
+                </label>
+                <textarea
+                  value={missionForm.survey_question}
+                  onChange={e => setMissionForm(prev => ({ ...prev, survey_question: e.target.value }))}
+                  placeholder="Np. Kiedy najlepiej zorganizowac spotkanie?"
+                  className="w-full bg-dark-800 border border-dark-600 rounded-xl px-4 py-2.5 text-white resize-none min-h-[80px]"
+                />
+              </div>
+
+              {/* Opcje */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-sm font-medium text-dark-200">
+                    Opcje do wyboru ({missionForm.survey_options.length})
+                  </label>
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      const nextId = `opt_${missionForm.survey_options.length + 1}`;
+                      setMissionForm(prev => ({
+                        ...prev,
+                        survey_options: [...prev.survey_options, { id: nextId, text: '' }],
+                      }));
+                    }}
+                  >
+                    <Plus className="w-4 h-4 mr-1" />
+                    Dodaj opcje
+                  </Button>
+                </div>
+                <div className="space-y-2">
+                  {missionForm.survey_options.map((option, index) => (
+                    <div key={option.id} className="flex items-center gap-2">
+                      <span className="text-dark-400 text-sm w-6 text-center flex-shrink-0">{index + 1}.</span>
+                      <input
+                        type="text"
+                        value={option.text}
+                        onChange={e => {
+                          const updated = [...missionForm.survey_options];
+                          updated[index] = { ...updated[index], text: e.target.value };
+                          setMissionForm(prev => ({ ...prev, survey_options: updated }));
+                        }}
+                        placeholder={`Opcja ${index + 1}...`}
+                        className="flex-1 bg-dark-700 border border-dark-600 rounded-lg px-3 py-2 text-white text-sm"
+                      />
+                      {missionForm.survey_options.length > 2 && (
+                        <button
+                          onClick={() => {
+                            setMissionForm(prev => ({
+                              ...prev,
+                              survey_options: prev.survey_options.filter((_, i) => i !== index),
+                            }));
+                          }}
+                          className="text-dark-400 hover:text-red-400"
+                        >
+                          <XCircle className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Checkboxes */}
+              <div className="space-y-3">
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={missionForm.survey_allow_other}
+                    onChange={e => setMissionForm(prev => ({ ...prev, survey_allow_other: e.target.checked }))}
+                    className="w-4 h-4 rounded border-dark-600 text-teal-500 focus:ring-teal-500"
+                  />
+                  <span className="text-sm text-white">Pozwol na odpowiedz &quot;Inne (jakie?)&quot;</span>
+                </label>
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={missionForm.survey_show_results}
+                    onChange={e => setMissionForm(prev => ({ ...prev, survey_show_results: e.target.checked }))}
+                    className="w-4 h-4 rounded border-dark-600 text-teal-500 focus:ring-teal-500"
+                  />
+                  <span className="text-sm text-white">Pokaz wyniki graczom po zaglosowaniu</span>
+                </label>
+              </div>
             </div>
           )}
 
@@ -6178,6 +6372,106 @@ export default function AdminPage() {
             </Button>
           </div>
         </div>
+      </Modal>
+
+      {/* Survey Results Modal */}
+      <Modal
+        isOpen={showSurveyResultsModal && surveyResultsMission !== null}
+        onClose={() => {
+          setShowSurveyResultsModal(false);
+          setSurveyResultsMission(null);
+          setSurveyResults(null);
+        }}
+        title="Wyniki ankiety"
+        size="lg"
+      >
+        {surveyResultsMission && (
+          <div className="space-y-4">
+            <Card variant="outlined">
+              <div className="flex items-center gap-3 mb-2">
+                <ClipboardList className="w-5 h-5 text-teal-400" />
+                <h4 className="font-medium text-white">{surveyResultsMission.title}</h4>
+              </div>
+              <p className="text-sm text-dark-300">
+                {((surveyResultsMission.survey_data || surveyResultsMission.quiz_data) as SurveyData | undefined)?.question || 'Brak pytania'}
+              </p>
+            </Card>
+
+            {loadingSurveyResults ? (
+              <div className="text-center py-8">
+                <div className="animate-spin w-8 h-8 border-2 border-teal-500 border-t-transparent rounded-full mx-auto mb-3" />
+                <p className="text-dark-400 text-sm">Ladowanie wynikow...</p>
+              </div>
+            ) : surveyResults ? (
+              <>
+                <div className="flex items-center justify-between p-3 bg-dark-700/50 rounded-xl">
+                  <span className="text-sm text-dark-300">Laczna liczba glosow</span>
+                  <span className="text-lg font-bold text-white">{surveyResults.total_votes}</span>
+                </div>
+
+                {surveyResults.total_votes === 0 ? (
+                  <Card variant="outlined" className="text-center py-8">
+                    <BarChart3 className="w-10 h-10 text-dark-600 mx-auto mb-2" />
+                    <p className="text-dark-400">Brak glosow</p>
+                  </Card>
+                ) : (
+                  <div className="space-y-3">
+                    {(() => {
+                      const sd = (surveyResultsMission.survey_data || surveyResultsMission.quiz_data) as SurveyData | undefined;
+                      const options = sd?.options || [];
+                      const sortedEntries = [...options]
+                        .map(opt => ({
+                          id: opt.id,
+                          text: opt.text,
+                          count: surveyResults.votes[opt.id] || 0,
+                        }))
+                        .sort((a, b) => b.count - a.count);
+
+                      return sortedEntries.map(entry => {
+                        const pct = surveyResults.total_votes > 0
+                          ? Math.round((entry.count / surveyResults.total_votes) * 100)
+                          : 0;
+                        return (
+                          <div key={entry.id}>
+                            <div className="flex justify-between text-sm mb-1">
+                              <span className="text-white">{entry.text}</span>
+                              <span className="text-dark-400 font-medium">{pct}% ({entry.count})</span>
+                            </div>
+                            <div className="h-3 bg-dark-700 rounded-full overflow-hidden">
+                              <div
+                                className="h-full bg-teal-500 rounded-full transition-all duration-500"
+                                style={{ width: `${pct}%` }}
+                              />
+                            </div>
+                          </div>
+                        );
+                      });
+                    })()}
+
+                    {surveyResults.other_answers && surveyResults.other_answers.length > 0 && (
+                      <div className="border-t border-dark-700 pt-3 mt-3">
+                        <p className="text-sm font-medium text-white mb-2">
+                          Odpowiedzi &quot;Inne&quot; ({surveyResults.other_answers.length})
+                        </p>
+                        <div className="space-y-1.5 max-h-40 overflow-y-auto">
+                          {surveyResults.other_answers.map((answer, i) => (
+                            <div key={i} className="text-sm text-dark-300 bg-dark-700/50 rounded-lg px-3 py-2">
+                              {answer}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </>
+            ) : (
+              <Card variant="outlined" className="text-center py-8">
+                <p className="text-dark-400">Nie udalo sie zaladowac wynikow</p>
+              </Card>
+            )}
+          </div>
+        )}
       </Modal>
 
       {showEmojiPicker !== null && (

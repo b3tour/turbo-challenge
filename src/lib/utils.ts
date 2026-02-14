@@ -194,6 +194,7 @@ export const missionTypeIcons: Record<string, string> = {
   quiz: '❓',
   gps: '📍',
   manual: '✋',
+  survey: '📊',
 };
 
 // Konfiguracja ikon misji z kolorami (dla komponentów React)
@@ -203,6 +204,7 @@ export const missionTypeStyles: Record<string, { icon: string; color: string; bg
   quiz: { icon: 'HelpCircle', color: 'text-amber-400', bgColor: 'bg-amber-500/20' },
   gps: { icon: 'MapPin', color: 'text-green-400', bgColor: 'bg-green-500/20' },
   manual: { icon: 'ListTodo', color: 'text-orange-400', bgColor: 'bg-orange-500/20' },
+  survey: { icon: 'ClipboardList', color: 'text-teal-400', bgColor: 'bg-teal-500/20' },
 };
 
 // Nazwy typów misji
@@ -212,4 +214,5 @@ export const missionTypeNames: Record<string, string> = {
   quiz: 'Quiz',
   gps: 'Lokalizacja GPS',
   manual: 'Zadanie ręczne',
+  survey: 'Ankieta',
 };

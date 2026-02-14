@@ -34,7 +34,7 @@ export interface Level {
 }
 
 // Typy misji
-export type MissionType = 'qr_code' | 'photo' | 'quiz' | 'gps' | 'manual';
+export type MissionType = 'qr_code' | 'photo' | 'quiz' | 'gps' | 'manual' | 'survey';
 export type MissionStatus = 'active' | 'inactive' | 'scheduled';
 
 export interface Mission {
@@ -49,6 +49,7 @@ export interface Mission {
   location_radius?: number; // metry
   qr_code_value?: string;
   quiz_data?: QuizData;
+  survey_data?: SurveyData;
   photo_requirements?: string;
   start_date?: string;
   end_date?: string;
@@ -82,6 +83,19 @@ export interface QuizAnswer {
   is_correct: boolean;
 }
 
+// Dane ankiety (zapisywane w survey_data JSONB, analogicznie do quiz_data)
+export interface SurveyData {
+  question: string;
+  options: SurveyOption[];
+  allow_other: boolean;
+  show_results: boolean;
+}
+
+export interface SurveyOption {
+  id: string;
+  text: string;
+}
+
 // Zgłoszenie wykonania misji
 // pending - oczekuje na weryfikację
 // approved - zatwierdzone (ukończone)
@@ -100,6 +114,7 @@ export interface Submission {
   quiz_time_ms?: number; // czas ukończenia quizu w milisekundach (dla trybu speedrun)
   gps_lat?: number;
   gps_lng?: number;
+  survey_answers?: string;
   admin_notes?: string;
   reviewed_by?: string;
   reviewed_at?: string;
