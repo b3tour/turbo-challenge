@@ -1,15 +1,17 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
 import { useArenaRankings } from '@/hooks/useArenaRankings';
+import { supabase } from '@/lib/supabase';
 import { Card, Avatar } from '@/components/ui';
 import { SkeletonCard } from '@/components/ui/Skeleton';
 import {
   Trophy, Crown, Medal, Swords, Wrench, X, Minus,
   Shield, Star, Zap, Users, Award, Gift, ChevronRight,
 } from 'lucide-react';
+import { Reward } from '@/types';
 import { BATTLE_BADGES, BattleBadgeDefinition } from '@/config/battleBadges';
 
 // Badge icon map
@@ -29,6 +31,21 @@ export function ArenaRankings() {
   const { profile } = useAuth();
   const { rankings, loading, arenaStats, statsLoading } = useArenaRankings(profile?.id);
   const [selectedBadgeTooltip, setSelectedBadgeTooltip] = useState<string | null>(null);
+  const [topReward, setTopReward] = useState<Reward | null>(null);
+
+  useEffect(() => {
+    supabase
+      .from('rewards')
+      .select('*')
+      .eq('is_active', true)
+      .eq('place', 1)
+      .eq('reward_type', 'cards')
+      .limit(1)
+      .single()
+      .then(({ data }) => {
+        if (data) setTopReward(data as Reward);
+      });
+  }, []);
 
   if (!profile) return null;
 
@@ -265,17 +282,31 @@ export function ArenaRankings() {
       <Card className="border-yellow-500/30 bg-gradient-to-r from-yellow-500/5 to-amber-500/5">
         <div className="flex items-center gap-3 mb-2">
           <Gift className="w-5 h-5 text-yellow-500" />
-          <h3 className="font-semibold text-white">Nagrody Arena TOP 3</h3>
+          <h3 className="font-semibold text-white">Nagrody za ranking</h3>
         </div>
-        <p className="text-sm text-dark-400 mb-3">
-          Najlepsi gracze Areny otrzymuja nagrody niezalezne od rankingu misji!
-          Walcz w Turbo Bitwach i Strefie Tuningu, aby awansowac.
-        </p>
+        {topReward ? (
+          <div className="mb-3">
+            <p className="text-xs text-yellow-400 font-medium mb-1">Nagroda za 1. miejsce:</p>
+            <p className="text-white font-bold">{topReward.title}</p>
+            <div className="flex items-center gap-2 mt-1">
+              {topReward.value && <span className="text-sm text-yellow-400">{topReward.value}</span>}
+              {topReward.sponsor && (
+                <span className="text-xs text-dark-400 flex items-center gap-1">
+                  <Award className="w-3 h-3" /> {topReward.sponsor}
+                </span>
+              )}
+            </div>
+          </div>
+        ) : (
+          <p className="text-sm text-dark-400 mb-3">
+            Najlepsi gracze otrzymuja nagrody! Walcz w Turbo Bitwach i Strefie Tuningu, aby awansowac.
+          </p>
+        )}
         <Link
           href="/rewards"
           className="inline-flex items-center gap-1 text-sm text-yellow-400 font-medium px-2 py-1 -ml-2 rounded-lg active:bg-yellow-500/10"
         >
-          Sprawdz nagrody
+          Zobacz wszystkie nagrody
           <ChevronRight className="w-4 h-4" />
         </Link>
       </Card>

@@ -219,7 +219,7 @@ export interface GeoPosition {
 }
 
 // Nagrody
-export type RewardType = 'xp' | 'donation';
+export type RewardType = 'xp' | 'cards' | 'lottery';
 
 export interface Reward {
   id: string;
@@ -231,7 +231,7 @@ export interface Reward {
   value?: string | null; // np. "500 zł", "Voucher"
   is_active: boolean;
   created_at: string;
-  reward_type?: RewardType; // 'xp' = ranking XP, 'donation' = ranking wsparcia
+  reward_type?: RewardType; // 'xp' = ranking XP, 'cards' = ranking kart/wsparcia, 'lottery' = losowania
 }
 
 // Karty kolekcjonerskie

@@ -7,7 +7,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 import { Card, Button, Badge, Input, Modal, AlertDialog } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
-import { Mission, MissionStatus, Submission, User, QuizData, QuizQuestion, QuizMode, SurveyData, SurveyOption, Reward, CollectibleCard, CardRarity, CardType, CardOrder, CardOrderStatus, MysteryPackPurchase, MysteryPackStatus } from '@/types';
+import { Mission, MissionStatus, Submission, User, QuizData, QuizQuestion, QuizMode, SurveyData, SurveyOption, Reward, RewardType, CollectibleCard, CardRarity, CardType, CardOrder, CardOrderStatus, MysteryPackPurchase, MysteryPackStatus } from '@/types';
 import {
   formatNumber,
   formatDateTime,
@@ -226,6 +226,7 @@ export default function AdminPage() {
     value: '',
     sponsor: '',
     image_url: '',
+    reward_type: 'xp' as RewardType,
   });
 
   // Cards management
@@ -1719,7 +1720,7 @@ export default function AdminPage() {
     setRewardsLoaded(true);
   };
 
-  const openRewardModal = (reward?: Reward) => {
+  const openRewardModal = (reward?: Reward, defaultType?: RewardType) => {
     if (reward) {
       setEditingReward(reward);
       setRewardForm({
@@ -1729,10 +1730,13 @@ export default function AdminPage() {
         value: reward.value || '',
         sponsor: reward.sponsor || '',
         image_url: reward.image_url || '',
+        reward_type: reward.reward_type || 'xp',
       });
     } else {
       setEditingReward(null);
-      const nextPlace = rewards.length > 0 ? Math.max(...rewards.map(r => r.place)) + 1 : 1;
+      const type = defaultType || 'xp';
+      const typeRewards = rewards.filter(r => (r.reward_type || 'xp') === type);
+      const nextPlace = type === 'lottery' ? 0 : (typeRewards.length > 0 ? Math.max(...typeRewards.map(r => r.place)) + 1 : 1);
       setRewardForm({
         place: nextPlace,
         title: '',
@@ -1740,6 +1744,7 @@ export default function AdminPage() {
         value: '',
         sponsor: '',
         image_url: '',
+        reward_type: type,
       });
     }
     setShowRewardModal(true);
@@ -1754,13 +1759,14 @@ export default function AdminPage() {
     setSavingRewards(true);
 
     const rewardData = {
-      place: rewardForm.place,
+      place: rewardForm.reward_type === 'lottery' ? 0 : rewardForm.place,
       title: rewardForm.title.trim(),
       description: rewardForm.description.trim(),
       value: rewardForm.value.trim() || null,
       sponsor: rewardForm.sponsor.trim() || null,
       image_url: rewardForm.image_url.trim() || null,
       is_active: true,
+      reward_type: rewardForm.reward_type,
     };
 
     if (editingReward) {
@@ -3255,97 +3261,108 @@ export default function AdminPage() {
               })()}
 
               {/* Rewards Tab */}
-              {activeTab === 'rewards' && (
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-lg font-semibold text-white">Nagrody dla TOP graczy</h3>
-                      <p className="text-sm text-dark-400">Dodaj i edytuj nagrody za zajęcie miejsc w rankingu</p>
+              {activeTab === 'rewards' && (() => {
+                const rewardSections: { type: RewardType; label: string; icon: React.ElementType; color: string; bgColor: string }[] = [
+                  { type: 'xp', label: 'Ranking Misji (XP)', icon: Target, color: 'text-turbo-400', bgColor: 'bg-turbo-500/20' },
+                  { type: 'cards', label: 'Ranking Kart / Wsparcia', icon: Layers, color: 'text-red-400', bgColor: 'bg-red-500/20' },
+                  { type: 'lottery', label: 'Losowania', icon: Sparkles, color: 'text-amber-400', bgColor: 'bg-amber-500/20' },
+                ];
+
+                const renderRewardCard = (reward: Reward) => (
+                  <Card key={reward.id} className="p-4">
+                    <div className="flex items-center gap-4">
+                      <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-lg font-bold flex-shrink-0 ${
+                        reward.place === 1 ? 'bg-gradient-to-br from-yellow-400 to-amber-600 text-white' :
+                        reward.place === 2 ? 'bg-gradient-to-br from-gray-300 to-gray-500 text-white' :
+                        reward.place === 3 ? 'bg-gradient-to-br from-amber-600 to-orange-700 text-white' :
+                        reward.place === 0 ? 'bg-gradient-to-br from-amber-400 to-yellow-600 text-white' :
+                        'bg-dark-700 text-dark-300'
+                      }`}>
+                        {reward.place === 0 ? <Sparkles className="w-5 h-5" /> : reward.place}
+                      </div>
+
+                      {reward.image_url ? (
+                        <div className="w-14 h-14 rounded-lg bg-dark-700 overflow-hidden flex-shrink-0">
+                          <img src={reward.image_url} alt={reward.title} className="w-full h-full object-cover" />
+                        </div>
+                      ) : null}
+
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-white truncate">{reward.title}</p>
+                        <p className="text-sm text-dark-400 truncate">{reward.description || 'Brak opisu'}</p>
+                        <div className="flex items-center gap-3 mt-1">
+                          {reward.value && (
+                            <span className="text-xs text-turbo-400 font-medium">{reward.value}</span>
+                          )}
+                          {reward.sponsor && (
+                            <span className="text-xs text-dark-500">Sponsor: {reward.sponsor}</span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <Button size="sm" variant="secondary" onClick={() => openRewardModal(reward)}>
+                          <Edit2 className="w-4 h-4" />
+                        </Button>
+                        <Button size="sm" variant="danger" onClick={() => handleDeleteReward(reward)}>
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
                     </div>
-                    <Button onClick={() => openRewardModal()}>
-                      <Plus className="w-4 h-4 mr-1" />
-                      Dodaj nagrodę
-                    </Button>
+                  </Card>
+                );
+
+                return (
+                <div className="space-y-6">
+                  <div>
+                    <h3 className="text-lg font-semibold text-white">Nagrody</h3>
+                    <p className="text-sm text-dark-400">Zarządzaj nagrodami w 3 kategoriach — wyświetlają się na stronie Nagrody i w rankingach</p>
                   </div>
 
                   {!rewardsLoaded ? (
                     <div className="text-center py-8 text-dark-400">Ładowanie nagród...</div>
-                  ) : rewards.length === 0 ? (
-                    <Card className="text-center py-12">
-                      <Gift className="w-16 h-16 text-dark-600 mx-auto mb-4" />
-                      <p className="text-dark-400">Brak nagród</p>
-                      <p className="text-sm text-dark-500">Dodaj pierwszą nagrodę powyżej</p>
-                    </Card>
                   ) : (
-                    <div className="space-y-3">
-                      {rewards.map(reward => (
-                        <Card key={reward.id} className="p-4">
-                          <div className="flex items-center gap-4">
-                            {/* Place badge */}
-                            <div className={`w-14 h-14 rounded-xl flex items-center justify-center text-xl font-bold ${
-                              reward.place === 1 ? 'bg-gradient-to-br from-yellow-400 to-amber-600 text-white' :
-                              reward.place === 2 ? 'bg-gradient-to-br from-gray-300 to-gray-500 text-white' :
-                              reward.place === 3 ? 'bg-gradient-to-br from-amber-600 to-orange-700 text-white' :
-                              'bg-dark-700 text-dark-300'
-                            }`}>
-                              {reward.place}
+                    <>
+                      {rewardSections.map(section => {
+                        const SectionIcon = section.icon;
+                        const sectionRewards = rewards
+                          .filter(r => (r.reward_type || 'xp') === section.type)
+                          .sort((a, b) => a.place - b.place);
+
+                        return (
+                          <div key={section.type} className="space-y-3">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <div className={`w-8 h-8 rounded-lg ${section.bgColor} flex items-center justify-center`}>
+                                  <SectionIcon className={`w-4 h-4 ${section.color}`} />
+                                </div>
+                                <h4 className="font-medium text-white">{section.label}</h4>
+                                <Badge variant="default">{sectionRewards.length}</Badge>
+                              </div>
+                              <Button size="sm" onClick={() => openRewardModal(undefined, section.type)}>
+                                <Plus className="w-4 h-4 mr-1" />
+                                Dodaj
+                              </Button>
                             </div>
 
-                            {/* Image preview */}
-                            {reward.image_url ? (
-                              <div className="w-16 h-16 rounded-lg bg-dark-700 overflow-hidden">
-                                <img src={reward.image_url} alt={reward.title} className="w-full h-full object-cover" />
-                              </div>
+                            {sectionRewards.length === 0 ? (
+                              <Card variant="outlined" className="text-center py-6">
+                                <Gift className="w-8 h-8 text-dark-600 mx-auto mb-2" />
+                                <p className="text-sm text-dark-500">Brak nagród w tej kategorii</p>
+                              </Card>
                             ) : (
-                              <div className="w-16 h-16 rounded-lg bg-dark-700 flex items-center justify-center">
-                                <Gift className="w-6 h-6 text-dark-500" />
+                              <div className="space-y-2">
+                                {sectionRewards.map(renderRewardCard)}
                               </div>
                             )}
-
-                            {/* Content */}
-                            <div className="flex-1 min-w-0">
-                              <p className="font-medium text-white truncate">{reward.title}</p>
-                              <p className="text-sm text-dark-400 truncate">{reward.description || 'Brak opisu'}</p>
-                              <div className="flex items-center gap-3 mt-1">
-                                {reward.value && (
-                                  <span className="text-xs text-turbo-400 font-medium">{reward.value}</span>
-                                )}
-                                {reward.sponsor && (
-                                  <span className="text-xs text-dark-500">Sponsor: {reward.sponsor}</span>
-                                )}
-                              </div>
-                            </div>
-
-                            {/* Actions */}
-                            <div className="flex items-center gap-2">
-                              <Button size="sm" variant="secondary" onClick={() => openRewardModal(reward)}>
-                                <Edit2 className="w-4 h-4" />
-                              </Button>
-                              <Button size="sm" variant="danger" onClick={() => handleDeleteReward(reward)}>
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
-                            </div>
                           </div>
-                        </Card>
-                      ))}
-                    </div>
+                        );
+                      })}
+                    </>
                   )}
-
-                  {/* Info */}
-                  <Card variant="outlined" className="border-blue-500/30 bg-blue-500/5">
-                    <div className="flex items-start gap-3 p-4">
-                      <HelpCircle className="w-5 h-5 text-blue-400 mt-0.5" />
-                      <div>
-                        <p className="text-blue-400 font-medium">Wskazówka</p>
-                        <p className="text-sm text-dark-300 mt-1">
-                          Nagrody wyświetlają się na stronie &quot;Nagrody&quot; widocznej dla wszystkich graczy.
-                          TOP 3 jest wyróżnione specjalnym designem.
-                        </p>
-                      </div>
-                    </div>
-                  </Card>
                 </div>
-              )}
+                );
+              })()}
 
               {/* Cards Tab */}
               {activeTab === 'cards' && (() => {
@@ -5206,22 +5223,55 @@ export default function AdminPage() {
         size="lg"
       >
         <div className="space-y-4">
+          {/* Kategoria + Miejsce/Wartość */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-dark-200 mb-1.5">Miejsce *</label>
+              <label className="block text-sm font-medium text-dark-200 mb-1.5">Kategoria *</label>
               <select
-                value={rewardForm.place}
-                onChange={e => setRewardForm(prev => ({ ...prev, place: parseInt(e.target.value) }))}
+                value={rewardForm.reward_type}
+                onChange={e => setRewardForm(prev => ({
+                  ...prev,
+                  reward_type: e.target.value as RewardType,
+                  place: e.target.value === 'lottery' ? 0 : prev.place || 1,
+                }))}
                 className="w-full bg-dark-800 border border-dark-600 rounded-xl px-4 py-2.5 text-white"
               >
-                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => (
-                  <option key={n} value={n}>{n}. miejsce</option>
-                ))}
+                <option value="xp">🎯 Ranking Misji (XP)</option>
+                <option value="cards">🃏 Ranking Kart / Wsparcia</option>
+                <option value="lottery">🎲 Losowanie</option>
               </select>
             </div>
 
+            {rewardForm.reward_type !== 'lottery' ? (
+              <div>
+                <label className="block text-sm font-medium text-dark-200 mb-1.5">Miejsce *</label>
+                <select
+                  value={rewardForm.place}
+                  onChange={e => setRewardForm(prev => ({ ...prev, place: parseInt(e.target.value) }))}
+                  className="w-full bg-dark-800 border border-dark-600 rounded-xl px-4 py-2.5 text-white"
+                >
+                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => (
+                    <option key={n} value={n}>{n}. miejsce</option>
+                  ))}
+                </select>
+              </div>
+            ) : (
+              <div>
+                <label className="block text-sm font-medium text-dark-200 mb-1.5">Wartość nagrody</label>
+                <input
+                  type="text"
+                  value={rewardForm.value}
+                  onChange={e => setRewardForm(prev => ({ ...prev, value: e.target.value }))}
+                  placeholder="np. 500 zł, Voucher..."
+                  className="w-full bg-dark-800 border border-dark-600 rounded-xl px-4 py-2.5 text-white"
+                />
+              </div>
+            )}
+          </div>
+
+          {rewardForm.reward_type !== 'lottery' && (
             <div>
-              <label className="block text-sm font-medium text-dark-200 mb-1.5">Wartość</label>
+              <label className="block text-sm font-medium text-dark-200 mb-1.5">Wartość nagrody</label>
               <input
                 type="text"
                 value={rewardForm.value}
@@ -5230,7 +5280,7 @@ export default function AdminPage() {
                 className="w-full bg-dark-800 border border-dark-600 rounded-xl px-4 py-2.5 text-white"
               />
             </div>
-          </div>
+          )}
 
           <div>
             <label className="block text-sm font-medium text-dark-200 mb-1.5">Tytuł nagrody *</label>

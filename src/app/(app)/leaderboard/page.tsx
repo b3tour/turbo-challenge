@@ -1,15 +1,17 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
 import { useLeaderboard } from '@/hooks/useLeaderboard';
 import { useMissions } from '@/hooks/useMissions';
+import { supabase } from '@/lib/supabase';
 import { Card, Avatar, Badge } from '@/components/ui';
 import { SkeletonCard } from '@/components/ui/Skeleton';
 import { formatNumber } from '@/lib/utils';
 import { useLevels } from '@/hooks/useLevels';
-import { Trophy, Medal, Crown, TrendingUp, Users, Zap, Timer, ChevronDown, ChevronUp, Heart, Layers } from 'lucide-react';
-import { Mission, DonationLeaderboardEntry } from '@/types';
+import { Trophy, Medal, Crown, TrendingUp, Users, Zap, Timer, ChevronDown, ChevronUp, Heart, Layers, Gift, ChevronRight, Award } from 'lucide-react';
+import { Mission, DonationLeaderboardEntry, Reward } from '@/types';
 
 type LeaderboardTab = 'xp' | 'speedrun' | 'donation';
 
@@ -45,10 +47,29 @@ export default function LeaderboardPage() {
   const [donationData, setDonationData] = useState<DonationLeaderboardEntry[]>([]);
   const [loadingDonation, setLoadingDonation] = useState(false);
   const [userDonationRank, setUserDonationRank] = useState<number | null>(null);
+  const [topXpReward, setTopXpReward] = useState<Reward | null>(null);
+  const [topCardsReward, setTopCardsReward] = useState<Reward | null>(null);
   const stats = getStats();
 
   // Synchronicznie pobierz ranking użytkownika z cache
   const userRank = profile?.id ? getUserRank(profile.id) : null;
+
+  // Pobierz nagrody za 1. miejsce
+  useEffect(() => {
+    supabase
+      .from('rewards')
+      .select('*')
+      .eq('is_active', true)
+      .eq('place', 1)
+      .in('reward_type', ['xp', 'cards'])
+      .then(({ data }) => {
+        if (data) {
+          const rewards = data as Reward[];
+          setTopXpReward(rewards.find(r => r.reward_type === 'xp') || null);
+          setTopCardsReward(rewards.find(r => r.reward_type === 'cards') || null);
+        }
+      });
+  }, []);
 
   // Filtruj quizy speedrun
   const speedrunQuizzes = missions.filter(
@@ -195,6 +216,32 @@ export default function LeaderboardPage() {
       {/* === XP TAB CONTENT === */}
       {activeTab === 'xp' && (
         <>
+          {/* Reward Banner */}
+          {topXpReward && (
+            <Card variant="outlined" className="mb-6 border-yellow-500/30 bg-yellow-500/5">
+              <div className="flex items-center gap-3 p-4">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-yellow-400 to-amber-600 flex items-center justify-center flex-shrink-0">
+                  <Gift className="w-5 h-5 text-white" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs text-yellow-400 font-medium">Nagroda za 1. miejsce</p>
+                  <p className="font-bold text-white truncate">{topXpReward.title}</p>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    {topXpReward.value && <span className="text-xs text-yellow-400 font-medium">{topXpReward.value}</span>}
+                    {topXpReward.sponsor && (
+                      <span className="text-xs text-dark-400 flex items-center gap-1">
+                        <Award className="w-3 h-3" /> {topXpReward.sponsor}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <Link href="/rewards" className="text-yellow-400 flex-shrink-0">
+                  <ChevronRight className="w-5 h-5" />
+                </Link>
+              </div>
+            </Card>
+          )}
+
           {/* User's Position */}
           {userRank && profile && (
             <Card variant="glass" className="mb-6 border-turbo-500/30">
@@ -372,6 +419,32 @@ export default function LeaderboardPage() {
       {/* === DONATION TAB CONTENT === */}
       {activeTab === 'donation' && (
         <>
+          {/* Reward Banner */}
+          {topCardsReward && (
+            <Card variant="outlined" className="mb-6 border-red-500/30 bg-red-500/5">
+              <div className="flex items-center gap-3 p-4">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-red-400 to-pink-600 flex items-center justify-center flex-shrink-0">
+                  <Gift className="w-5 h-5 text-white" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs text-red-400 font-medium">Nagroda za 1. miejsce</p>
+                  <p className="font-bold text-white truncate">{topCardsReward.title}</p>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    {topCardsReward.value && <span className="text-xs text-red-400 font-medium">{topCardsReward.value}</span>}
+                    {topCardsReward.sponsor && (
+                      <span className="text-xs text-dark-400 flex items-center gap-1">
+                        <Award className="w-3 h-3" /> {topCardsReward.sponsor}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <Link href="/rewards" className="text-red-400 flex-shrink-0">
+                  <ChevronRight className="w-5 h-5" />
+                </Link>
+              </div>
+            </Card>
+          )}
+
           {/* User's Position in Donation Ranking */}
           {userDonationRank && profile && (profile.donation_total || 0) > 0 && (
             <Card variant="glass" className="mb-6 border-red-500/30">
