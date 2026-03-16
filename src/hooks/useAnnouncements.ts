@@ -146,16 +146,25 @@ export function useAnnouncements(userId?: string, options?: UseAnnouncementsOpti
 
       if (notifError) console.error('Error fetching notifications:', notifError);
 
-      // Zunifikuj ogloszenia
-      const unifiedAnnouncements: UnifiedNotification[] = (announcements || []).map(a => ({
-        id: a.id,
-        title: a.title,
-        message: a.message,
-        type: a.type as Announcement['type'],
-        created_at: a.created_at,
-        is_read: readIds.has(a.id),
-        source: 'announcement' as const,
-      }));
+      // Pobierz dismissed announcements z localStorage
+      const dismissedKey = `dismissed_announcements_${userId}`;
+      let dismissedIds: Set<string> = new Set();
+      try {
+        dismissedIds = new Set(JSON.parse(localStorage.getItem(dismissedKey) || '[]'));
+      } catch { /* ignore */ }
+
+      // Zunifikuj ogloszenia (pomijaj dismissed)
+      const unifiedAnnouncements: UnifiedNotification[] = (announcements || [])
+        .filter(a => !dismissedIds.has(a.id))
+        .map(a => ({
+          id: a.id,
+          title: a.title,
+          message: a.message,
+          type: a.type as Announcement['type'],
+          created_at: a.created_at,
+          is_read: readIds.has(a.id),
+          source: 'announcement' as const,
+        }));
 
       // Zunifikuj powiadomienia
       const unifiedNotifications: UnifiedNotification[] = (userNotifs || []).map(n => {
@@ -358,25 +367,41 @@ export function useAnnouncements(userId?: string, options?: UseAnnouncementsOpti
     }
   };
 
-  // Usun wszystkie przeczytane powiadomienia indywidualne
+  // Usun wszystkie przeczytane (notifications + ukryj announcements)
   const clearReadNotifications = async () => {
     if (!userId) return;
 
-    const readNotifs = notifications.filter(n => n.is_read && n.source === 'notification');
-    if (readNotifs.length === 0) return;
+    const readItems = notifications.filter(n => n.is_read);
+    if (readItems.length === 0) return;
 
-    // Optimistic update
-    setNotifications(prev => prev.filter(n => !(n.is_read && n.source === 'notification')));
+    // Optimistic update — usuń wszystkie przeczytane z UI
+    setNotifications(prev => prev.filter(n => !n.is_read));
 
-    const { error } = await supabase
-      .from('notifications')
-      .delete()
-      .eq('user_id', userId)
-      .eq('read', true);
+    // Usuń przeczytane indywidualne powiadomienia z bazy
+    const hasReadNotifs = readItems.some(n => n.source === 'notification');
+    if (hasReadNotifs) {
+      const { error } = await supabase
+        .from('notifications')
+        .delete()
+        .eq('user_id', userId)
+        .eq('read', true);
 
-    if (error) {
-      console.error('Error clearing read notifications:', error);
-      fetchAll(); // Revert by refetching
+      if (error) {
+        console.error('Error clearing read notifications:', error);
+      }
+    }
+
+    // Dla przeczytanych announcements — oznacz jako "dismissed" w localStorage
+    // (nie możemy usunąć globalnych ogłoszeń, ale możemy je ukryć per user)
+    const readAnnouncementIds = readItems
+      .filter(n => n.source === 'announcement')
+      .map(n => n.id);
+
+    if (readAnnouncementIds.length > 0) {
+      const key = `dismissed_announcements_${userId}`;
+      const existing = JSON.parse(localStorage.getItem(key) || '[]') as string[];
+      const merged = Array.from(new Set([...existing, ...readAnnouncementIds]));
+      localStorage.setItem(key, JSON.stringify(merged));
     }
   };
 

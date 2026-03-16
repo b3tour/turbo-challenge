@@ -163,7 +163,7 @@ export default function NotificationBell({ userId, dropdownPosition = 'below' }:
 
   // Zgrupowane elementy dropdown (nieprzeczytane najpierw)
   const dropdownItems = useMemo(() => buildDropdownItems(notifications), [notifications]);
-  const hasReadNotifications = notifications.some(n => n.is_read && n.source === 'notification');
+  const hasReadNotifications = notifications.some(n => n.is_read);
 
   const handleItemClick = (item: DropdownItem) => {
     if (item.isGroup) {

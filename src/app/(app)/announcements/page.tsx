@@ -47,7 +47,7 @@ export default function AnnouncementsPage() {
   if (!profile) return null;
 
   const readCount = notifications.filter(n => n.is_read).length;
-  const hasReadPersonalNotifs = notifications.some(n => n.is_read && n.source === 'notification');
+  const hasReadItems = notifications.some(n => n.is_read);
 
   const filters: { value: FilterType; label: string; icon: React.ElementType }[] = [
     { value: 'all', label: 'Wszystkie', icon: Megaphone },
@@ -133,7 +133,7 @@ export default function AnnouncementsPage() {
             Oznacz wszystkie jako przeczytane
           </button>
         )}
-        {hasReadPersonalNotifs && (filter === 'all' || filter === 'read') && (
+        {hasReadItems && (filter === 'all' || filter === 'read') && (
           <button
             onClick={clearReadNotifications}
             className="flex items-center gap-2 text-sm text-dark-400 hover:text-red-400"
