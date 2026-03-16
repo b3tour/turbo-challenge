@@ -1,6 +1,6 @@
 # Turbo Challenge — Status Projektu
 
-Ostatnia aktualizacja: 2026-03-16 (sesja 9)
+Ostatnia aktualizacja: 2026-03-16 (sesja 9+10)
 
 ## Kontekst
 
@@ -11,9 +11,26 @@ Turbo Challenge — aplikacja grywalizacyjna dla Fundacji Turbo Pomoc. Next.js 1
 ## Znane problemy
 
 - Brak wlasnego logo serca (SVG) — aktualnie uzywa Lucide Heart z fill turbo-500. Uzytkownik chce przeslac wlasne.
-- Hook `useCards.ts` linia 103 — pobiera user_cards bez paginacji (domyslny limit 1000 Supabase). Przy duzej kolekcji moze nie zwrocic wszystkich kart. Do naprawy analogicznie jak w admin resecie.
 - Cards page: demo mode (przykladowe karty gdy brak danych) — martwy kod ~90 linii. Na razie zostawiony, do usuniecia w przyszlosci.
 - INP issue na segmented controls (taby Cards) — ~337ms blokady UI przy przelaczaniu tabow. Do optymalizacji (startTransition, React.memo, lazy loading).
+- Avatar upload uzywa bucket `mission-photos` zamiast `avatars` (profile/page.tsx linia 114, 126).
+
+## Audyt pre-launch — pozostale bugi do naprawy
+
+### Faza B — bezpieczenstwo XP/kart (wymaga Supabase RPC):
+- Atomowy `complete_mission` (insert submission + add_xp w transakcji) — zapobiega double XP
+- Atomowy `resolve_battle` (UPDATE WHERE status='pending') — zapobiega double-accept
+- Server-side `open_pack` (losowanie + insert w jednej funkcji) — zapobiega manipulacji Math.random
+- UNIQUE constraint na `submissions(user_id, mission_id)` dla jednorazowych misji
+- `dealRandomCards` w bitwach dziala client-side — gracz moze podmienic karty
+- Limit 30 wyzwan/tydzien sprawdzany tylko client-side
+
+### Faza C — performance (przed 500+ userami):
+- `allCards` fetch bez paginacji (useCards.ts) — ucina przy >1000 kart w katalogu
+- `getChallengablePlayers` ciagnie 5000 wierszy do przegladarki
+- `useArenaRankings` bez limitu — zapytania coraz wolniejsze z czasem
+- Submissions query w leaderboard uciety przy >1000 wierszy
+- Server-side agregacje dla rankingów (views/materialized views)
 
 ---
 
@@ -53,14 +70,54 @@ Turbo Challenge — aplikacja grywalizacyjna dla Fundacji Turbo Pomoc. Next.js 1
 
 ---
 
-## Ostatnia sesja — 2026-03-16 (sesja 9)
+## Ostatnia sesja — 2026-03-16 (sesja 9+10)
 
-### Co zrobiono:
-- **Paginacja useCards.ts** — naprawiono bug z limitem 1000 wierszy Supabase. Teraz pobiera karty uzytkownika w petli z `.range()`.
-- **Leaderboard: realtime → polling 60s** — zastapiono realtime subscription na tabeli users pollingiem co 60 sekund. Zapobiega lawinie refetchow przy duzej liczbie graczy online.
-- **Rate limiting na submisji misji** — dodano globalny throttle 3s miedzy submisami (QR, Photo, Quiz, GPS, Survey). Zapobiega spamowi.
-- **Usunieto console.log z produkcji** — wszystkie logi w useAuth.tsx owrapowane w dev-only helper (log/logError). Nie wyciekaja do konsoli uzytkownika.
-- **Indeksy wydajnosciowe** — plik `supabase/performance_indexes.sql` z indeksami na user_cards, cards, submissions (composite), card_orders, card_battles, users(donation_total).
+### Sesja 9 — hardening + skalowanie:
+- **Paginacja useCards.ts** — naprawiono bug z limitem 1000 wierszy. Petla z `.range()`.
+- **Leaderboard: realtime → polling 60s** — zapobiega lawinie refetchow.
+- **Rate limiting na submisji misji** — throttle 3s per-mission (nie globalny).
+- **Console.log wyciszone** — useAuth.tsx (dev-only helper), layout.tsx (NODE_ENV check).
+- **Indeksy wydajnosciowe** — plik `supabase/performance_indexes.sql`.
+
+### Sesja 10 — PayU + powiadomienia + audyt + bugfixy:
+
+**Integracja PayU (platnosci online):**
+- `src/lib/payu.ts` — server-side helper (OAuth, tworzenie zamowien, weryfikacja IPN, pobranie metod platnosci)
+- `src/app/api/payu/checkout/route.ts` — tworzy platnosc w PayU z wybrana metoda, zwraca redirect URL
+- `src/app/api/payu/notify/route.ts` — webhook IPN: potwierdza platnosc, przyznaje karty + XP, wysyla powiadomienie
+- `src/app/api/payu/methods/route.ts` — pobiera dostepne metody platnosci z PayU API (cache 5 min)
+- `src/components/ui/PaymentGateway.tsx` — bramka platnosci w appce (BLIK, karta, Google/Apple Pay, szybkie przelewy, PayPo)
+- `src/hooks/usePayU.ts` — client-side hook (nieuzywany po dodaniu PaymentGateway)
+- Klucze PayU: POS ID 4013528, produkcja, env variables na Vercel
+- Flow: gracz klika kup → zamowienie w DB → bramka platnosci → wybor metody → redirect do PayU → callback → karta + XP
+
+**Powiadomienia:**
+- Auto-announcement przy dodaniu/aktywacji misji w adminie
+- Announcements maja teraz `link` (auto-detect z tytulu: "Nowa misja:" → /missions)
+- "Wyczysc przeczytane" teraz czyści tez announcements (localStorage dismissed per user)
+- Dropdown powiadomien w sidebarze otwiera sie w gore (fix clip)
+
+**Audyt pre-launch (75 bugow znalezionych):**
+- 14 CRITICAL, 22 HIGH, 25+ MEDIUM
+- Przeglad: dashboard, layout, karty, mystery, arena, bitwy, tuning, auth, profil, admin, leaderboard, rewards, misje, QR, quiz, GPS, survey
+
+**Faza A napraw (7 critical bugow naprawionych):**
+1. Console.log w layout.tsx — dev-only guard
+2. Quiz double-submit — submittedRef blokuje drugie wywolanie
+3. QR Scanner memory leak — stream.getTracks().stop() po sprawdzeniu uprawnien
+4. /scan pomijal level check — dodany required_level guard
+5. Admin wasAdminBefore bypass — usuniety, odebranie praw dziala natychmiast
+6. Nick case-sensitivity — .ilike() zamiast .eq(), error zwraca false
+7. Throttle per-mission zamiast globalny
+
+**Domena:**
+- `challenge.turbopomoc.pl` podpieta pod Vercel (CNAME w Cyberfolks)
+- Vercel Pro plan, Supabase Pro plan
+
+**Hosting/infra:**
+- Vercel Pro ($20/msc) — 1TB bandwidth, serverless functions
+- Supabase Pro — 8GB baza, 250GB transfer, Micro compute
+- Vercel env variables: 7 PayU + 2 Supabase + APP_URL
 
 ### Migracje SQL (DO URUCHOMIENIA przed launchem):
 - `supabase/performance_indexes.sql` — indeksy wydajnosciowe
@@ -159,12 +216,23 @@ Turbo Challenge — aplikacja grywalizacyjna dla Fundacji Turbo Pomoc. Next.js 1
 
 ## Nastepne kroki
 
-1. Wlasne logo serca (SVG) od uzytkownika — podmienic Lucide Heart
-2. Paginacja w `useCards.ts` (linia 103) — analogicznie do naprawy w admin resecie
-3. Organizacja plikow roboczych (skrypty JS, SQL, screenshoty) — przeniesienie do archiwum
-4. Dalsze poprawki UI na podstawie wizualnego review
-5. Ewentualne usuniecie demo mode z Cards (martwy kod)
-6. Optymalizacja INP na segmented controls (startTransition / React.memo / lazy)
+### Priorytet 1 — przed launchem:
+1. **Faza B audytu** — atomowe RPC w Supabase (complete_mission, resolve_battle, open_pack)
+2. **Przetestowac platnosc PayU** — pelny flow z prawdziwa transakcja (BLIK/karta)
+3. **Uruchomic brakujace SQL** — performance_indexes, add_survey_type, update_reward_types
+4. **Avatar bucket** — zmienic `mission-photos` na `avatars` w profile/page.tsx
+
+### Priorytet 2 — po launchu:
+5. **Faza C audytu** — performance (server-side agregacje, paginacja allCards, limity zapytan)
+6. **Bramka platnosci v2** — BLIK kod w appce (bez redirectu), lepszy UX
+7. Wlasne logo serca (SVG)
+8. Usuniecie demo mode z Cards (martwy kod)
+9. Optymalizacja INP na segmented controls
+
+### Priorytet 3 — rozwoj:
+10. **Tryb druzynowy (Turbo Grywalizacja)** — plan gotowy w `Plan na Grywalizacje Druzyn.txt`
+11. **Streamer Edition** — pomysly zapisane w memory
+12. **Subdomena produkcyjna** — `challenge.turbopomoc.pl` (GOTOWE, podpiete)
 
 ---
 
