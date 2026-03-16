@@ -81,7 +81,7 @@ export function Sidebar({ user }: SidebarProps) {
       {user && (
         <div className="px-3 py-4 border-t border-dark-700/50 space-y-2">
           <div className="flex items-center justify-between px-3">
-            <NotificationBell userId={user.id} />
+            <NotificationBell userId={user.id} dropdownPosition="above" />
           </div>
           <Link
             href="/profile"
