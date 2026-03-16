@@ -40,7 +40,7 @@ export default function MysteryGaragePage() {
     getDuplicates,
   } = useMysteryPacks({ userId: profile?.id });
   const { success, error: showError } = useToast();
-  const { isEnabled: payuEnabled, startPayment } = usePayU();
+  const { startPayment } = usePayU();
 
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
   const [selectedPack, setSelectedPack] = useState<MysteryPackType | null>(null);
@@ -82,19 +82,12 @@ export default function MysteryGaragePage() {
     }
 
     if (purchase) {
-      if (payuEnabled) {
-        // PayU — od razu przekieruj do płatności
-        const result = await startPayment({
-          orderId: purchase.id,
-          orderType: 'mystery_pack',
-        });
-        if (!result.success) {
-          // Fallback: pokaż instrukcję przelewu
-          setCreatedPurchase(purchase);
-          setPurchasing(false);
-        }
-      } else {
-        // Brak PayU — stary flow z instrukcją przelewu
+      // Próbuj PayU — przy błędzie fallback na instrukcję przelewu
+      const result = await startPayment({
+        orderId: purchase.id,
+        orderType: 'mystery_pack',
+      });
+      if (!result.success) {
         setCreatedPurchase(purchase);
         setPurchasing(false);
       }

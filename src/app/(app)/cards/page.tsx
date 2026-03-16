@@ -202,7 +202,7 @@ export default function CardsPage() {
   const { createOrder, getUserOrderForCard } = useCardOrders({
     userId: profile?.id,
   });
-  const { isEnabled: payuEnabled, startPayment, loading: payuLoading } = usePayU();
+  const { startPayment, loading: payuLoading } = usePayU();
 
   const [activeTab, setActiveTab] = useState<ViewTab>('car');
   const [collectionFilter, setCollectionFilter] = useState<'all' | 'owned' | 'to_collect'>('all');
@@ -407,19 +407,12 @@ export default function CardsPage() {
     }
 
     if (order) {
-      if (payuEnabled) {
-        // PayU — od razu przekieruj do płatności
-        const result = await startPayment({
-          orderId: order.id,
-          orderType: 'card_order',
-        });
-        if (!result.success) {
-          // Fallback: pokaż instrukcję przelewu
-          setCreatedOrder(order);
-          setPurchasing(false);
-        }
-      } else {
-        // Brak PayU — pokaż instrukcję przelewu (stary flow)
+      // Próbuj PayU — przy błędzie fallback na instrukcję przelewu
+      const result = await startPayment({
+        orderId: order.id,
+        orderType: 'card_order',
+      });
+      if (!result.success) {
         setCreatedOrder(order);
         setPurchasing(false);
       }

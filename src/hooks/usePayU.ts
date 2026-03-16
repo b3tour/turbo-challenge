@@ -11,8 +11,6 @@ export function usePayU() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const isEnabled = process.env.NEXT_PUBLIC_PAYU_ENABLED === 'true';
-
   const startPayment = useCallback(async ({ orderId, orderType }: PayUCheckoutOptions): Promise<{ success: boolean; error?: string }> => {
     setLoading(true);
     setError(null);
@@ -51,7 +49,6 @@ export function usePayU() {
   }, []);
 
   return {
-    isEnabled,
     loading,
     error,
     startPayment,
