@@ -86,6 +86,10 @@ export default function MysteryGaragePage() {
       const result = await startPayment({
         orderId: purchase.id,
         orderType: 'mystery_pack',
+        orderCode: purchase.order_code,
+        amount: selectedPack.price,
+        description: `${selectedPack.name} (${selectedPack.card_count} kart)`,
+        buyerEmail: profile?.email || '',
       });
       if (!result.success) {
         setCreatedPurchase(purchase);

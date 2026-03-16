@@ -411,6 +411,10 @@ export default function CardsPage() {
       const result = await startPayment({
         orderId: order.id,
         orderType: 'card_order',
+        orderCode: order.order_code,
+        amount: purchaseCard.price,
+        description: `Karta: ${purchaseCard.name}`,
+        buyerEmail: profile?.email || '',
       });
       if (!result.success) {
         setCreatedOrder(order);

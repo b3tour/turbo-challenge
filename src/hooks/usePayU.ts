@@ -5,13 +5,17 @@ import { useState, useCallback } from 'react';
 interface PayUCheckoutOptions {
   orderId: string;
   orderType: 'card_order' | 'mystery_pack';
+  orderCode: string;
+  amount: number;       // w PLN (np. 15)
+  description: string;  // np. "Mystery Pack - Mały pakiet (3 karty)"
+  buyerEmail: string;
 }
 
 export function usePayU() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const startPayment = useCallback(async ({ orderId, orderType }: PayUCheckoutOptions): Promise<{ success: boolean; error?: string }> => {
+  const startPayment = useCallback(async (opts: PayUCheckoutOptions): Promise<{ success: boolean; error?: string }> => {
     setLoading(true);
     setError(null);
 
@@ -19,7 +23,7 @@ export function usePayU() {
       const res = await fetch('/api/payu/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ orderId, orderType }),
+        body: JSON.stringify(opts),
       });
 
       const data = await res.json();
@@ -32,7 +36,6 @@ export function usePayU() {
       }
 
       if (data.redirectUri) {
-        // Przekieruj do PayU
         window.location.href = data.redirectUri;
         return { success: true };
       }
