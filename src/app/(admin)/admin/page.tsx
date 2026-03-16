@@ -707,13 +707,27 @@ export default function AdminPage() {
 
       success('Zapisano!', 'Misja zostala zaktualizowana');
     } else {
-      const { error } = await supabase
+      const { data: newMission, error } = await supabase
         .from('missions')
-        .insert(missionData);
+        .insert(missionData)
+        .select()
+        .single();
 
       if (error) {
         showError('Blad', 'Nie udalo sie utworzyc misji');
         return;
+      }
+
+      // Auto-ogłoszenie o nowej misji (widoczne u wszystkich graczy w dzwonku)
+      if (newMission && missionData.status === 'active') {
+        const { data: { user: adminUser } } = await supabase.auth.getUser();
+        await supabase.from('announcements').insert({
+          title: `Nowa misja: ${missionData.title}`,
+          message: `Dostępna jest nowa misja za ${missionData.xp_reward} XP. Sprawdź zakładkę Misje!`,
+          type: 'info',
+          created_by: adminUser?.id || '',
+          is_active: true,
+        });
       }
 
       success('Utworzono!', 'Nowa misja zostala dodana');
@@ -773,6 +787,18 @@ export default function AdminPage() {
     if (error) {
       showError('Blad', 'Nie udalo sie zmienic statusu misji');
       return;
+    }
+
+    // Auto-ogłoszenie gdy misja zostaje aktywowana
+    if (newStatus === 'active') {
+      const { data: { user: adminUser } } = await supabase.auth.getUser();
+      await supabase.from('announcements').insert({
+        title: `Nowa misja: ${mission.title}`,
+        message: `Dostępna jest nowa misja za ${mission.xp_reward} XP. Sprawdź zakładkę Misje!`,
+        type: 'info',
+        created_by: adminUser?.id || '',
+        is_active: true,
+      });
     }
 
     success(
