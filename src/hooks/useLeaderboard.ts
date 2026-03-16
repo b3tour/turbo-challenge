@@ -154,31 +154,22 @@ export function useLeaderboard(options: UseLeaderboardOptions = {}) {
     return data.slice(startRank, endRank);
   }, [leaderboard]);
 
-  // Setup real-time subscription z debounce
+  // Polling zamiast realtime — bezpieczniejsze przy dużej liczbie użytkowników
   useEffect(() => {
     mountedRef.current = true;
     fetchLeaderboard();
 
     if (!realtime) return;
 
-    let debounceTimer: NodeJS.Timeout | null = null;
-
-    const debouncedFetch = () => {
-      if (debounceTimer) clearTimeout(debounceTimer);
-      debounceTimer = setTimeout(() => {
-        fetchLeaderboard(true);
-      }, 1000); // Debounce 1 sekunda
-    };
-
-    const subscription = supabase
-      .channel('leaderboard-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, debouncedFetch)
-      .subscribe();
+    // Polling co 60 sekund zamiast realtime subscription na tabeli users
+    // Realtime na users przy 200+ graczach powoduje lawinę refetchów
+    const pollInterval = setInterval(() => {
+      fetchLeaderboard(true);
+    }, 60000);
 
     return () => {
       mountedRef.current = false;
-      if (debounceTimer) clearTimeout(debounceTimer);
-      subscription.unsubscribe();
+      clearInterval(pollInterval);
     };
   }, [fetchLeaderboard, realtime]);
 

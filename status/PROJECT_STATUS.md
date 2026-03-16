@@ -1,6 +1,6 @@
 # Turbo Challenge — Status Projektu
 
-Ostatnia aktualizacja: 2026-02-03 (sesja 5)
+Ostatnia aktualizacja: 2026-03-16 (sesja 9)
 
 ## Kontekst
 
@@ -47,47 +47,66 @@ Turbo Challenge — aplikacja grywalizacyjna dla Fundacji Turbo Pomoc. Next.js 1
 
 **Rarity tile tokens (02.02 sesja 3)** — Kafelki rzadkosci kart uzywaja `RARITY_TILE_TOKENS` z per-rarity: radial gradient bg, accent color, glow, border active/hover. Common accent: gray-300 (#D1D5DB), nie gray-500. Ikona Common: Copy (lucide). Progress bar z kaskadowa animacja (100ms start + 200ms stagger). Bold collected / lighter total count style (`<bold>2</bold>/25`).
 
+**System nagrod (14.02 sesja 7)** — RewardType: `'xp' | 'cards' | 'lottery'`. Nagrody pogrupowane w adminie na 3 sekcje. Strona /rewards ma 3 sekcje z info boxami. Rankingi (leaderboard + arena) pokazuja baner z nagroda glowna. Backward compatibility: `donation` → `cards`, `null` → `xp`. Losowania: `place: 0`.
+
+**Ankiety / Survey (sesja 6)** — Nowy typ misji `survey`. Dane w `survey_data JSONB` (nie w quiz_data). Odpowiedzi zapisywane jako string: ID opcji lub `"other:tekst"`. Admin: edytor pytania + opcji, podglad wynikow z procentami. Komponent `Survey.tsx` w `src/components/missions/`.
+
 ---
 
-## Ostatnia sesja — 2026-02-03 (sesja 5)
+## Ostatnia sesja — 2026-03-16 (sesja 9)
 
 ### Co zrobiono:
-- Strefa Tuningu — zastapiono naglowek "Strefa Tuningu" 4-kafelkowym stats barem:
-  - Garaz (CarFront, cyan) — ilosc aut + dostepnych, poprawna polska odmiana (auto/auta/aut)
-  - Tuning (CircleGauge, green) — X/Y ulepszen z progress barem
-  - Zainwestowane (Coins, amber) — XP w modach z progress barem
-  - Dostepne XP (Zap, turbo) — dostepne z total, progress bar
-  - Grid-cols-2 mobile, grid-cols-4 sm+. Rozmiary: 16px liczba, 13px sufiks.
-- Przycisk "Mody" na liscie aut zmieniony na "Modyfikuj" (zielony).
-- Modal modyfikacji auta — redesign:
-  - Dodano p-4 padding do Modal.tsx content area (globalnie dla wszystkich modali).
-  - Kolory kropek stage: zielony (1), pomaranczowy (2), czerwony (3) — w modalu i na liscie aut.
-  - Downgrade modow — nowy przycisk ChevronDown, cofniecie o 1 stage, 50% zwrotu XP.
-  - Nowa funkcja `downgradeMod` w `useTuning.ts`, helper `getDowngradeRefund` w `tuningConfig.ts`.
+- **Paginacja useCards.ts** — naprawiono bug z limitem 1000 wierszy Supabase. Teraz pobiera karty uzytkownika w petli z `.range()`.
+- **Leaderboard: realtime → polling 60s** — zastapiono realtime subscription na tabeli users pollingiem co 60 sekund. Zapobiega lawinie refetchow przy duzej liczbie graczy online.
+- **Rate limiting na submisji misji** — dodano globalny throttle 3s miedzy submisami (QR, Photo, Quiz, GPS, Survey). Zapobiega spamowi.
+- **Usunieto console.log z produkcji** — wszystkie logi w useAuth.tsx owrapowane w dev-only helper (log/logError). Nie wyciekaja do konsoli uzytkownika.
+- **Indeksy wydajnosciowe** — plik `supabase/performance_indexes.sql` z indeksami na user_cards, cards, submissions (composite), card_orders, card_battles, users(donation_total).
 
-### Commity:
-```
-fe6d55e Merge preview/tuning-modal-redesign: padding, stage colors, downgrade
-2fb6011 Redesign tuning modify modal: padding, stage colors, downgrade
-d2b72d9 Merge preview/tuning-stats-bar: Tuning stats bar replacing header
-89575fa Adjust stats tile font sizes: main number 16px, suffix text 13px
-85be242 Rename car list button from Tuning to Modyfikuj
-69bfa3c Rename Mody to Tuning, fix Polish labels, green Tuning button on car list
-7b747fd Change Garaż tile icon to CarFront
-a772058 Fix Polish: Garaż label, correct plural declension for auta/aut, dostępnych
-4548b4e Reorder stats bar tiles: Garaz, Mody, Zainwestowane, Dostepne XP
-9f9f13d Replace Strefa Tuningu header with full-width stats bar
-```
+### Migracje SQL (DO URUCHOMIENIA przed launchem):
+- `supabase/performance_indexes.sql` — indeksy wydajnosciowe
+- `supabase/add_survey_type.sql` — kolumna survey_data (z sesji 6, jesli nie uruchomione)
+- `supabase/update_reward_types.sql` — migracja typow nagrod (z sesji 7, jesli nie uruchomione)
 
-### Zmienione pliki:
-- `src/components/arena/TuningContent.tsx` — stats bar, kolory stage, downgrade, nazwy przyciskow
-- `src/components/ui/Modal.tsx` — p-4 padding w content area
-- `src/hooks/useTuning.ts` — nowa funkcja downgradeMod
-- `src/config/tuningConfig.ts` — nowy helper getDowngradeRefund
+---
+
+## Poprzednia sesja — 2026-02-25 (sesja 8)
+
+### Co zrobiono:
+- Audyt bezpieczenstwa Supabase Security Advisor — naprawiono wszystkie bledy:
+  - RLS wlaczony na 4 tabelach bez ochrony: `levels`, `mystery_pack_types`, `mystery_pack_purchases`, `rewards`
+  - Naprawiono 2 zbyt luźne polityki RLS: `notifications` INSERT (ograniczony do own user_id), `tuning_challenges` UPDATE (ograniczony do challenger/opponent)
+  - Dodano `SET search_path = public` do 12 funkcji (zapobieganie atakom schema injection)
+  - Leaked Password Protection — niedostepne na planie Free (bug w UI Supabase z Captcha)
+- Przywrocono usuniete pliki sesji (.claude/TODO, session files)
+
+### Migracje SQL (uruchomione):
+- `supabase/fix_security_advisor.sql` — RLS na levels, mystery_pack_types, mystery_pack_purchases, rewards
+- `supabase/fix_security_warnings.sql` — search_path na funkcjach + naprawione polityki RLS
+- Dodatkowe DROP+CREATE dla: `get_user_profile`, `request_nick_change`, `approve_nick_change`, `create_user_profile` (4-param version)
+
+### Pozostale ostrzezenia:
+- Leaked Password Protection — wymaga planu Pro, na Free nie da sie wlaczyc
 
 ---
 
 ## Historia sesji
+
+### 2026-02-14 (sesja 7) — System nagrod
+- RewardType rozszerzony na `'xp' | 'cards' | 'lottery'`
+- Admin: formularz + grupowanie listy na 3 sekcje
+- Strona /rewards: 3 sekcje z info boxami
+- Leaderboard + Arena: banery nagrod
+- Commity: `e49cfe9`
+
+### 2026-02-14 (sesja 6) — Ankiety + regulamin
+- Nowy typ misji: ankieta (survey) — komponent Survey.tsx, edytor w adminie, wyniki z procentami
+- Regulamin i polityka prywatnosci (terms, privacy) po polsku
+- Commity: `c70761e`, `4332955`, `086a4f6`
+
+### 2026-02-03 (sesja 5) — Tuning stats bar + modal redesign
+- Stats bar zastepujacy naglowek Strefy Tuningu (4 kafelki)
+- Modal modyfikacji: padding, kolory stage, downgrade modow
+- Commity: `fe6d55e`, `2fb6011`, `d2b72d9`, `89575fa`, `85be242`, `69bfa3c`, `7b747fd`, `a772058`, `4548b4e`, `9f9f13d`
 
 ### 2026-02-02 (sesja 4) — Kategorie tuningowe w modalu
 - Dodano sekcje "Sila w kategoriach" do modala modyfikacji (Drag/Hill Climb/Track/Time Attack).
@@ -153,11 +172,16 @@ a772058 Fix Polish: Garaż label, correct plural declension for auta/aut, dostę
 
 | Plik | Status | Opis |
 |------|--------|------|
+| `supabase/performance_indexes.sql` | DO URUCHOMIENIA | Indeksy wydajnosciowe na user_cards, cards, submissions itd. (sesja 9) |
 | `supabase/fix_tuning_challenges_fk.sql` | DO SPRAWDZENIA | Nullable tuned_car_id + ON DELETE SET NULL (z sesji 29.01) |
+| `supabase/add_survey_type.sql` | DO URUCHOMIENIA | Dodaje kolumne survey_data JSONB do missions (sesja 6) |
+| `supabase/update_reward_types.sql` | DO URUCHOMIENIA | Migracja: donation→cards, null→xp (sesja 7) |
+| `supabase/fix_security_advisor.sql` | ZROBIONE (25.02) | RLS na levels, mystery_pack_types, mystery_pack_purchases, rewards |
+| `supabase/fix_security_warnings.sql` | ZROBIONE (25.02) | search_path + naprawione polityki RLS |
 
 ---
 
-## Stan RLS (zweryfikowany 27.01)
+## Stan RLS (zweryfikowany 25.02, sesja 8)
 
 | Tabela | SELECT | INSERT | UPDATE | DELETE |
 |--------|--------|--------|--------|--------|
@@ -166,4 +190,9 @@ a772058 Fix Polish: Garaż label, correct plural declension for auta/aut, dostę
 | card_battles | Challenger/Opponent | Challenger | Challenger/Opponent | Challenger |
 | card_orders | Swoje + Admin | Swoje | Admin | - |
 | card_images | Wszyscy | Admin | Admin | Admin |
-| notifications | Swoje | Zalogowani | Swoje | - |
+| notifications | Swoje | Swoje (user_id) | Swoje | - |
+| levels | Zalogowani | Admin | Admin | Admin |
+| mystery_pack_types | Zalogowani | Admin | Admin | Admin |
+| mystery_pack_purchases | Swoje + Admin | Swoje | - | - |
+| rewards | Zalogowani | Admin | Admin | Admin |
+| tuning_challenges | Zalogowani | Challenger | Challenger/Opponent | Challenger |

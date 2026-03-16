@@ -99,20 +99,33 @@ export function useCards({ userId }: UseCardsOptions = {}): UseCardsReturn {
         setAllCards(cardsData as CollectibleCard[]);
       }
 
-      // Pobierz karty użytkownika jeśli podano userId
+      // Pobierz karty użytkownika z paginacją (Supabase limit 1000 wierszy)
       if (userId) {
-        const { data: userCardsData, error: userCardsError } = await supabase
-          .from('user_cards')
-          .select('*, card:cards(*)')
-          .eq('user_id', userId)
-          .order('obtained_at', { ascending: false });
+        const PAGE_SIZE = 1000;
+        let allUserCards: UserCard[] = [];
+        let from = 0;
+        let hasMore = true;
 
-        if (userCardsError) {
-          console.error('Error fetching user cards:', userCardsError);
-          setUserCards([]);
-        } else {
-          setUserCards(userCardsData as UserCard[]);
+        while (hasMore) {
+          const { data: userCardsData, error: userCardsError } = await supabase
+            .from('user_cards')
+            .select('*, card:cards(*)')
+            .eq('user_id', userId)
+            .order('obtained_at', { ascending: false })
+            .range(from, from + PAGE_SIZE - 1);
+
+          if (userCardsError) {
+            console.error('Error fetching user cards:', userCardsError);
+            allUserCards = [];
+            break;
+          }
+
+          allUserCards = [...allUserCards, ...(userCardsData as UserCard[])];
+          hasMore = userCardsData.length === PAGE_SIZE;
+          from += PAGE_SIZE;
         }
+
+        setUserCards(allUserCards);
       }
     } catch (e) {
       console.error('Error in fetchCards:', e);

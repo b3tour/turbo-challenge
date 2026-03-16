@@ -11,6 +11,19 @@ interface UseMissionsOptions {
   userLevel?: number;
 }
 
+// Globalny throttle na submisje — max 1 co 3 sekundy
+let lastSubmissionTime = 0;
+const SUBMISSION_COOLDOWN_MS = 3000;
+
+function checkSubmissionThrottle(): string | null {
+  const now = Date.now();
+  if (now - lastSubmissionTime < SUBMISSION_COOLDOWN_MS) {
+    return 'Poczekaj chwilę przed kolejnym zgłoszeniem';
+  }
+  lastSubmissionTime = now;
+  return null;
+}
+
 export function useMissions(options: UseMissionsOptions = {}) {
   const [missions, setMissions] = useState<Mission[]>([]);
   const [userSubmissions, setUserSubmissions] = useState<Submission[]>([]);
@@ -154,6 +167,9 @@ export function useMissions(options: UseMissionsOptions = {}) {
       return { success: false, error: 'Nieprawidłowy kod QR' };
     }
 
+    const throttleError = checkSubmissionThrottle();
+    if (throttleError) return { success: false, error: throttleError };
+
     const { canComplete, reason } = canCompleteMission(mission);
     if (!canComplete) {
       return { success: false, error: reason };
@@ -196,6 +212,9 @@ export function useMissions(options: UseMissionsOptions = {}) {
       return { success: false, error: 'Nie znaleziono misji' };
     }
 
+    const throttleError = checkSubmissionThrottle();
+    if (throttleError) return { success: false, error: throttleError };
+
     const { canComplete, reason } = canCompleteMission(mission);
     if (!canComplete) {
       return { success: false, error: reason };
@@ -231,6 +250,9 @@ export function useMissions(options: UseMissionsOptions = {}) {
     if (!mission || !mission.quiz_data) {
       return { success: false, error: 'Nie znaleziono quizu' };
     }
+
+    const throttleError = checkSubmissionThrottle();
+    if (throttleError) return { success: false, error: throttleError };
 
     const { canComplete, reason } = canCompleteMission(mission);
     if (!canComplete) {
@@ -299,6 +321,9 @@ export function useMissions(options: UseMissionsOptions = {}) {
       return { success: false, error: 'Nie znaleziono lokalizacji misji' };
     }
 
+    const throttleError = checkSubmissionThrottle();
+    if (throttleError) return { success: false, error: throttleError };
+
     const { canComplete, reason } = canCompleteMission(mission);
     if (!canComplete) {
       return { success: false, error: reason };
@@ -354,6 +379,9 @@ export function useMissions(options: UseMissionsOptions = {}) {
     if (!mission) {
       return { success: false, error: 'Nie znaleziono ankiety' };
     }
+
+    const throttleError = checkSubmissionThrottle();
+    if (throttleError) return { success: false, error: throttleError };
 
     const { canComplete, reason } = canCompleteMission(mission);
     if (!canComplete) {

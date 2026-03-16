@@ -5,6 +5,10 @@ import { supabase } from '@/lib/supabase';
 import { User as SupabaseUser, Session } from '@supabase/supabase-js';
 import { User } from '@/types';
 
+const isDev = process.env.NODE_ENV === 'development';
+const log = (...args: unknown[]) => { if (isDev) console.log(...args); };
+const logError = (...args: unknown[]) => { if (isDev) console.error(...args); };
+
 interface AuthState {
   session: Session | null;
   user: SupabaseUser | null;
@@ -50,17 +54,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Sprawdź cache
     const cached = profileCache[userId];
     if (!forceRefresh && cached && Date.now() - cached.timestamp < CACHE_TTL) {
-      console.log('[Auth] Profil z cache');
+      log('[Auth] Profil z cache');
       return cached.data;
     }
 
     try {
-      console.log('[Auth] Pobieram profil z bazy dla:', userId);
+      log('[Auth] Pobieram profil z bazy dla:', userId);
 
       // Dodaj timeout 5 sekund
       const timeoutPromise = new Promise<{ data: null; error: { message: string } }>((resolve) => {
         setTimeout(() => {
-          console.log('[Auth] Timeout pobierania profilu');
+          log('[Auth] Timeout pobierania profilu');
           resolve({ data: null, error: { message: 'Timeout' } });
         }, 5000);
       });
@@ -74,21 +78,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { data, error } = await Promise.race([queryPromise, timeoutPromise]);
 
       if (error) {
-        console.log('[Auth] Błąd pobierania profilu:', error.message);
+        log('[Auth] Błąd pobierania profilu:', error.message);
         return null;
       }
 
       if (!data) {
-        console.log('[Auth] Profil nie istnieje w bazie');
+        log('[Auth] Profil nie istnieje w bazie');
         return null;
       }
 
-      console.log('[Auth] Profil pobrany:', data.nick);
+      log('[Auth] Profil pobrany:', data.nick);
       // Zapisz w cache
       profileCache[userId] = { data: data as User, timestamp: Date.now() };
       return data as User;
     } catch (e) {
-      console.error('[Auth] Exception przy pobieraniu profilu:', e);
+      logError('[Auth] Exception przy pobieraniu profilu:', e);
       return null;
     }
   }, []);
@@ -102,7 +106,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const initAuth = async () => {
       try {
-        console.log('[Auth] Inicjalizacja, próba:', retryCount + 1);
+        log('[Auth] Inicjalizacja, próba:', retryCount + 1);
 
         // Timeout na 8 sekund - skrócony dla lepszego UX
         const sessionPromise = supabase.auth.getSession();
@@ -115,13 +119,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (!mounted) return;
 
-        console.log('[Auth] Sesja pobrana:', session ? 'zalogowany' : 'brak sesji');
+        log('[Auth] Sesja pobrana:', session ? 'zalogowany' : 'brak sesji');
 
         let profile = null;
         if (session?.user) {
-          console.log('[Auth] Pobieram profil dla:', session.user.id);
+          log('[Auth] Pobieram profil dla:', session.user.id);
           profile = await fetchProfile(session.user.id);
-          console.log('[Auth] Profil:', profile ? 'znaleziony' : 'brak');
+          log('[Auth] Profil:', profile ? 'znaleziony' : 'brak');
         }
 
         setState({
@@ -133,18 +137,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
       } catch (error) {
         if (!mounted) return;
-        console.error('[Auth] Błąd inicjalizacji:', error, 'Próba:', retryCount + 1);
+        logError('[Auth] Błąd inicjalizacji:', error, 'Próba:', retryCount + 1);
 
         // Spróbuj ponownie tylko raz
         if (retryCount < maxRetries) {
           retryCount++;
-          console.log(`[Auth] Ponowna próba ${retryCount}/${maxRetries}...`);
+          log(`[Auth] Ponowna próba ${retryCount}/${maxRetries}...`);
           setTimeout(() => initAuth(), 2000);
           return;
         }
 
         // Przy błędzie - ustaw loading na false, żeby strona się nie zawiesiła
-        console.error('[Auth] Wszystkie próby nieudane, pokazuję błąd');
+        logError('[Auth] Wszystkie próby nieudane, pokazuję błąd');
         setState({
           session: null,
           user: null,
@@ -161,7 +165,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!mounted) return;
 
-      console.log('[Auth] onAuthStateChange:', event);
+      log('[Auth] onAuthStateChange:', event);
 
       // Ignoruj INITIAL_SESSION - już obsłużone powyżej
       if (event === 'INITIAL_SESSION') return;
@@ -169,7 +173,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Przy TOKEN_REFRESHED lub USER_UPDATED - tylko aktualizuj sesję, zachowaj istniejący profil
       // To zapobiega niepotrzebnemu ładowaniu i przekierowaniom
       if (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
-        console.log('[Auth] Token/User odświeżony, zachowuję profil');
+        log('[Auth] Token/User odświeżony, zachowuję profil');
         setState(prev => ({
           ...prev,
           session,
@@ -181,7 +185,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       // Przy SIGNED_OUT - wyczyść wszystko
       if (event === 'SIGNED_OUT') {
-        console.log('[Auth] Wylogowano');
+        log('[Auth] Wylogowano');
         profileCache = {};
         setState({
           session: null,
@@ -195,7 +199,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       // Przy SIGNED_IN - pobierz profil
       if (event === 'SIGNED_IN' && session?.user) {
-        console.log('[Auth] Zalogowano, pobieram profil');
+        log('[Auth] Zalogowano, pobieram profil');
         const profile = await fetchProfile(session.user.id, true);
         setState({
           session,
@@ -291,7 +295,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Sprawdź czy to email (zawiera @) czy nick
     if (!loginIdentifier.includes('@')) {
       // To nick - znajdź email użytkownika
-      console.log('[Auth] Logowanie po nicku:', loginIdentifier);
+      log('[Auth] Logowanie po nicku:', loginIdentifier);
 
       const { data: userData, error: lookupError } = await supabase
         .from('users')
@@ -305,7 +309,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       emailToUse = userData.email;
-      console.log('[Auth] Znaleziono email dla nicku:', emailToUse);
+      log('[Auth] Znaleziono email dla nicku:', emailToUse);
     }
 
     const { error } = await supabase.auth.signInWithPassword({
@@ -360,11 +364,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Utwórz profil (po pierwszym logowaniu)
   const createProfile = async (nick: string, phone?: string) => {
     if (!state.user) {
-      console.error('createProfile: No user logged in');
+      logError('createProfile: No user logged in');
       return { success: false, error: 'Nie jesteś zalogowany' };
     }
 
-    console.log('createProfile: Starting for user', state.user.id, 'nick:', nick);
+    log('createProfile: Starting for user', state.user.id, 'nick:', nick);
 
     try {
       const newProfile = {
@@ -379,7 +383,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         terms_accepted_at: new Date().toISOString(),
       };
 
-      console.log('createProfile: Inserting profile...', newProfile);
+      log('createProfile: Inserting profile...', newProfile);
 
       // Timeout 10 sekund
       const timeoutPromise = new Promise<{ data: null; error: { message: string } }>((resolve) => {
@@ -395,23 +399,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { data, error } = await Promise.race([insertPromise, timeoutPromise]);
 
       if (error) {
-        console.error('createProfile: Supabase error', error);
+        logError('createProfile: Supabase error', error);
         return { success: false, error: `Błąd tworzenia profilu: ${error.message}` };
       }
 
       if (!data) {
-        console.error('createProfile: No data returned');
+        logError('createProfile: No data returned');
         return { success: false, error: 'Nie udało się utworzyć profilu - brak danych' };
       }
 
-      console.log('createProfile: Success!', data);
+      log('createProfile: Success!', data);
 
       // Zapisz w cache i stanie
       profileCache[state.user.id] = { data: data as User, timestamp: Date.now() };
       setState(prev => ({ ...prev, profile: data as User }));
       return { success: true, error: null };
     } catch (e) {
-      console.error('createProfile: Exception', e);
+      logError('createProfile: Exception', e);
       return { success: false, error: 'Wystąpił nieoczekiwany błąd' };
     }
   };
@@ -439,7 +443,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { data, error } = await Promise.race([queryPromise, timeoutPromise]);
 
       if (error) {
-        console.error('Nick check error:', error);
+        logError('Nick check error:', error);
         // Przy błędzie/timeout zakładamy że nick jest dostępny, żeby nie blokować użytkownika
         return true;
       }
@@ -448,7 +452,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       nickCheckCache[nick] = { available, timestamp: Date.now() };
       return available;
     } catch (e) {
-      console.error('Nick check exception:', e);
+      logError('Nick check exception:', e);
       return true;
     }
   }, []);
