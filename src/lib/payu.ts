@@ -179,7 +179,10 @@ export async function getPaymentMethods(): Promise<PayUPayMethodCategory[]> {
   // Kategoryzuj metody
   const categories: PayUPayMethodCategory[] = [];
 
-  // BLIK
+  // Wartości specjalne (nie wchodzą do "Szybkich płatności")
+  const specialValues = new Set(['blik', 'c', 'ap', 'jp', 'gp', 'dpp', 'ai', 'o']);
+
+  // 1. BLIK
   const blik = methods.find(m => m.value === 'blik');
   if (blik) {
     categories.push({
@@ -191,7 +194,7 @@ export async function getPaymentMethods(): Promise<PayUPayMethodCategory[]> {
     });
   }
 
-  // Karty
+  // 2. Karta płatnicza (Visa/Mastercard)
   const card = methods.find(m => m.value === 'c');
   if (card) {
     categories.push({
@@ -203,39 +206,39 @@ export async function getPaymentMethods(): Promise<PayUPayMethodCategory[]> {
     });
   }
 
-  // Google Pay
-  const gpay = methods.find(m => m.value === 'ap' || m.value === 'gp');
-  if (gpay) {
+  // 3. Portfele cyfrowe (Google Pay + Apple Pay)
+  const wallets = methods.filter(m => m.value === 'ap' || m.value === 'jp' || m.value === 'gp');
+  if (wallets.length > 0) {
+    const walletNames = wallets.map(w => w.name).join(' / ');
     categories.push({
       key: 'wallet',
-      label: 'Google Pay',
-      icon: gpay.brandImageUrl,
-      methods: [gpay],
-      expandable: false,
+      label: walletNames || 'Portfel cyfrowy',
+      icon: wallets[0].brandImageUrl,
+      methods: wallets,
+      expandable: wallets.length > 1,
     });
   }
 
-  // Przelewy bankowe
-  const bankValues = new Set(['blik', 'c', 'ap', 'gp', 'jp', 'dpp', 'ai']);
-  const banks = methods.filter(m => !bankValues.has(m.value) && m.value !== 'o');
+  // 4. Szybkie płatności (banki online) — wszystko co nie jest w specialValues
+  const banks = methods.filter(m => !specialValues.has(m.value));
   if (banks.length > 0) {
     categories.push({
       key: 'transfer',
-      label: 'Przelew bankowy',
-      icon: 'https://static.payu.com/images/mobile/logos/pbl_jp.png',
+      label: 'Szybkie płatności',
+      icon: 'https://poland.payu.com/wp-content/uploads/sites/14/2020/05/PAYU_LOGO_LIME.png',
       methods: banks,
       expandable: true,
     });
   }
 
-  // PayPo (kup teraz, zapłać później)
-  const paypo = methods.find(m => m.value === 'dpp' || m.value === 'ai');
-  if (paypo) {
+  // 5. PayPo / Raty (kup teraz, zapłać później)
+  const bnpl = methods.filter(m => m.value === 'dpp' || m.value === 'ai');
+  if (bnpl.length > 0) {
     categories.push({
       key: 'bnpl',
-      label: 'PayPo — zapłać później',
-      icon: paypo.brandImageUrl,
-      methods: [paypo],
+      label: bnpl[0].name || 'Zapłać później',
+      icon: bnpl[0].brandImageUrl,
+      methods: bnpl,
       expandable: false,
     });
   }

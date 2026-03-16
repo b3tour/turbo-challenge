@@ -93,16 +93,14 @@ export default function PaymentGateway({
     const cat = categories.find(c => c.key === selectedCategory);
     if (!cat) return null;
 
-    if (cat.expandable && selectedBank) {
-      return { type: 'PBL', value: selectedBank };
+    // Expandable (banki, portfele z wieloma opcjami) — wymaga wyboru
+    if (cat.expandable) {
+      return selectedBank ? { type: 'PBL', value: selectedBank } : null;
     }
 
+    // Jedna metoda — użyj jej
     if (cat.methods.length === 1) {
-      const method = cat.methods[0];
-      if (cat.key === 'card') {
-        return { type: 'PBL', value: 'c' };
-      }
-      return { type: 'PBL', value: method.value };
+      return { type: 'PBL', value: cat.methods[0].value };
     }
 
     return null;
@@ -212,19 +210,30 @@ export default function PaymentGateway({
                   {isSelected && <div className="w-2.5 h-2.5 rounded-full bg-turbo-500" />}
                 </div>
 
-                {/* Ikona */}
-                {cat.icon ? (
-                  <img
-                    src={cat.icon}
-                    alt={cat.label}
-                    className="h-7 w-auto flex-shrink-0"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).style.display = 'none';
-                    }}
-                  />
-                ) : (
-                  <Icon className="w-6 h-6 text-dark-300 flex-shrink-0" />
-                )}
+                {/* Ikony — portfele pokazują wszystkie metody obok siebie */}
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  {(cat.key === 'wallet' && cat.methods.length > 1)
+                    ? cat.methods.map(m => (
+                        <img
+                          key={m.value}
+                          src={m.brandImageUrl}
+                          alt={m.name}
+                          className="h-7 w-auto"
+                          onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                        />
+                      ))
+                    : cat.icon ? (
+                        <img
+                          src={cat.icon}
+                          alt={cat.label}
+                          className="h-7 w-auto"
+                          onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                        />
+                      ) : (
+                        <Icon className="w-6 h-6 text-dark-300" />
+                      )
+                  }
+                </div>
 
                 {/* Label */}
                 <span className={`text-sm font-medium flex-1 text-left ${
@@ -282,7 +291,7 @@ export default function PaymentGateway({
         loading={paying}
         fullWidth
         size="lg"
-        disabled={!selectedCategory || (selectedCategory === 'transfer' && !selectedBank)}
+        disabled={!selectedCategory || !getSelectedPayMethod()}
       >
         <ShieldCheck className="w-5 h-5 mr-2" />
         Zapłać {amount} zł
