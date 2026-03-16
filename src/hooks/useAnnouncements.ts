@@ -66,6 +66,17 @@ function getNotificationLink(type: UserNotification['type']): string | null {
   }
 }
 
+// Automatyczny link dla ogloszen na podstawie tytulu
+function getAnnouncementLink(title: string): string | null {
+  const t = title.toLowerCase();
+  if (t.includes('misj')) return '/missions';
+  if (t.includes('kart') || t.includes('album')) return '/cards';
+  if (t.includes('bitw') || t.includes('aren')) return '/arena';
+  if (t.includes('nagrod') || t.includes('ranking')) return '/leaderboard';
+  if (t.includes('mystery') || t.includes('pakiet')) return '/mystery';
+  return null;
+}
+
 // Mapowanie typow powiadomien na typy wizualne
 const notificationTypeMap: Record<UserNotification['type'], Announcement['type']> = {
   xp_gain: 'success',
@@ -164,6 +175,7 @@ export function useAnnouncements(userId?: string, options?: UseAnnouncementsOpti
           created_at: a.created_at,
           is_read: readIds.has(a.id),
           source: 'announcement' as const,
+          link: getAnnouncementLink(a.title),
         }));
 
       // Zunifikuj powiadomienia
