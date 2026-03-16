@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useCards, RARITY_CONFIG } from '@/hooks/useCards';
 import { useCardOrders } from '@/hooks/useCardOrders';
+import { usePayU } from '@/hooks/usePayU';
 import { Card, Badge, ProgressBar, Button, Modal } from '@/components/ui';
 import { SkeletonCard } from '@/components/ui/Skeleton';
 import { CardRarity, CollectibleCard, CardOrder, CardImage } from '@/types';
@@ -201,6 +202,7 @@ export default function CardsPage() {
   const { createOrder, getUserOrderForCard } = useCardOrders({
     userId: profile?.id,
   });
+  const { isEnabled: payuEnabled, startPayment, loading: payuLoading } = usePayU();
 
   const [activeTab, setActiveTab] = useState<ViewTab>('car');
   const [collectionFilter, setCollectionFilter] = useState<'all' | 'owned' | 'to_collect'>('all');
@@ -387,7 +389,7 @@ export default function CardsPage() {
     setShowPurchaseModal(true);
   };
 
-  // Utwórz zamówienie
+  // Utwórz zamówienie i przekieruj do PayU
   const handleCreateOrder = async () => {
     if (!purchaseCard || !purchaseCard.price) return;
 
@@ -397,15 +399,32 @@ export default function CardsPage() {
       purchaseCard.price,
       purchaseCard.xp_reward || 1
     );
-    setPurchasing(false);
 
     if (error) {
+      setPurchasing(false);
       alert(error);
       return;
     }
 
     if (order) {
-      setCreatedOrder(order);
+      if (payuEnabled) {
+        // PayU — od razu przekieruj do płatności
+        const result = await startPayment({
+          orderId: order.id,
+          orderType: 'card_order',
+        });
+        if (!result.success) {
+          // Fallback: pokaż instrukcję przelewu
+          setCreatedOrder(order);
+          setPurchasing(false);
+        }
+      } else {
+        // Brak PayU — pokaż instrukcję przelewu (stary flow)
+        setCreatedOrder(order);
+        setPurchasing(false);
+      }
+    } else {
+      setPurchasing(false);
     }
   };
 

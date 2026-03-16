@@ -8,6 +8,7 @@ import { SkeletonCard } from '@/components/ui/Skeleton';
 import { useToast } from '@/components/ui/Toast';
 import { CollectibleCardDisplay } from '@/components/cards';
 import { RARITY_CONFIG } from '@/hooks/useCards';
+import { usePayU } from '@/hooks/usePayU';
 import {
   Gift,
   Package,
@@ -39,6 +40,7 @@ export default function MysteryGaragePage() {
     getDuplicates,
   } = useMysteryPacks({ userId: profile?.id });
   const { success, error: showError } = useToast();
+  const { isEnabled: payuEnabled, startPayment } = usePayU();
 
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
   const [selectedPack, setSelectedPack] = useState<MysteryPackType | null>(null);
@@ -72,15 +74,32 @@ export default function MysteryGaragePage() {
 
     setPurchasing(true);
     const { success: ok, error, purchase } = await purchasePack(selectedPack.id);
-    setPurchasing(false);
 
     if (!ok) {
+      setPurchasing(false);
       showError('Błąd', error || 'Nie udało się utworzyć zamówienia');
       return;
     }
 
     if (purchase) {
-      setCreatedPurchase(purchase);
+      if (payuEnabled) {
+        // PayU — od razu przekieruj do płatności
+        const result = await startPayment({
+          orderId: purchase.id,
+          orderType: 'mystery_pack',
+        });
+        if (!result.success) {
+          // Fallback: pokaż instrukcję przelewu
+          setCreatedPurchase(purchase);
+          setPurchasing(false);
+        }
+      } else {
+        // Brak PayU — stary flow z instrukcją przelewu
+        setCreatedPurchase(purchase);
+        setPurchasing(false);
+      }
+    } else {
+      setPurchasing(false);
     }
   };
 
