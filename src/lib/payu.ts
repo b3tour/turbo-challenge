@@ -139,4 +139,181 @@ export function verifyPayUSignature(rawBody: string, signatureHeader: string): b
   return hash === expectedSignature;
 }
 
+// Pobranie dostępnych metod płatności
+export interface PayUPayMethod {
+  value: string;
+  name: string;
+  brandImageUrl: string;
+  status: string;
+  minAmount?: number;
+  maxAmount?: number;
+}
+
+export interface PayUPayMethodCategory {
+  key: string;
+  label: string;
+  icon: string;
+  methods: PayUPayMethod[];
+  expandable: boolean;
+}
+
+export async function getPaymentMethods(): Promise<PayUPayMethodCategory[]> {
+  const token = await getAccessToken();
+
+  const res = await fetch(`${PAYU_BASE_URL}/api/v2_1/paymethods`, {
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+  });
+
+  if (!res.ok) {
+    throw new Error(`PayU paymethods failed: ${res.status}`);
+  }
+
+  const data = await res.json();
+  const methods: PayUPayMethod[] = (data.payByLinks || []).filter(
+    (m: PayUPayMethod) => m.status === 'ENABLED'
+  );
+
+  // Kategoryzuj metody
+  const categories: PayUPayMethodCategory[] = [];
+
+  // BLIK
+  const blik = methods.find(m => m.value === 'blik');
+  if (blik) {
+    categories.push({
+      key: 'blik',
+      label: 'BLIK',
+      icon: blik.brandImageUrl,
+      methods: [blik],
+      expandable: false,
+    });
+  }
+
+  // Karty
+  const card = methods.find(m => m.value === 'c');
+  if (card) {
+    categories.push({
+      key: 'card',
+      label: 'Karta płatnicza',
+      icon: card.brandImageUrl,
+      methods: [card],
+      expandable: false,
+    });
+  }
+
+  // Google Pay
+  const gpay = methods.find(m => m.value === 'ap' || m.value === 'gp');
+  if (gpay) {
+    categories.push({
+      key: 'wallet',
+      label: 'Google Pay',
+      icon: gpay.brandImageUrl,
+      methods: [gpay],
+      expandable: false,
+    });
+  }
+
+  // Przelewy bankowe
+  const bankValues = new Set(['blik', 'c', 'ap', 'gp', 'jp', 'dpp', 'ai']);
+  const banks = methods.filter(m => !bankValues.has(m.value) && m.value !== 'o');
+  if (banks.length > 0) {
+    categories.push({
+      key: 'transfer',
+      label: 'Przelew bankowy',
+      icon: 'https://static.payu.com/images/mobile/logos/pbl_jp.png',
+      methods: banks,
+      expandable: true,
+    });
+  }
+
+  // PayPo (kup teraz, zapłać później)
+  const paypo = methods.find(m => m.value === 'dpp' || m.value === 'ai');
+  if (paypo) {
+    categories.push({
+      key: 'bnpl',
+      label: 'PayPo — zapłać później',
+      icon: paypo.brandImageUrl,
+      methods: [paypo],
+      expandable: false,
+    });
+  }
+
+  return categories;
+}
+
+// Tworzenie zamówienia z wybraną metodą płatności
+export interface PayUOrderWithMethodRequest extends PayUOrderRequest {
+  payMethodType?: string; // PBL, CARD_TOKEN, etc.
+  payMethodValue?: string; // blik, c, m, etc.
+}
+
+export async function createPayUOrderWithMethod(order: PayUOrderWithMethodRequest): Promise<PayUOrderResponse> {
+  const token = await getAccessToken();
+
+  const body: Record<string, unknown> = {
+    notifyUrl: order.notifyUrl,
+    continueUrl: order.continueUrl,
+    customerIp: order.customerIp,
+    merchantPosId: PAYU_POS_ID,
+    description: order.description,
+    currencyCode: 'PLN',
+    totalAmount: order.totalAmount.toString(),
+    extOrderId: order.extOrderId,
+    buyer: {
+      email: order.buyerEmail,
+      ...(order.buyerPhone ? { phone: order.buyerPhone } : {}),
+    },
+    products: [
+      {
+        name: order.productName,
+        unitPrice: order.totalAmount.toString(),
+        quantity: '1',
+      },
+    ],
+    settings: {
+      invoiceDisabled: true,
+    },
+  };
+
+  // Dodaj wybraną metodę płatności
+  if (order.payMethodType && order.payMethodValue) {
+    body.payMethods = {
+      payMethod: {
+        type: order.payMethodType,
+        value: order.payMethodValue,
+      },
+    };
+  }
+
+  const res = await fetch(`${PAYU_BASE_URL}/api/v2_1/orders`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+    redirect: 'manual',
+  });
+
+  if (res.status === 302 || res.status === 301) {
+    const redirectUri = res.headers.get('Location') || '';
+    const responseBody = await res.json().catch(() => ({}));
+    return {
+      status: responseBody.status || { statusCode: 'SUCCESS' },
+      redirectUri,
+      orderId: responseBody.orderId || '',
+      extOrderId: order.extOrderId,
+    };
+  }
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`PayU create order failed: ${res.status} ${text}`);
+  }
+
+  return await res.json();
+}
+
 export { PAYU_POS_ID, PAYU_BASE_URL };

@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createPayUOrder } from '@/lib/payu';
+import { createPayUOrderWithMethod } from '@/lib/payu';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { orderCode, amount, description, buyerEmail, orderType } = body;
+    const { orderCode, amount, description, buyerEmail, orderType, payMethodType, payMethodValue } = body;
 
     if (!orderCode || !amount || !description || !buyerEmail) {
       return NextResponse.json(
@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
       ? `${appUrl}/cards?payment=success`
       : `${appUrl}/mystery?payment=success`;
 
-    const payuResponse = await createPayUOrder({
+    const payuResponse = await createPayUOrderWithMethod({
       extOrderId: orderCode,
       description: `Turbo Challenge - ${description}`,
       totalAmount: totalAmountGrosze,
@@ -42,6 +42,8 @@ export async function POST(request: NextRequest) {
       customerIp,
       continueUrl,
       notifyUrl: `${appUrl}/api/payu/notify`,
+      payMethodType: payMethodType || undefined,
+      payMethodValue: payMethodValue || undefined,
     });
 
     return NextResponse.json({

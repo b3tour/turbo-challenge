@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useCards, RARITY_CONFIG } from '@/hooks/useCards';
 import { useCardOrders } from '@/hooks/useCardOrders';
-import { usePayU } from '@/hooks/usePayU';
+import PaymentGateway from '@/components/ui/PaymentGateway';
 import { Card, Badge, ProgressBar, Button, Modal } from '@/components/ui';
 import { SkeletonCard } from '@/components/ui/Skeleton';
 import { CardRarity, CollectibleCard, CardOrder, CardImage } from '@/types';
@@ -202,7 +202,7 @@ export default function CardsPage() {
   const { createOrder, getUserOrderForCard } = useCardOrders({
     userId: profile?.id,
   });
-  const { startPayment, loading: payuLoading } = usePayU();
+  const [showPaymentGateway, setShowPaymentGateway] = useState(false);
 
   const [activeTab, setActiveTab] = useState<ViewTab>('car');
   const [collectionFilter, setCollectionFilter] = useState<'all' | 'owned' | 'to_collect'>('all');
@@ -399,29 +399,16 @@ export default function CardsPage() {
       purchaseCard.price,
       purchaseCard.xp_reward || 1
     );
+    setPurchasing(false);
 
     if (error) {
-      setPurchasing(false);
       alert(error);
       return;
     }
 
     if (order) {
-      // Próbuj PayU — przy błędzie fallback na instrukcję przelewu
-      const result = await startPayment({
-        orderId: order.id,
-        orderType: 'card_order',
-        orderCode: order.order_code,
-        amount: purchaseCard.price,
-        description: `Karta: ${purchaseCard.name}`,
-        buyerEmail: profile?.email || '',
-      });
-      if (!result.success) {
-        setCreatedOrder(order);
-        setPurchasing(false);
-      }
-    } else {
-      setPurchasing(false);
+      setCreatedOrder(order);
+      setShowPaymentGateway(true);
     }
   };
 
@@ -1297,13 +1284,26 @@ export default function CardsPage() {
           setShowPurchaseModal(false);
           setPurchaseCard(null);
           setCreatedOrder(null);
+          setShowPaymentGateway(false);
         }}
-        title={createdOrder ? 'Instrukcja płatności' : 'Wesprzyj Turbo Pomoc'}
+        title={showPaymentGateway ? 'Wybierz płatność' : createdOrder ? 'Instrukcja płatności' : 'Wesprzyj Turbo Pomoc'}
         size="md"
       >
         {purchaseCard && (
           <div className="space-y-4">
-            {!createdOrder ? (
+            {showPaymentGateway && createdOrder ? (
+              <PaymentGateway
+                amount={purchaseCard.price!}
+                description={`Karta: ${purchaseCard.name}`}
+                orderCode={createdOrder.order_code}
+                orderType="card_order"
+                buyerEmail={profile?.email || ''}
+                onError={(err) => alert(err)}
+                onFallback={() => {
+                  setShowPaymentGateway(false);
+                }}
+              />
+            ) : !createdOrder ? (
               <>
                 <div className="flex items-center gap-4 p-4 bg-dark-700 rounded-xl">
                   <div className="w-20 h-14 bg-dark-600 rounded-lg overflow-hidden flex items-center justify-center">

@@ -8,7 +8,7 @@ import { SkeletonCard } from '@/components/ui/Skeleton';
 import { useToast } from '@/components/ui/Toast';
 import { CollectibleCardDisplay } from '@/components/cards';
 import { RARITY_CONFIG } from '@/hooks/useCards';
-import { usePayU } from '@/hooks/usePayU';
+import PaymentGateway from '@/components/ui/PaymentGateway';
 import {
   Gift,
   Package,
@@ -40,7 +40,7 @@ export default function MysteryGaragePage() {
     getDuplicates,
   } = useMysteryPacks({ userId: profile?.id });
   const { success, error: showError } = useToast();
-  const { startPayment } = usePayU();
+  const [showPaymentGateway, setShowPaymentGateway] = useState(false);
 
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
   const [selectedPack, setSelectedPack] = useState<MysteryPackType | null>(null);
@@ -74,29 +74,16 @@ export default function MysteryGaragePage() {
 
     setPurchasing(true);
     const { success: ok, error, purchase } = await purchasePack(selectedPack.id);
+    setPurchasing(false);
 
     if (!ok) {
-      setPurchasing(false);
       showError('Błąd', error || 'Nie udało się utworzyć zamówienia');
       return;
     }
 
     if (purchase) {
-      // Próbuj PayU — przy błędzie fallback na instrukcję przelewu
-      const result = await startPayment({
-        orderId: purchase.id,
-        orderType: 'mystery_pack',
-        orderCode: purchase.order_code,
-        amount: selectedPack.price,
-        description: `${selectedPack.name} (${selectedPack.card_count} kart)`,
-        buyerEmail: profile?.email || '',
-      });
-      if (!result.success) {
-        setCreatedPurchase(purchase);
-        setPurchasing(false);
-      }
-    } else {
-      setPurchasing(false);
+      setCreatedPurchase(purchase);
+      setShowPaymentGateway(true);
     }
   };
 
@@ -355,12 +342,26 @@ export default function MysteryGaragePage() {
           setShowPurchaseModal(false);
           setSelectedPack(null);
           setCreatedPurchase(null);
+          setShowPaymentGateway(false);
         }}
-        title={createdPurchase ? 'Instrukcja płatności' : 'Kup pakiet Mystery'}
+        title={showPaymentGateway ? 'Wybierz płatność' : createdPurchase ? 'Instrukcja płatności' : 'Kup pakiet Mystery'}
       >
         {selectedPack && (
           <div className="space-y-4">
-            {!createdPurchase ? (
+            {showPaymentGateway && createdPurchase ? (
+              <PaymentGateway
+                amount={selectedPack.price}
+                description={`${selectedPack.name} (${selectedPack.card_count} kart)`}
+                orderCode={createdPurchase.order_code}
+                orderType="mystery_pack"
+                buyerEmail={profile?.email || ''}
+                onError={(err) => showError('Błąd płatności', err)}
+                onFallback={() => {
+                  setShowPaymentGateway(false);
+                  // Pokaż stary flow z instrukcją przelewu
+                }}
+              />
+            ) : !createdPurchase ? (
               <>
                 <div className={`p-4 rounded-xl bg-gradient-to-r ${getPackGradient(selectedPack.size)} bg-opacity-20`}>
                   <div className="flex items-center gap-4">
