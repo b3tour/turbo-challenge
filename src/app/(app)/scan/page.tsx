@@ -43,6 +43,19 @@ export default function ScanPage() {
       return;
     }
 
+    // Sprawdź wymagany poziom
+    if (mission.required_level && mission.required_level > 1) {
+      const userLevel = profile.level || 1;
+      if (userLevel < mission.required_level) {
+        setLastScanResult({
+          success: false,
+          message: `Ta misja wymaga poziomu ${mission.required_level}. Twój poziom: ${userLevel}.`,
+        });
+        showError('Zbyt niski poziom', `Wymagany poziom: ${mission.required_level}`);
+        return;
+      }
+    }
+
     // Sprawdź czy użytkownik już wykonał tę misję
     const { data: existingSubmission } = await supabase
       .from('submissions')

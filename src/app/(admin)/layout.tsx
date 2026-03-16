@@ -9,20 +9,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const router = useRouter();
   const { isAuthenticated, hasProfile, profile, loading, refreshProfile } = useAuth();
 
-  // Zapamiętaj że użytkownik był adminem - zapobiega wyrzuceniu przy tymczasowych błędach
-  const wasAdminBefore = useRef(false);
   const isRefreshingRef = useRef(false);
   const refreshAttempts = useRef(0);
 
-  // Zapamiętaj status admina
-  useEffect(() => {
-    if (profile?.is_admin) {
-      wasAdminBefore.current = true;
-      refreshAttempts.current = 0;
-    }
-  }, [profile?.is_admin]);
-
-  // Stabilna funkcja odświeżania
   const tryRefreshProfile = useCallback(async () => {
     if (isRefreshingRef.current) return;
     isRefreshingRef.current = true;
@@ -36,56 +25,46 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   useEffect(() => {
     if (loading) return;
 
-    // Jeśli użytkownik był adminem wcześniej i stracił profil tymczasowo
-    if (wasAdminBefore.current && (!hasProfile || !profile) && refreshAttempts.current < 3) {
-      refreshAttempts.current += 1;
-      console.log('[AdminLayout] Admin stracił profil tymczasowo, odświeżam...', refreshAttempts.current);
-      setTimeout(() => tryRefreshProfile(), 1000);
+    if (!isAuthenticated) {
+      router.replace('/login');
       return;
     }
 
-    // Normalnie sprawdź uprawnienia tylko jeśli użytkownik NIE był adminem wcześniej
-    if (!wasAdminBefore.current) {
-      if (!isAuthenticated) {
-        router.replace('/login');
+    if (!hasProfile) {
+      // Spróbuj odświeżyć profil (może tymczasowy problem)
+      if (refreshAttempts.current < 3) {
+        refreshAttempts.current += 1;
+        setTimeout(() => tryRefreshProfile(), 1000);
         return;
       }
+      router.replace('/onboarding');
+      return;
+    }
 
-      if (!hasProfile) {
-        router.replace('/onboarding');
-        return;
-      }
-
-      if (profile && !profile.is_admin) {
-        router.replace('/dashboard');
-      }
+    if (profile && !profile.is_admin) {
+      router.replace('/dashboard');
     }
   }, [isAuthenticated, hasProfile, profile, loading, router, tryRefreshProfile]);
 
-  // Reset prób przy zmianie użytkownika
   useEffect(() => {
     if (profile?.id) {
       refreshAttempts.current = 0;
     }
   }, [profile?.id]);
 
-  // Pokaż loading tylko podczas inicjalnego ładowania
   if (loading) {
     return <LoadingScreen message="Ladowanie..." />;
   }
 
-  // Brak sesji
   if (!isAuthenticated) {
     return <LoadingScreen message="Przekierowywanie..." />;
   }
 
-  // Brak profilu (ale jeśli był adminem, nie pokazuj loading)
-  if (!hasProfile && !wasAdminBefore.current) {
-    return <LoadingScreen message="Przekierowywanie..." />;
+  if (!hasProfile) {
+    return <LoadingScreen message="Ladowanie profilu..." />;
   }
 
-  // Nie admin (ale jeśli był adminem, pozwól zostać)
-  if (!profile?.is_admin && !wasAdminBefore.current) {
+  if (!profile?.is_admin) {
     return <LoadingScreen message="Sprawdzanie uprawnien..." />;
   }
 

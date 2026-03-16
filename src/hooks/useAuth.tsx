@@ -437,15 +437,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const queryPromise = supabase
         .from('users')
         .select('id')
-        .eq('nick', nick)
+        .ilike('nick', nick)
         .maybeSingle();
 
       const { data, error } = await Promise.race([queryPromise, timeoutPromise]);
 
       if (error) {
         logError('Nick check error:', error);
-        // Przy błędzie/timeout zakładamy że nick jest dostępny, żeby nie blokować użytkownika
-        return true;
+        // Przy błędzie/timeout blokujemy — bezpieczniej niż pozwolić na duplikat
+        return false;
       }
 
       const available = data === null;
@@ -453,7 +453,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return available;
     } catch (e) {
       logError('Nick check exception:', e);
-      return true;
+      return false;
     }
   }, []);
 

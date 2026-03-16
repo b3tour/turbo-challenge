@@ -19,10 +19,13 @@ export function QRScanner({ onScan, onClose, expectedCode }: QRScannerProps) {
   const containerId = 'qr-reader';
 
   useEffect(() => {
-    // Sprawdź uprawnienia do kamery
+    // Sprawdź uprawnienia do kamery — zatrzymaj stream od razu po sprawdzeniu
     navigator.mediaDevices
       .getUserMedia({ video: true })
-      .then(() => setHasPermission(true))
+      .then((stream) => {
+        stream.getTracks().forEach(track => track.stop());
+        setHasPermission(true);
+      })
       .catch(() => {
         setHasPermission(false);
         setError('Brak dostępu do kamery. Proszę udzielić uprawnień.');

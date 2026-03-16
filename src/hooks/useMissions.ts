@@ -11,16 +11,17 @@ interface UseMissionsOptions {
   userLevel?: number;
 }
 
-// Globalny throttle na submisje — max 1 co 3 sekundy
-let lastSubmissionTime = 0;
+// Throttle per-mission — max 1 submit co 3 sekundy per misja
+const lastSubmissionTimes: Record<string, number> = {};
 const SUBMISSION_COOLDOWN_MS = 3000;
 
-function checkSubmissionThrottle(): string | null {
+function checkSubmissionThrottle(missionId: string): string | null {
   const now = Date.now();
-  if (now - lastSubmissionTime < SUBMISSION_COOLDOWN_MS) {
+  const lastTime = lastSubmissionTimes[missionId] || 0;
+  if (now - lastTime < SUBMISSION_COOLDOWN_MS) {
     return 'Poczekaj chwilę przed kolejnym zgłoszeniem';
   }
-  lastSubmissionTime = now;
+  lastSubmissionTimes[missionId] = now;
   return null;
 }
 
@@ -167,7 +168,7 @@ export function useMissions(options: UseMissionsOptions = {}) {
       return { success: false, error: 'Nieprawidłowy kod QR' };
     }
 
-    const throttleError = checkSubmissionThrottle();
+    const throttleError = checkSubmissionThrottle(missionId);
     if (throttleError) return { success: false, error: throttleError };
 
     const { canComplete, reason } = canCompleteMission(mission);
@@ -212,7 +213,7 @@ export function useMissions(options: UseMissionsOptions = {}) {
       return { success: false, error: 'Nie znaleziono misji' };
     }
 
-    const throttleError = checkSubmissionThrottle();
+    const throttleError = checkSubmissionThrottle(missionId);
     if (throttleError) return { success: false, error: throttleError };
 
     const { canComplete, reason } = canCompleteMission(mission);
@@ -251,7 +252,7 @@ export function useMissions(options: UseMissionsOptions = {}) {
       return { success: false, error: 'Nie znaleziono quizu' };
     }
 
-    const throttleError = checkSubmissionThrottle();
+    const throttleError = checkSubmissionThrottle(missionId);
     if (throttleError) return { success: false, error: throttleError };
 
     const { canComplete, reason } = canCompleteMission(mission);
@@ -321,7 +322,7 @@ export function useMissions(options: UseMissionsOptions = {}) {
       return { success: false, error: 'Nie znaleziono lokalizacji misji' };
     }
 
-    const throttleError = checkSubmissionThrottle();
+    const throttleError = checkSubmissionThrottle(missionId);
     if (throttleError) return { success: false, error: throttleError };
 
     const { canComplete, reason } = canCompleteMission(mission);
@@ -380,7 +381,7 @@ export function useMissions(options: UseMissionsOptions = {}) {
       return { success: false, error: 'Nie znaleziono ankiety' };
     }
 
-    const throttleError = checkSubmissionThrottle();
+    const throttleError = checkSubmissionThrottle(missionId);
     if (throttleError) return { success: false, error: throttleError };
 
     const { canComplete, reason } = canCompleteMission(mission);

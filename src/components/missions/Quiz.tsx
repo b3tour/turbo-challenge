@@ -17,6 +17,7 @@ export function Quiz({ quizData, onComplete, onCancel }: QuizProps) {
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [showResult, setShowResult] = useState(false);
+  const submittedRef = useRef(false);
 
   // Timer states
   const [timeLeft, setTimeLeft] = useState(quizData.time_limit || 0); // dla classic mode
@@ -64,7 +65,7 @@ export function Quiz({ quizData, onComplete, onCancel }: QuizProps) {
   };
 
   const handleNext = () => {
-    if (!selectedAnswer) return;
+    if (!selectedAnswer || submittedRef.current) return;
 
     const newAnswers = {
       ...answers,
@@ -73,6 +74,7 @@ export function Quiz({ quizData, onComplete, onCancel }: QuizProps) {
     setAnswers(newAnswers);
 
     if (isLastQuestion) {
+      submittedRef.current = true;
       const finalTime = Date.now() - startTimeRef.current;
       setElapsedTime(finalTime);
       setShowResult(true);

@@ -43,7 +43,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
     // Błąd połączenia - przekieruj do logowania, ale NIE jeśli użytkownik miał profil wcześniej
     if (error && !hadProfileBefore.current) {
-      console.log('[Layout] Błąd auth, przekierowuję do login');
+      if (process.env.NODE_ENV === 'development') console.log('[Layout] Błąd auth, przekierowuję do login');
       redirectingRef.current = true;
       router.replace('/login');
       return;
@@ -51,7 +51,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
     // Nie zalogowany -> login
     if (!isAuthenticated) {
-      console.log('[Layout] Brak sesji, przekierowuję do login');
+      if (process.env.NODE_ENV === 'development') console.log('[Layout] Brak sesji, przekierowuję do login');
       redirectingRef.current = true;
       router.replace('/login');
       return;
@@ -70,7 +70,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           tryRefreshProfile();
         }, 1000);
       } else if (!hadProfileBefore.current) {
-        console.log('[Layout] Brak profilu, przekierowuję do onboarding');
+        if (process.env.NODE_ENV === 'development') console.log('[Layout] Brak profilu, przekierowuję do onboarding');
         redirectingRef.current = true;
         router.replace('/onboarding');
       }
