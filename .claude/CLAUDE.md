@@ -1,162 +1,130 @@
-# Turbo Challenge - Dokumentacja dla Claude
+# CLAUDE.md
 
-## Przegląd Aplikacji
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-**Turbo Challenge** to aplikacja grywalizacyjna stworzona dla Fundacji Turbo Pomoc. Gracze zdobywają punkty XP wykonując misje, zbierają karty kolekcjonerskie samochodów i rywalizują w rankingach. Zakup kart wspiera cele charytatywne fundacji.
+## Overview
 
-## Stack Technologiczny
+**Turbo Challenge** — gamification app for Fundacja Turbo Pomoc. Players earn XP via missions, collect car trading cards, battle PvP, tune cars, and compete in rankings. Card purchases support the charity. UI language is Polish.
 
-| Technologia | Użycie |
-|-------------|--------|
-| Next.js 14 | Framework (App Router) |
-| TypeScript | Typowanie |
-| Tailwind CSS | Stylowanie |
-| Supabase | Backend (DB, Auth, Storage) |
-| Vercel | Hosting |
-
-## Struktura Projektu
-
-```
-turbo-challenge/
-├── src/
-│   ├── app/
-│   │   ├── (app)/              # Strony zalogowanych użytkowników
-│   │   │   ├── dashboard/      # Główny ekran
-│   │   │   ├── cards/          # Kolekcja kart
-│   │   │   ├── battles/        # Turbo Bitwy (PvP)
-│   │   │   ├── missions/       # Lista misji
-│   │   │   ├── mystery/        # Mystery Garage
-│   │   │   ├── leaderboard/    # Rankingi
-│   │   │   ├── profile/        # Profil gracza
-│   │   │   ├── rewards/        # Nagrody
-│   │   │   └── scan/           # Skaner QR
-│   │   ├── (admin)/
-│   │   │   └── admin/          # Panel administracyjny
-│   │   └── (auth)/
-│   │       ├── login/
-│   │       ├── register/
-│   │       └── onboarding/
-│   ├── components/
-│   │   ├── ui/                 # Bazowe komponenty UI
-│   │   └── cards/              # Komponenty kart
-│   ├── hooks/                  # Custom React hooks
-│   ├── lib/                    # Utilities, Supabase client
-│   └── types/                  # TypeScript interfaces
-├── public/                     # Statyczne assety
-└── .claude/                    # Dokumentacja dla Claude
-```
-
-## Główne Funkcjonalności
-
-### 1. System Misji
-- Typy: QR code, Photo, Quiz, GPS, Manual
-- Statusy zgłoszeń: pending, approved, rejected, revoked, failed
-- XP za ukończenie misji
-
-### 2. Karty Kolekcjonerskie
-- **Typy**: achievement (pionowe 3:4), car (poziome 16:9)
-- **Rzadkości**: common, rare, epic, legendary
-- **Turbo Heroes**: specjalne karty kierowców
-- **Zakup charytatywny**: wpłata = karta + XP
-- **Extended info**: dodatkowe dane widoczne po odblokowaniu
-- **Galeria**: do 6 zdjęć do pobrania jako tapety
-
-### 3. Mystery Garage
-- Pakiety losowych kart (3/5/10 sztuk)
-- System zamówień z kodem przelewu
-- Losowanie według szans na rzadkość
-
-### 4. Turbo Bitwy
-- PvP między graczami
-- Kategorie: power, torque, speed, total
-- Nagrody: XP lub karty
-
-### 5. Rankingi
-- Ranking XP (główny)
-- Ranking wsparcia (suma datków)
-
-## Baza Danych (Supabase)
-
-### Główne Tabele
-- `users` - profile graczy
-- `missions` - definicje misji
-- `submissions` - zgłoszenia wykonania misji
-- `cards` - karty kolekcjonerskie
-- `user_cards` - posiadane karty
-- `card_orders` - zamówienia kart
-- `card_images` - galeria zdjęć kart
-- `mystery_pack_types` - typy pakietów
-- `mystery_pack_purchases` - zakupy pakietów
-- `card_battles` - bitwy między graczami
-- `rewards` - nagrody dla TOP graczy
-- `levels` - progi XP i nazwy poziomów
-
-### Storage Buckets
-- `avatars` - zdjęcia profilowe
-- `submissions` - zdjęcia z misji
-- `card-images` - obrazki kart i galerii
-- `missions` - obrazki misji
-- `rewards` - obrazki nagród
-
-## Kluczowe Hooki
-
-```typescript
-useAuth()        // Autentykacja, profil użytkownika
-useCards()       // Karty, fetchCardImages()
-useCardOrders()  // Zamówienia kart
-useLeaderboard() // Rankingi
-```
-
-## Paleta Kolorów (Tailwind)
-
-```
-turbo-500  #d946ef  // Główny różowy/magenta
-accent-400 #22d3ee  // Cyjan
-purple-600 #9333ea  // Fiolet
-dark-800   #1e293b  // Tło kart
-dark-900   #0f172a  // Tło główne
-```
-
-## Custom Animacje
-
-```javascript
-// tailwind.config.js
-'wiggle-intense': 'wiggle-intense 0.8s ease-in-out infinite'  // 7° obrót
-'shake-soft': 'shake-soft 0.6s ease-in-out infinite'
-'shimmer': 'shimmer 2s infinite'
-'pulse-glow': 'pulse-glow 2s ease-in-out infinite'
-```
-
-## Komendy
+## Commands
 
 ```bash
-npm run dev      # Development server
+npm run dev      # Development server (Turbo)
 npm run build    # Production build
-npm run lint     # Linting
+npm run lint     # ESLint
 ```
 
-## Deploy
+## Stack
 
-Automatyczny deploy na Vercel po push do `main` branch.
+- **Next.js 14** (App Router) + **TypeScript** + **Tailwind CSS 3**
+- **Supabase** (DB, Auth with PKCE, Storage, RLS on all tables)
+- **Framer Motion** for animations
+- **Lucide React** for icons
+- **Vercel** hosting (FRA1 region, auto-deploy on push to `main`)
 
-## Preferencje Użytkownika
+## Architecture
 
-- Minimalistyczny design
-- Bez zbędnych emoji w UI (poza celowymi animacjami)
-- Kolory ramek kart wystarczą do oznaczenia rzadkości
-- Animacja wiggle 7° dla interaktywnych elementów
+### Route Groups
+- `src/app/(app)/` — protected user pages (layout.tsx handles auth guard, redirects to /login or /onboarding)
+- `src/app/(admin)/` — admin panel (checks `users.is_admin`)
+- `src/app/(auth)/` — login, register, onboarding
 
-## Ważne Uwagi
+### Key Pages
+- `/dashboard` — main screen (profile card, missions grid, Turbo Album, feature grid)
+- `/arena` — hub with 3 tabs: Turbo Bitwy (battles), Strefa Tuningu, Rankingi
+- `/cards` — Turbo Album (card collection browser)
+- `/mystery` — Mystery Garage (random card packs)
+- `/missions` — all available missions
+- `/battles`, `/tuning` — thin wrappers redirecting to Arena tab content
 
-1. **RLS włączone** - każda tabela ma Row Level Security
-2. **Admin sprawdzany** przez `users.is_admin`
-3. **Obrazki** - max 5MB, formaty: JPG, PNG, WebP
-4. **Zamówienia** - system z kodem przelewu, ręczna weryfikacja admina
+### Navigation
+- **Mobile**: `Header.tsx` (top) + `BottomNav.tsx` (bottom, Framer Motion spring animations, cyan #22d3ee accent)
+- **Desktop (lg+)**: `Sidebar.tsx` (left, same cyan glow styling)
+- Breakpoint switch in `(app)/layout.tsx` via `lg:hidden` / `hidden lg:block`
 
-## Ostatnie Zmiany (Styczeń 2026)
+### Data Layer
+All data flows through custom hooks in `src/hooks/`:
 
-- Extended card info (engine, cylinders, acceleration, weight, drivetrain, fun_fact)
-- Galeria zdjęć kart (do 6 zdjęć, pobieranie jako tapety)
-- Mystery Garage
-- Turbo Bitwy
-- Ulepszenia wizualne kart
+| Hook | Purpose |
+|------|---------|
+| `useAuth()` | Auth, profile, session (10-min cache) |
+| `useCards()` | Card collection, rarity filters, stats |
+| `useBattles()` | PvP card battles (v2: 3-round, slot-based) |
+| `useTuning()` | Car tuning mods, tuning challenges |
+| `useMissions()` | Mission fetching, submission (5 types) |
+| `useMysteryPacks()` | Random card packs |
+| `useLeaderboard()` | XP + donation rankings |
+| `useArenaRankings()` | Combined battle + tuning rankings |
+| `useLevels()` | XP → level calculation (10 tiers) |
+| `useCardOrders()` | Card purchase orders |
+| `useAnnouncements()` | Admin announcements + notifications |
+| `useAppContent()` | Editable app content |
+
+### Component Organization
+- `src/components/ui/` — reusable primitives (Card, Button, Modal, Avatar, ProgressBar, etc.)
+- `src/components/layout/` — Header, BottomNav, Sidebar, NotificationBell, LoadingScreen
+- `src/components/arena/` — BattlesContent, TuningContent, ArenaRankings
+- `src/components/missions/` — MissionCard, QRScanner, PhotoUpload, Quiz, GPSChecker
+- `src/components/cards/` — CollectibleCardDisplay
+
+### Types
+All interfaces in `src/types/index.ts`. Key types: `User`, `Mission`, `Submission`, `CollectibleCard`, `UserCard`, `CardBattle`, `TunedCar`, `TuningChallenge`, `MysteryPackType`.
+
+## Design System
+
+### Color Palette (tailwind.config.js)
+```
+turbo-500   #8b5cf6   // Main violet
+accent-400  #818cf8   // Indigo accent
+Nav active  #22d3ee   // Cyan (hardcoded in BottomNav/Sidebar)
+```
+
+### Surface System
+```
+surface-0  #0a0a0f   // Body background
+surface-1  #12121a   // Card backgrounds
+surface-2  #1a1a24   // Elevated cards, hover states
+surface-3  #22222e   // Higher elevation
+surface-4  #2a2a38   // Highest elevation
+```
+
+### Logo
+- Header: Lucide `Heart` icon (fill turbo-500) + "TURBO" (font-semibold 600, white) + "CHALLENGE" (font-extrabold 800, turbo-500)
+- Responsive: `text-lg sm:text-xl`, icon `w-5 sm:w-6`
+
+### Card Rarities
+common (gray), rare (blue), epic (purple), legendary (gold) — borders + CSS effects (shimmer, pulse-glow, holographic)
+
+## Database
+
+### Key Tables
+`users`, `missions`, `submissions`, `cards`, `user_cards`, `card_images`, `card_orders`, `card_battles`, `tuned_cars`, `tuning_challenges`, `mystery_pack_types`, `mystery_pack_purchases`, `levels`, `notifications`, `announcements`, `rewards`
+
+### Storage Buckets
+`avatars`, `submissions`, `card-images`, `missions`, `rewards`
+
+### Migrations
+SQL files in `supabase/` — schema.sql (base), plus individual migration files for battles, tuning, announcements, and fixes.
+
+## Feature Details
+
+### Turbo Bitwy (Card Battles v2)
+3-round PvP: each player gets 3 random car cards, assigns to power/torque/speed slots. Winner of 2+ rounds wins. XP rewards. 48h challenge expiry. 7 achievement badges.
+
+### Tuning System
+Mods: engine, turbo/exhaust, weight reduction (stages 0-3). Categories: drag, hill_climb, track, time_attack — each weights HP/torque/speed differently. Costs XP to upgrade.
+
+### Mission Types
+qr_code, photo, quiz (classic + speedrun), gps (radius validation), manual
+
+## Project Memory
+
+Session history, known issues, technical decisions, and next steps are tracked in `status/PROJECT_STATUS.md`. Read it at the start of each session for full context. Update rules are in `status/CLAUDE_INSTRUCTIONS.md`.
+
+## User Preferences
+
+- Minimalist dark theme, no excessive emoji
+- Polish language throughout UI
+- Mobile-first, touch-friendly
+- Card border colors indicate rarity
+- Framer Motion spring animations (stiffness: 500, damping: 30) for nav

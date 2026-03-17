@@ -4,14 +4,14 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
-import { Home, Target, User, Layers, Swords } from 'lucide-react';
+import { Home, Target, Layers, Swords, Gift } from 'lucide-react';
 
 const navItems = [
   { href: '/dashboard', label: 'Start', icon: Home },
   { href: '/missions', label: 'Misje', icon: Target },
   { href: '/cards', label: 'Karty', icon: Layers },
   { href: '/arena', label: 'Arena', icon: Swords },
-  { href: '/profile', label: 'Profil', icon: User },
+  { href: '/mystery', label: 'Mystery', icon: Gift, highlight: true },
 ];
 
 const springTransition = {
@@ -32,6 +32,7 @@ export function BottomNav() {
             const isActive = pathname === item.href ||
               (item.href === '/arena' && pathname === '/battles');
             const Icon = item.icon;
+            const isMystery = 'highlight' in item && item.highlight;
 
             return (
               <Link
@@ -41,19 +42,33 @@ export function BottomNav() {
                   'flex flex-col items-center justify-center rounded-xl transition-colors duration-200 relative w-12 h-10',
                   isActive
                     ? 'text-[#22d3ee]'
-                    : 'text-dark-400 hover:text-dark-300'
+                    : isMystery
+                      ? 'text-amber-400 hover:text-amber-300'
+                      : 'text-dark-400 hover:text-dark-300'
                 )}
               >
                 {/* Animated indicator pill */}
                 {isActive && (
                   <motion.div
                     layoutId="bottom-nav-indicator"
-                    className="absolute -top-2.5 w-8 h-[2px] rounded-full bg-[#22d3ee]"
+                    className={cn(
+                      'absolute -top-2.5 w-8 h-[2px] rounded-full',
+                      isMystery ? 'bg-amber-400' : 'bg-[#22d3ee]'
+                    )}
                     style={{
-                      boxShadow: '0 0 10px #22d3ee, 0 0 20px rgba(34, 211, 238, 0.3)',
+                      boxShadow: isMystery
+                        ? '0 0 10px #f59e0b, 0 0 20px rgba(245, 158, 11, 0.3)'
+                        : '0 0 10px #22d3ee, 0 0 20px rgba(34, 211, 238, 0.3)',
                     }}
                     transition={springTransition}
                   />
+                )}
+
+                {/* Subtle pulse glow for mystery when not active */}
+                {isMystery && !isActive && (
+                  <div className="absolute inset-0 rounded-xl animate-pulse pointer-events-none">
+                    <div className="absolute inset-0 bg-amber-400/[0.06] rounded-xl" />
+                  </div>
                 )}
 
                 {/* Icon with scale animation + soft glow */}
@@ -65,17 +80,24 @@ export function BottomNav() {
                   className="relative mb-0.5"
                 >
                   {isActive && (
-                    <div className="absolute inset-0 bg-[#22d3ee]/20 blur-lg rounded-full pointer-events-none" />
+                    <div className={cn(
+                      'absolute inset-0 blur-lg rounded-full pointer-events-none',
+                      isMystery ? 'bg-amber-400/20' : 'bg-[#22d3ee]/20'
+                    )} />
                   )}
                   <Icon className={cn(
                     'w-5 h-5 relative',
-                    isActive && 'drop-shadow-[0_0_8px_rgba(34,211,238,0.6)]'
+                    isActive && !isMystery && 'drop-shadow-[0_0_8px_rgba(34,211,238,0.6)]',
+                    isActive && isMystery && 'drop-shadow-[0_0_8px_rgba(245,158,11,0.6)]',
+                    !isActive && isMystery && 'drop-shadow-[0_0_4px_rgba(245,158,11,0.3)]'
                   )} />
                 </motion.div>
 
                 <span className={cn(
                   'text-[10px] font-medium',
-                  isActive && 'text-[#22d3ee]'
+                  isActive && !isMystery && 'text-[#22d3ee]',
+                  isActive && isMystery && 'text-amber-400',
+                  !isActive && isMystery && 'text-amber-400/80'
                 )}>
                   {item.label}
                 </span>
