@@ -2321,12 +2321,13 @@ export default function AdminPage() {
   const loadOrders = async () => {
     const { data, error } = await supabase
       .from('card_orders')
-      .select('*, user:users(*), card:cards(*)')
+      .select('*, user:profiles!card_orders_user_id_fkey(*), card:cards(*)')
       .order('created_at', { ascending: false });
 
     if (!error && data) {
       setOrders(data as CardOrder[]);
     } else {
+      console.error('loadOrders error:', error);
       setOrders([]);
     }
     setOrdersLoaded(true);
@@ -2451,12 +2452,13 @@ export default function AdminPage() {
   const loadMysteryPurchases = async () => {
     const { data, error } = await supabase
       .from('mystery_pack_purchases')
-      .select('*, user:users(nick, email), pack_type:mystery_pack_types(*)')
+      .select('*, user:users!mystery_pack_purchases_user_id_fkey(nick, email), pack_type:mystery_pack_types(*)')
       .order('created_at', { ascending: false });
 
     if (!error && data) {
       setMysteryPurchases(data as MysteryPackPurchase[]);
     } else {
+      console.error('loadMysteryPurchases error:', error);
       setMysteryPurchases([]);
     }
     setMysteryLoaded(true);
