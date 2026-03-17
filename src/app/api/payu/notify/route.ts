@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing order data' }, { status: 400 });
     }
 
-    const { orderId, extOrderId, orderStatus } = order;
+    const { orderId, extOrderId, status: orderStatus } = order;
 
     log('info', 'Received PayU notification', { orderId, extOrderId, orderStatus });
 
