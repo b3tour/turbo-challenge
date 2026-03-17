@@ -68,7 +68,8 @@ export default function MysteryGaragePage() {
   const [revealCards, setRevealCards] = useState<CollectibleCard[]>([]);
   const [revealPackName, setRevealPackName] = useState('');
   const [loadingReveal, setLoadingReveal] = useState(false);
-  const revealShownRef = useRef<string | null>(null);
+  // Zapamiętaj ID pakietów otwartych PRZED powrotem z PayU
+  const alreadyOpenedRef = useRef<Set<string> | null>(null);
 
   // Pobierz karty po ID i pokaż modal
   const showCardsForPurchase = async (purchase: MysteryPackPurchase) => {
@@ -91,7 +92,16 @@ export default function MysteryGaragePage() {
     setLoadingReveal(false);
   };
 
-  // Po powrocie z PayU — poll co 3s, czekaj aż pakiet będzie 'opened'
+  // Zapamiętaj już otwarte pakiety przy pierwszym renderze
+  useEffect(() => {
+    if (!loading && alreadyOpenedRef.current === null) {
+      alreadyOpenedRef.current = new Set(
+        myPurchases.filter(p => p.status === 'opened').map(p => p.id)
+      );
+    }
+  }, [loading, myPurchases]);
+
+  // Po powrocie z PayU — poll co 3s, czekaj aż NOWY pakiet będzie 'opened'
   useEffect(() => {
     if (searchParams.get('payment') === 'success') {
       setPaymentSuccess(true);
@@ -110,14 +120,17 @@ export default function MysteryGaragePage() {
     };
   }, [searchParams]);
 
-  // Automatycznie pokaż reveal gdy pakiet zmieni się na 'opened'
+  // Automatycznie pokaż reveal gdy NOWY pakiet zmieni się na 'opened'
   useEffect(() => {
-    if (!paymentSuccess) return;
+    if (!paymentSuccess || !alreadyOpenedRef.current) return;
     const justOpened = myPurchases.find(
-      p => p.status === 'opened' && p.cards_received && p.cards_received.length > 0 && p.id !== revealShownRef.current
+      p => p.status === 'opened'
+        && p.cards_received
+        && p.cards_received.length > 0
+        && !alreadyOpenedRef.current!.has(p.id)
     );
     if (justOpened) {
-      revealShownRef.current = justOpened.id;
+      alreadyOpenedRef.current.add(justOpened.id);
       if (pollRef.current) clearInterval(pollRef.current);
       showCardsForPurchase(justOpened);
     }
