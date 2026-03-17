@@ -2319,17 +2319,39 @@ export default function AdminPage() {
   }, [activeTab, ordersLoaded]);
 
   const loadOrders = async () => {
-    const { data, error } = await supabase
+    // Pobierz zamówienia bez joinów (unikamy problemów z FK)
+    const { data: ordersData, error: ordersError } = await supabase
       .from('card_orders')
-      .select('*, user:profiles!card_orders_user_id_fkey(*), card:cards(*)')
+      .select('*')
       .order('created_at', { ascending: false });
 
-    if (!error && data) {
-      setOrders(data as CardOrder[]);
-    } else {
-      console.error('loadOrders error:', error);
+    if (ordersError || !ordersData) {
+      console.error('loadOrders error:', ordersError);
       setOrders([]);
+      setOrdersLoaded(true);
+      return;
     }
+
+    // Pobierz profile użytkowników
+    const userIds = Array.from(new Set(ordersData.map(o => o.user_id)));
+    const { data: usersData } = userIds.length > 0
+      ? await supabase.from('profiles').select('*').in('id', userIds)
+      : { data: [] };
+
+    // Pobierz karty
+    const cardIds = Array.from(new Set(ordersData.map(o => o.card_id).filter(Boolean)));
+    const { data: cardsData } = cardIds.length > 0
+      ? await supabase.from('cards').select('*').in('id', cardIds)
+      : { data: [] };
+
+    // Złącz dane client-side
+    const merged = ordersData.map(o => ({
+      ...o,
+      user: usersData?.find(u => u.id === o.user_id) || null,
+      card: cardsData?.find(c => c.id === o.card_id) || null,
+    }));
+
+    setOrders(merged as CardOrder[]);
     setOrdersLoaded(true);
   };
 
@@ -2450,17 +2472,36 @@ export default function AdminPage() {
   }, [activeTab, mysteryLoaded]);
 
   const loadMysteryPurchases = async () => {
-    const { data, error } = await supabase
+    // Pobierz zakupy bez joinów (brak FK do mystery_pack_types)
+    const { data: purchases, error: purchasesError } = await supabase
       .from('mystery_pack_purchases')
-      .select('*, user:users!mystery_pack_purchases_user_id_fkey(nick, email), pack_type:mystery_pack_types(*)')
+      .select('*')
       .order('created_at', { ascending: false });
 
-    if (!error && data) {
-      setMysteryPurchases(data as MysteryPackPurchase[]);
-    } else {
-      console.error('loadMysteryPurchases error:', error);
+    if (purchasesError || !purchases) {
+      console.error('loadMysteryPurchases error:', purchasesError);
       setMysteryPurchases([]);
+      setMysteryLoaded(true);
+      return;
     }
+
+    // Pobierz nick/email użytkowników
+    const userIds = Array.from(new Set(purchases.map(p => p.user_id)));
+    const { data: usersData } = userIds.length > 0
+      ? await supabase.from('users').select('id, nick, email').in('id', userIds)
+      : { data: [] };
+
+    // Pobierz typy pakietów
+    const { data: packTypesData } = await supabase.from('mystery_pack_types').select('*');
+
+    // Złącz dane client-side
+    const merged = purchases.map(p => ({
+      ...p,
+      user: usersData?.find(u => u.id === p.user_id) || null,
+      pack_type: packTypesData?.find(pt => pt.id === p.pack_type_id) || null,
+    }));
+
+    setMysteryPurchases(merged as MysteryPackPurchase[]);
     setMysteryLoaded(true);
   };
 

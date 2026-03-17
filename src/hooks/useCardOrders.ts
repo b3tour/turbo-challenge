@@ -41,7 +41,7 @@ export function useCardOrders({ userId, loadAll = false }: UseCardOrdersOptions 
     try {
       let query = supabase
         .from('card_orders')
-        .select('*, user:profiles!card_orders_user_id_fkey(*), card:cards(*)')
+        .select('*')
         .order('created_at', { ascending: false });
 
       if (!loadAll && userId) {
@@ -54,7 +54,17 @@ export function useCardOrders({ userId, loadAll = false }: UseCardOrdersOptions 
         console.error('Error fetching card orders:', fetchError);
         setOrders([]);
       } else {
-        setOrders(data as CardOrder[]);
+        // Pobierz karty osobno (unikamy problemów z FK joinami)
+        const cardIds = Array.from(new Set((data || []).map(o => o.card_id).filter(Boolean)));
+        let cardsMap: Record<string, unknown> = {};
+        if (cardIds.length > 0) {
+          const { data: cardsData } = await supabase.from('cards').select('*').in('id', cardIds);
+          if (cardsData) {
+            cardsMap = Object.fromEntries(cardsData.map(c => [c.id, c]));
+          }
+        }
+        const merged = (data || []).map(o => ({ ...o, card: cardsMap[o.card_id] || null }));
+        setOrders(merged as CardOrder[]);
       }
     } catch (e) {
       console.error('Error in fetchOrders:', e);
