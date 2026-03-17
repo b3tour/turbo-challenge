@@ -72,7 +72,7 @@ Turbo Challenge — aplikacja grywalizacyjna dla Fundacji Turbo Pomoc. Next.js 1
 
 ## Ostatnia sesja — 2026-03-17 (sesja 11)
 
-### Naprawa platnosci PayU (7 critical fixow):
+### Naprawa platnosci PayU (8 critical fixow + 3 feature):
 
 **Problem:** Znajomy zaplacil 45 zl za Pakiet Mega Garage (MG-MMUGDYLZ-2FLK) przez BLIK, platnosc przeszla, ale w appce status "Oczekuje" i admin nie widzial zamowien.
 
@@ -91,6 +91,19 @@ Turbo Challenge — aplikacja grywalizacyjna dla Fundacji Turbo Pomoc. Next.js 1
 6. **Mystery page nie pokazywala statusu 'paid'** — Dodano sekcje "Oplacone — czekaja na otwarcie" miedzy "Oczekujace" a "Otwarte". Plus spinner "Weryfikacja platnosci..." po powrocie z PayU.
 
 7. **Admin mystery tab brak statusu 'paid'** — Statystyki pokazywaly tylko pending/opened. Dodano licznik "Oplacone" i przycisk "Otworz pakiet" dla oplaconych zamowien (handleOpenPaidMysteryPack).
+
+8. **CRITICAL: PayU pole `status` vs `orderStatus`** — webhook destrukturowal `order.orderStatus` ale PayU wysyla `order.status`. To byl GLOWNY BUG — zadna platnosc nigdy sie nie potwierdzala automatycznie. Naprawiono: `const { status: orderStatus } = order`.
+
+9. **Admin query 400 Bad Request** — `card_orders` ma 2 FK do `profiles` (nie `users`!), `mystery_pack_purchases` nie ma FK do `mystery_pack_types`. PostgREST join zwracal 400. Naprawiono: osobne query + merge client-side.
+
+10. **RLS blokuje admin wstawianie kart** — admin nie mogl otworzyc pakietu bo RLS blokowalo INSERT do user_cards dla innego usera. Naprawiono: nowy endpoint `/api/mystery/open` z service_role key.
+
+11. **user_cards CHECK constraint** — `obtained_from` nie mial 'purchase'. Naprawiono ALTER TABLE.
+
+**Nowe feature:**
+- Auto-otwarcie pakietow w webhoouku PayU (gracz nie musi czekac na admina)
+- Modal reveal kart na mystery page (grid 2-kolumnowy, ramki per rarity, glow, sortowanie)
+- Sekcja "Oplacone" na mystery page + polling po powrocie z PayU
 
 **Dodatkowe ulepszenia:**
 - Strukturalne logowanie w notify route (JSON z timestamp, source, msg)
