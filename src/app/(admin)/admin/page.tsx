@@ -2677,108 +2677,22 @@ export default function AdminPage() {
     setProcessingMystery(purchase.id);
 
     try {
-      // Pobierz dostępne karty samochodów
-      const { data: availableCards, error: cardsError } = await supabase
-        .from('cards')
-        .select('*')
-        .eq('card_type', 'car')
-        .eq('is_active', true);
-
-      if (cardsError || !availableCards || availableCards.length === 0) {
-        throw new Error('Brak dostępnych kart w systemie');
-      }
-
-      const packType = purchase.pack_type;
-      if (!packType) throw new Error('Nieznany typ pakietu');
-
-      const cardCount = packType.card_count || 3;
-      const selectedCards: CollectibleCard[] = [];
-
-      const cardsByRarity: Record<string, CollectibleCard[]> = {
-        common: availableCards.filter((c: CollectibleCard) => c.rarity === 'common'),
-        rare: availableCards.filter((c: CollectibleCard) => c.rarity === 'rare'),
-        epic: availableCards.filter((c: CollectibleCard) => c.rarity === 'epic'),
-        legendary: availableCards.filter((c: CollectibleCard) => c.rarity === 'legendary'),
-      };
-
-      const rollRarity = (): CardRarity => {
-        const roll = Math.random() * 100;
-        if (roll < (packType.legendary_chance || 3)) return 'legendary';
-        if (roll < (packType.legendary_chance || 3) + (packType.epic_chance || 12)) return 'epic';
-        if (roll < (packType.legendary_chance || 3) + (packType.epic_chance || 12) + (packType.rare_chance || 25)) return 'rare';
-        return 'common';
-      };
-
-      for (let i = 0; i < cardCount; i++) {
-        let targetRarity = rollRarity();
-
-        if (packType.size === 'large' && i === cardCount - 1 &&
-            !selectedCards.some(c => c.rarity === 'epic' || c.rarity === 'legendary')) {
-          targetRarity = Math.random() < 0.3 ? 'legendary' : 'epic';
-        }
-
-        let pool = cardsByRarity[targetRarity];
-        if (!pool || pool.length === 0) {
-          const fallbackOrder: CardRarity[] = ['epic', 'rare', 'common'];
-          for (const fallback of fallbackOrder) {
-            if (cardsByRarity[fallback] && cardsByRarity[fallback].length > 0) {
-              pool = cardsByRarity[fallback];
-              break;
-            }
-          }
-        }
-
-        if (pool && pool.length > 0) {
-          const randomIndex = Math.floor(Math.random() * pool.length);
-          selectedCards.push(pool[randomIndex]);
-        }
-      }
-
-      // Dodaj karty do kolekcji użytkownika
-      const userCards = selectedCards.map(card => ({
-        user_id: purchase.user_id,
-        card_id: card.id,
-        obtained_from: 'purchase' as const,
-      }));
-
-      const { error: insertError } = await supabase
-        .from('user_cards')
-        .insert(userCards);
-
-      if (insertError) throw insertError;
-
-      // Zaktualizuj status na 'opened'
-      await supabase
-        .from('mystery_pack_purchases')
-        .update({
-          status: 'opened',
-          cards_received: selectedCards.map(c => c.id),
-          opened_at: new Date().toISOString(),
-        })
-        .eq('id', purchase.id);
-
-      // XP za karty (1 XP za kartę)
-      const { data: userXpData } = await supabase
-        .from('users')
-        .select('total_xp')
-        .eq('id', purchase.user_id)
-        .single();
-
-      if (userXpData) {
-        await supabase
-          .from('users')
-          .update({ total_xp: (userXpData.total_xp || 0) + selectedCards.length })
-          .eq('id', purchase.user_id);
-      }
-
-      // Powiadomienie dla gracza
-      await supabase.from('notifications').insert({
-        user_id: purchase.user_id,
-        title: 'Pakiet otwarty!',
-        message: `Twój pakiet ${packType.name} został otwarty! Sprawdź nowe karty w kolekcji.`,
-        type: 'card_received',
-        read: false,
+      // Wywołaj server-side API (service_role omija RLS)
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch('/api/mystery/open', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token}`,
+        },
+        body: JSON.stringify({ purchaseId: purchase.id }),
       });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Błąd otwierania pakietu');
+      }
 
       setMysteryPurchases(prev => prev.map(p =>
         p.id === purchase.id
@@ -2786,20 +2700,9 @@ export default function AdminPage() {
           : p
       ));
 
-      const rarityNames: Record<CardRarity, string> = {
-        common: 'zwykłych', rare: 'rzadkich', epic: 'epickich', legendary: 'legendarnych'
-      };
-      const summary = selectedCards.reduce((acc, c) => {
-        acc[c.rarity] = (acc[c.rarity] || 0) + 1;
-        return acc;
-      }, {} as Record<CardRarity, number>);
-      const summaryText = Object.entries(summary)
-        .map(([rarity, count]) => `${count} ${rarityNames[rarity as CardRarity]}`)
-        .join(', ');
-
-      success('Pakiet otwarty!', `Gracz otrzymał: ${summaryText}`);
+      success('Pakiet otwarty!', `Gracz otrzymał: ${data.summary}`);
     } catch (e: unknown) {
-      const errorMessage = e instanceof Error ? e.message : 'Nieznany błąd';
+      const errorMessage = e instanceof Error ? e.message : String(e);
       showError('Błąd', errorMessage);
     } finally {
       setProcessingMystery(null);
