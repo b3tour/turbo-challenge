@@ -111,7 +111,7 @@ export default function ProfilePage() {
 
       // Upload do Supabase Storage
       const { error: uploadError } = await supabase.storage
-        .from('mission-photos')
+        .from('avatars')
         .upload(filePath, croppedImage, {
           upsert: true,
           contentType: 'image/jpeg'
@@ -123,7 +123,7 @@ export default function ProfilePage() {
 
       // Pobierz publiczny URL
       const { data: { publicUrl } } = supabase.storage
-        .from('mission-photos')
+        .from('avatars')
         .getPublicUrl(filePath);
 
       // Zaktualizuj profil

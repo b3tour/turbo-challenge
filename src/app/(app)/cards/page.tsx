@@ -95,99 +95,6 @@ const RARITY_TILE_TOKENS: Record<CardRarity, {
   },
 };
 
-// Demo karty Heroes
-const DEMO_HERO_CARDS: CollectibleCard[] = [
-  {
-    id: 'demo-hero-1',
-    name: 'Jan Kowalski',
-    description: 'Ambasador Turbo Pomoc od 2020 roku. Właściciel legendarnego 911 GT3.',
-    rarity: 'legendary',
-    card_type: 'car',
-    category: 'Turbo Heroes',
-    points: 200,
-    is_hero: true,
-    hero_name: 'Jan Kowalski',
-    hero_title: 'Ambasador Turbo Pomoc',
-    car_brand: 'Porsche',
-    car_model: '911 GT3',
-    car_horsepower: 510,
-    car_torque: 470,
-    car_max_speed: 318,
-    car_year: 2022,
-    is_active: true,
-    created_at: new Date().toISOString(),
-  },
-];
-
-// Demo karty samochodów
-const DEMO_CAR_CARDS: CollectibleCard[] = [
-  {
-    id: 'demo-c1',
-    name: 'Porsche 911 Turbo S',
-    description: 'Ikona sportowych samochodów',
-    rarity: 'legendary',
-    card_type: 'car',
-    category: 'Porsche',
-    points: 100,
-    car_brand: 'Porsche',
-    car_model: '911 Turbo S',
-    car_horsepower: 650,
-    car_torque: 800,
-    car_max_speed: 330,
-    car_year: 2024,
-    price: 10,
-    xp_reward: 10,
-    is_purchasable: true,
-    is_active: true,
-    created_at: new Date().toISOString(),
-  },
-  {
-    id: 'demo-c2',
-    name: 'BMW M3 Competition',
-    description: 'Sportowy sedan o legendarnych osiągach',
-    rarity: 'epic',
-    card_type: 'car',
-    category: 'BMW',
-    points: 75,
-    car_brand: 'BMW',
-    car_model: 'M3 Competition',
-    car_horsepower: 510,
-    car_torque: 650,
-    car_max_speed: 290,
-    car_year: 2024,
-    price: 5,
-    xp_reward: 5,
-    is_purchasable: true,
-    is_active: true,
-    created_at: new Date().toISOString(),
-  },
-];
-
-// Demo karty osiągnięć
-const DEMO_ACHIEVEMENT_CARDS: CollectibleCard[] = [
-  {
-    id: 'demo-a1',
-    name: 'Turbo Starter',
-    description: 'Pierwsza karta każdego gracza. Początek wielkiej przygody!',
-    rarity: 'common',
-    card_type: 'achievement',
-    category: 'Podstawowe',
-    points: 10,
-    is_active: true,
-    created_at: new Date().toISOString(),
-  },
-  {
-    id: 'demo-a2',
-    name: 'Speed Demon',
-    description: 'Karta za ukończenie 5 misji.',
-    rarity: 'rare',
-    card_type: 'achievement',
-    category: 'Osiągnięcia',
-    points: 25,
-    is_active: true,
-    created_at: new Date().toISOString(),
-  },
-];
 
 interface BrandGroup {
   brand: string;
@@ -259,10 +166,9 @@ export default function CardsPage() {
   const achievementCards = getCardsByType('achievement');
   const carCards = getCardsByType('car');
 
-  // Użyj demo kart jeśli brak kart w bazie
-  const allCarCards = carCards.length > 0 ? carCards : [...DEMO_HERO_CARDS, ...DEMO_CAR_CARDS];
-  const displayAchievementCards = achievementCards.length > 0 ? achievementCards : DEMO_ACHIEVEMENT_CARDS;
-  const isDemoMode = !loading && allCards.length === 0;
+  const allCarCards = carCards;
+  const displayAchievementCards = achievementCards;
+  const isDemoMode = false;
 
   // Rozdziel Heroes i zwykłe samochody
   const heroCardsRaw = allCarCards.filter(c => c.is_hero);
@@ -591,21 +497,6 @@ export default function CardsPage() {
           <p className="text-dark-400">Zbieraj karty z wymarzonymi samochodami</p>
         </div>
       </div>
-
-      {/* Demo mode notice */}
-      {isDemoMode && (
-        <Card className="mb-4 border-yellow-500/30 bg-yellow-500/10">
-          <div className="flex items-start gap-3">
-            <Sparkles className="w-5 h-5 text-yellow-500 mt-0.5" />
-            <div>
-              <p className="text-yellow-400 font-medium">Tryb podglądu</p>
-              <p className="text-sm text-yellow-400/70">
-                To przykładowe karty. Administrator może dodać karty w panelu admina.
-              </p>
-            </div>
-          </div>
-        </Card>
-      )}
 
       {/* Tabs */}
       <div className="bg-surface-2 rounded-xl p-1 flex gap-1 mb-4">
