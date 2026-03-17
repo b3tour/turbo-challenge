@@ -30,6 +30,21 @@ import {
   Loader2,
 } from 'lucide-react';
 import { MysteryPackType, MysteryPackPurchase, CollectibleCard } from '@/types';
+import { supabase } from '@/lib/supabase';
+
+const RARITY_BORDER: Record<string, string> = {
+  legendary: 'border-yellow-500 shadow-yellow-500/30 shadow-lg',
+  epic: 'border-purple-500 shadow-purple-500/30 shadow-lg',
+  rare: 'border-blue-500 shadow-blue-500/20',
+  common: 'border-dark-500',
+};
+
+const RARITY_LABEL: Record<string, { text: string; color: string }> = {
+  legendary: { text: 'LEGENDARY', color: 'text-yellow-400' },
+  epic: { text: 'EPIC', color: 'text-purple-400' },
+  rare: { text: 'RARE', color: 'text-blue-400' },
+  common: { text: 'COMMON', color: 'text-dark-400' },
+};
 
 export default function MysteryGaragePage() {
   const { profile } = useAuth();
@@ -48,23 +63,44 @@ export default function MysteryGaragePage() {
   const [paymentSuccess, setPaymentSuccess] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Po powrocie z PayU — poll co 3s żeby sprawdzić czy webhook zaktualizował status
+  // Reveal kart
+  const [showRevealModal, setShowRevealModal] = useState(false);
+  const [revealCards, setRevealCards] = useState<CollectibleCard[]>([]);
+  const [revealPackName, setRevealPackName] = useState('');
+  const [loadingReveal, setLoadingReveal] = useState(false);
+  const revealShownRef = useRef<string | null>(null);
+
+  // Pobierz karty po ID i pokaż modal
+  const showCardsForPurchase = async (purchase: MysteryPackPurchase) => {
+    if (!purchase.cards_received || purchase.cards_received.length === 0) return;
+    setLoadingReveal(true);
+    setShowRevealModal(true);
+    setRevealPackName(packTypes.find(p => p.id === purchase.pack_type_id)?.name || 'Mystery Pack');
+
+    const { data: cards } = await supabase
+      .from('cards')
+      .select('*')
+      .in('id', purchase.cards_received);
+
+    if (cards) {
+      // Sortuj: legendary > epic > rare > common
+      const order: Record<string, number> = { legendary: 0, epic: 1, rare: 2, common: 3 };
+      cards.sort((a, b) => (order[a.rarity] ?? 4) - (order[b.rarity] ?? 4));
+      setRevealCards(cards as CollectibleCard[]);
+    }
+    setLoadingReveal(false);
+  };
+
+  // Po powrocie z PayU — poll co 3s, czekaj aż pakiet będzie 'opened'
   useEffect(() => {
     if (searchParams.get('payment') === 'success') {
       setPaymentSuccess(true);
-      // Polling: sprawdzaj co 3s przez 60s
       let attempts = 0;
       pollRef.current = setInterval(async () => {
         attempts++;
         await refetch();
-
-        // Sprawdź czy któreś zamówienie zmieniło status na 'paid'
-        const hasPaid = myPurchases.some(p => p.status === 'paid');
-        if (hasPaid || attempts >= 20) {
+        if (attempts >= 30) {
           if (pollRef.current) clearInterval(pollRef.current);
-          if (hasPaid) {
-            success('Płatność potwierdzona!', 'Twój pakiet jest gotowy do otwarcia.');
-          }
         }
       }, 3000);
     }
@@ -73,6 +109,19 @@ export default function MysteryGaragePage() {
       if (pollRef.current) clearInterval(pollRef.current);
     };
   }, [searchParams]);
+
+  // Automatycznie pokaż reveal gdy pakiet zmieni się na 'opened'
+  useEffect(() => {
+    if (!paymentSuccess) return;
+    const justOpened = myPurchases.find(
+      p => p.status === 'opened' && p.cards_received && p.cards_received.length > 0 && p.id !== revealShownRef.current
+    );
+    if (justOpened) {
+      revealShownRef.current = justOpened.id;
+      if (pollRef.current) clearInterval(pollRef.current);
+      showCardsForPurchase(justOpened);
+    }
+  }, [myPurchases, paymentSuccess]);
 
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
   const [selectedPack, setSelectedPack] = useState<MysteryPackType | null>(null);
@@ -372,15 +421,15 @@ export default function MysteryGaragePage() {
         </div>
       )}
 
-      {/* Komunikat po powrocie z PayU */}
-      {paymentSuccess && pendingPurchases.length > 0 && paidPurchases.length === 0 && (
+      {/* Komunikat po powrocie z PayU — czekamy na otwarcie */}
+      {paymentSuccess && !showRevealModal && (pendingPurchases.length > 0 || paidPurchases.length > 0) && (
         <Card className="mb-8 border-blue-500/30 bg-blue-500/5">
           <div className="flex items-start gap-3">
             <Loader2 className="w-5 h-5 text-blue-400 animate-spin mt-0.5 flex-shrink-0" />
             <div>
-              <p className="text-blue-400 font-medium">Weryfikacja płatności...</p>
+              <p className="text-blue-400 font-medium">Otwieramy Twój pakiet...</p>
               <p className="text-sm text-blue-400/70">
-                Twoja płatność jest przetwarzana. Status zostanie zaktualizowany automatycznie.
+                Płatność potwierdzona! Za chwilę zobaczysz wylosowane karty.
               </p>
             </div>
           </div>
@@ -395,8 +444,12 @@ export default function MysteryGaragePage() {
             Otwarte pakiety
           </h2>
           <div className="space-y-3">
-            {completedPurchases.slice(0, 5).map(purchase => (
-              <Card key={purchase.id} className="border-green-500/30 bg-green-500/5">
+            {completedPurchases.slice(0, 10).map(purchase => (
+              <Card
+                key={purchase.id}
+                className="border-green-500/30 bg-green-500/5 cursor-pointer hover:bg-green-500/10 transition-colors"
+                onClick={() => showCardsForPurchase(purchase)}
+              >
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="font-medium text-white">
@@ -406,11 +459,11 @@ export default function MysteryGaragePage() {
                       {new Date(purchase.opened_at!).toLocaleDateString('pl-PL')}
                     </p>
                   </div>
-                  <div className="text-right">
+                  <div className="flex items-center gap-2">
                     <Badge variant="success">
-                      <CheckCircle className="w-3 h-3 mr-1" />
                       {purchase.cards_received?.length || 0} kart
                     </Badge>
+                    <span className="text-xs text-green-400">Zobacz &rarr;</span>
                   </div>
                 </div>
               </Card>
@@ -648,6 +701,94 @@ export default function MysteryGaragePage() {
                   );
                 })}
               </div>
+            </>
+          )}
+        </div>
+      </Modal>
+
+      {/* Modal Reveal kart */}
+      <Modal
+        isOpen={showRevealModal}
+        onClose={() => {
+          setShowRevealModal(false);
+          setRevealCards([]);
+        }}
+        title={`${revealPackName} — Twoje karty!`}
+      >
+        <div className="space-y-4">
+          {loadingReveal ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-8 h-8 text-turbo-500 animate-spin" />
+            </div>
+          ) : (
+            <>
+              {/* Podsumowanie */}
+              <div className="flex items-center justify-center gap-4 py-2">
+                {(['legendary', 'epic', 'rare', 'common'] as const).map(rarity => {
+                  const count = revealCards.filter(c => c.rarity === rarity).length;
+                  if (count === 0) return null;
+                  const config = RARITY_CONFIG[rarity];
+                  return (
+                    <div key={rarity} className="flex items-center gap-1">
+                      <config.icon className={`w-4 h-4 ${config.color}`} />
+                      <span className={`text-sm font-bold ${config.color}`}>{count}</span>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Grid kart */}
+              <div className="grid grid-cols-2 gap-3 max-h-[60vh] overflow-y-auto">
+                {revealCards.map((card, index) => (
+                  <div
+                    key={`${card.id}-${index}`}
+                    className={`relative rounded-xl border-2 overflow-hidden bg-surface-2 ${RARITY_BORDER[card.rarity] || 'border-dark-600'}`}
+                  >
+                    {/* Obrazek karty */}
+                    {card.image_url ? (
+                      <div className="aspect-[3/2] bg-dark-700">
+                        <img
+                          src={card.image_url}
+                          alt={card.name}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    ) : (
+                      <div className="aspect-[3/2] bg-dark-700 flex items-center justify-center">
+                        <Sparkles className={`w-8 h-8 ${RARITY_LABEL[card.rarity]?.color || 'text-dark-400'}`} />
+                      </div>
+                    )}
+
+                    {/* Info */}
+                    <div className="p-2">
+                      <p className="text-xs font-medium text-white truncate">{card.name}</p>
+                      <p className={`text-[10px] font-bold ${RARITY_LABEL[card.rarity]?.color || 'text-dark-400'}`}>
+                        {RARITY_LABEL[card.rarity]?.text || card.rarity}
+                      </p>
+                    </div>
+
+                    {/* Glow effect for epic+ */}
+                    {(card.rarity === 'legendary' || card.rarity === 'epic') && (
+                      <div className={`absolute inset-0 pointer-events-none rounded-xl ${
+                        card.rarity === 'legendary'
+                          ? 'bg-gradient-to-t from-yellow-500/20 to-transparent'
+                          : 'bg-gradient-to-t from-purple-500/15 to-transparent'
+                      }`} />
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              <Button
+                variant="secondary"
+                fullWidth
+                onClick={() => {
+                  setShowRevealModal(false);
+                  setRevealCards([]);
+                }}
+              >
+                Zamknij
+              </Button>
             </>
           )}
         </div>
