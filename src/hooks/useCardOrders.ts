@@ -41,7 +41,7 @@ export function useCardOrders({ userId, loadAll = false }: UseCardOrdersOptions 
     try {
       let query = supabase
         .from('card_orders')
-        .select('*, user:profiles(*), card:cards(*)')
+        .select('*, user:users(*), card:cards(*)')
         .order('created_at', { ascending: false });
 
       if (!loadAll && userId) {

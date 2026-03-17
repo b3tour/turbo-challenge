@@ -27,7 +27,15 @@ export async function POST(request: NextRequest) {
       request.headers.get('x-real-ip') ||
       '127.0.0.1';
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://turbo-challenge.vercel.app';
+    // Użyj APP_URL z env, fallback na główną domenę
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://challenge.turbopomoc.pl';
+
+    // notifyUrl MUSI być publicznym adresem osiągalnym przez PayU
+    // Nigdy nie może być localhost — PayU nie dotrze do lokalnego serwera
+    const notifyUrl = `${appUrl}/api/payu/notify`;
+    if (notifyUrl.includes('localhost') || notifyUrl.includes('127.0.0.1')) {
+      console.error('PayU checkout: notifyUrl contains localhost! PayU will not be able to reach it.');
+    }
 
     const continueUrl = orderType === 'card_order'
       ? `${appUrl}/cards?payment=success`
@@ -41,7 +49,7 @@ export async function POST(request: NextRequest) {
       productName: description,
       customerIp,
       continueUrl,
-      notifyUrl: `${appUrl}/api/payu/notify`,
+      notifyUrl,
       payMethodType: payMethodType || undefined,
       payMethodValue: payMethodValue || undefined,
     });

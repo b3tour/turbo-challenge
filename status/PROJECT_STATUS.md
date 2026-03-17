@@ -1,6 +1,6 @@
 # Turbo Challenge — Status Projektu
 
-Ostatnia aktualizacja: 2026-03-16 (sesja 9+10)
+Ostatnia aktualizacja: 2026-03-17 (sesja 11)
 
 ## Kontekst
 
@@ -70,7 +70,44 @@ Turbo Challenge — aplikacja grywalizacyjna dla Fundacji Turbo Pomoc. Next.js 1
 
 ---
 
-## Ostatnia sesja — 2026-03-16 (sesja 9+10)
+## Ostatnia sesja — 2026-03-17 (sesja 11)
+
+### Naprawa platnosci PayU (7 critical fixow):
+
+**Problem:** Znajomy zaplacil 45 zl za Pakiet Mega Garage (MG-MMUGDYLZ-2FLK) przez BLIK, platnosc przeszla, ale w appce status "Oczekuje" i admin nie widzial zamowien.
+
+**Przyczyny i naprawy:**
+
+1. **CRITICAL: Webhook PayU uzuwal anon key zamiast service_role** — RLS blokowalo UPDATE z webhoouka (brak sesji uzytkownika). Naprawiono: notify route uzywa teraz `SUPABASE_SERVICE_ROLE_KEY`.
+
+2. **CRITICAL: Admin query do nieistniejącej tabeli `profiles`** — `loadOrders` i `useCardOrders` uzywal `.select('*, user:profiles(*)')` ale tabela `profiles` nie istnieje (jest `users`). Naprawiono w obu miejscach.
+
+3. **Brak SUPABASE_SERVICE_ROLE_KEY w env** — Dodano do .env.local i .env.local.example. WYMAGA DODANIA NA VERCEL!
+
+4. **APP_URL wskazywal na localhost** — .env.local mial `http://localhost:3000`, zmieniono na `https://challenge.turbopomoc.pl`. Dodano walidacje w checkout route (log error jesli notifyUrl zawiera localhost).
+
+5. **Brak obslugi ?payment=success** — Strony mystery i cards nie reagowaly na powrot z PayU. Dodano polling co 3s przez 60s (useSearchParams + setInterval) zeby wykryc zmiane statusu.
+
+6. **Mystery page nie pokazywala statusu 'paid'** — Dodano sekcje "Oplacone — czekaja na otwarcie" miedzy "Oczekujace" a "Otwarte". Plus spinner "Weryfikacja platnosci..." po powrocie z PayU.
+
+7. **Admin mystery tab brak statusu 'paid'** — Statystyki pokazywaly tylko pending/opened. Dodano licznik "Oplacone" i przycisk "Otworz pakiet" dla oplaconych zamowien (handleOpenPaidMysteryPack).
+
+**Dodatkowe ulepszenia:**
+- Strukturalne logowanie w notify route (JSON z timestamp, source, msg)
+- Log ostrzezenia przy brakujacym service_role key
+- Logowanie bledow z kazdej operacji DB w notify route (zamiast cichego polkniecia)
+- Info box w adminie zaktualizowany o nowy flow PayU
+
+### WYMAGANE KROKI NA VERCEL (przed deployem!):
+
+1. **Dodaj env variable na Vercel:** `SUPABASE_SERVICE_ROLE_KEY` = (klucz service_role z Supabase)
+2. **Sprawdz env:** `NEXT_PUBLIC_APP_URL` = `https://challenge.turbopomoc.pl`
+3. **Push i deploy**
+4. **Przetestuj platnosc** — pelny flow BLIK z prawdziwa transakcja (1 zl)
+
+---
+
+## Poprzednia sesja — 2026-03-16 (sesja 9+10)
 
 ### Sesja 9 — hardening + skalowanie:
 - **Paginacja useCards.ts** — naprawiono bug z limitem 1000 wierszy. Petla z `.range()`.
@@ -216,11 +253,17 @@ Turbo Challenge — aplikacja grywalizacyjna dla Fundacji Turbo Pomoc. Next.js 1
 
 ## Nastepne kroki
 
+### Priorytet 0 — NATYCHMIAST (deploy sesji 11):
+1. **Dodaj SUPABASE_SERVICE_ROLE_KEY na Vercel** (Settings > Environment Variables)
+2. **Sprawdz NEXT_PUBLIC_APP_URL na Vercel** = `https://challenge.turbopomoc.pl`
+3. **Push i deploy**
+4. **Napraw zamowienie znajomego** — w Supabase SQL Editor: `UPDATE mystery_pack_purchases SET status = 'paid', paid_at = NOW() WHERE order_code = 'MG-MMUGDYLZ-2FLK';` Potem w adminie kliknij "Otworz pakiet".
+
 ### Priorytet 1 — przed launchem:
-1. **Faza B audytu** — atomowe RPC w Supabase (complete_mission, resolve_battle, open_pack)
-2. **Przetestowac platnosc PayU** — pelny flow z prawdziwa transakcja (BLIK/karta)
-3. **Uruchomic brakujace SQL** — performance_indexes, add_survey_type, update_reward_types
-4. **Avatar bucket** — zmienic `mission-photos` na `avatars` w profile/page.tsx
+5. **Faza B audytu** — atomowe RPC w Supabase (complete_mission, resolve_battle, open_pack)
+6. **Przetestowac platnosc PayU** — pelny flow z prawdziwa transakcja 1 zl (BLIK/karta)
+7. **Uruchomic brakujace SQL** — performance_indexes, add_survey_type, update_reward_types
+8. **Avatar bucket** — zmienic `mission-photos` na `avatars` w profile/page.tsx
 
 ### Priorytet 2 — po launchu:
 5. **Faza C audytu** — performance (server-side agregacje, paginacja allCards, limity zapytan)

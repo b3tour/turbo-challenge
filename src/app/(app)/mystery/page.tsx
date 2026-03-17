@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { useMysteryPacks } from '@/hooks/useMysteryPacks';
 import { Card, Button, Modal, Badge } from '@/components/ui';
@@ -26,11 +27,13 @@ import {
   SquareDashedBottom,
   Club,
   Flame,
+  Loader2,
 } from 'lucide-react';
 import { MysteryPackType, MysteryPackPurchase, CollectibleCard } from '@/types';
 
 export default function MysteryGaragePage() {
   const { profile } = useAuth();
+  const searchParams = useSearchParams();
   const {
     packTypes,
     myPurchases,
@@ -38,9 +41,38 @@ export default function MysteryGaragePage() {
     purchasePack,
     recycleCard,
     getDuplicates,
+    refetch,
   } = useMysteryPacks({ userId: profile?.id });
   const { success, error: showError } = useToast();
   const [showPaymentGateway, setShowPaymentGateway] = useState(false);
+  const [paymentSuccess, setPaymentSuccess] = useState(false);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Po powrocie z PayU — poll co 3s żeby sprawdzić czy webhook zaktualizował status
+  useEffect(() => {
+    if (searchParams.get('payment') === 'success') {
+      setPaymentSuccess(true);
+      // Polling: sprawdzaj co 3s przez 60s
+      let attempts = 0;
+      pollRef.current = setInterval(async () => {
+        attempts++;
+        await refetch();
+
+        // Sprawdź czy któreś zamówienie zmieniło status na 'paid'
+        const hasPaid = myPurchases.some(p => p.status === 'paid');
+        if (hasPaid || attempts >= 20) {
+          if (pollRef.current) clearInterval(pollRef.current);
+          if (hasPaid) {
+            success('Płatność potwierdzona!', 'Twój pakiet jest gotowy do otwarcia.');
+          }
+        }
+      }, 3000);
+    }
+
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+    };
+  }, [searchParams]);
 
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
   const [selectedPack, setSelectedPack] = useState<MysteryPackType | null>(null);
@@ -126,8 +158,9 @@ export default function MysteryGaragePage() {
     }
   };
 
-  // Oczekujące zamówienia
+  // Kategoryzacja zamówień
   const pendingPurchases = myPurchases.filter(p => p.status === 'pending');
+  const paidPurchases = myPurchases.filter(p => p.status === 'paid');
   const completedPurchases = myPurchases.filter(p => p.status === 'opened');
 
   if (!profile) return null;
@@ -301,6 +334,57 @@ export default function MysteryGaragePage() {
             ))}
           </div>
         </div>
+      )}
+
+      {/* Opłacone pakiety — czekają na otwarcie */}
+      {paidPurchases.length > 0 && (
+        <div className="mb-8">
+          <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+            <CheckCircle className="w-5 h-5 text-emerald-400" />
+            Opłacone — czekają na otwarcie
+          </h2>
+          <div className="space-y-3">
+            {paidPurchases.map(purchase => (
+              <Card key={purchase.id} className="border-emerald-500/30 bg-emerald-500/5">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium text-white">
+                      Pakiet {packTypes.find(p => p.id === purchase.pack_type_id)?.name}
+                    </p>
+                    <p className="text-sm text-dark-400">
+                      Kod: <span className="font-mono text-emerald-400">{purchase.order_code}</span>
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-bold text-white">{purchase.amount} zł</p>
+                    <Badge variant="success">
+                      <CheckCircle className="w-3 h-3 mr-1" />
+                      Opłacone
+                    </Badge>
+                  </div>
+                </div>
+                <p className="text-xs text-emerald-400/70 mt-2">
+                  Płatność potwierdzona! Pakiet zostanie wkrótce otwarty.
+                </p>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Komunikat po powrocie z PayU */}
+      {paymentSuccess && pendingPurchases.length > 0 && paidPurchases.length === 0 && (
+        <Card className="mb-8 border-blue-500/30 bg-blue-500/5">
+          <div className="flex items-start gap-3">
+            <Loader2 className="w-5 h-5 text-blue-400 animate-spin mt-0.5 flex-shrink-0" />
+            <div>
+              <p className="text-blue-400 font-medium">Weryfikacja płatności...</p>
+              <p className="text-sm text-blue-400/70">
+                Twoja płatność jest przetwarzana. Status zostanie zaktualizowany automatycznie.
+              </p>
+            </div>
+          </div>
+        </Card>
       )}
 
       {/* Historia otwartych pakietów */}

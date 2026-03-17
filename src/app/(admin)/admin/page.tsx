@@ -2321,7 +2321,7 @@ export default function AdminPage() {
   const loadOrders = async () => {
     const { data, error } = await supabase
       .from('card_orders')
-      .select('*, user:profiles(*), card:cards(*)')
+      .select('*, user:users(*), card:cards(*)')
       .order('created_at', { ascending: false });
 
     if (!error && data) {
@@ -2615,6 +2615,141 @@ export default function AdminPage() {
         return acc;
       }, {} as Record<CardRarity, number>);
 
+      const summaryText = Object.entries(summary)
+        .map(([rarity, count]) => `${count} ${rarityNames[rarity as CardRarity]}`)
+        .join(', ');
+
+      success('Pakiet otwarty!', `Gracz otrzymał: ${summaryText}`);
+    } catch (e: unknown) {
+      const errorMessage = e instanceof Error ? e.message : 'Nieznany błąd';
+      showError('Błąd', errorMessage);
+    } finally {
+      setProcessingMystery(null);
+    }
+  };
+
+  // Otwórz pakiet który jest już opłacony przez PayU (status 'paid')
+  const handleOpenPaidMysteryPack = async (purchase: MysteryPackPurchase) => {
+    if (!profile?.id) return;
+    setProcessingMystery(purchase.id);
+
+    try {
+      // Pobierz dostępne karty samochodów
+      const { data: availableCards, error: cardsError } = await supabase
+        .from('cards')
+        .select('*')
+        .eq('card_type', 'car')
+        .eq('is_active', true);
+
+      if (cardsError || !availableCards || availableCards.length === 0) {
+        throw new Error('Brak dostępnych kart w systemie');
+      }
+
+      const packType = purchase.pack_type;
+      if (!packType) throw new Error('Nieznany typ pakietu');
+
+      const cardCount = packType.card_count || 3;
+      const selectedCards: CollectibleCard[] = [];
+
+      const cardsByRarity: Record<string, CollectibleCard[]> = {
+        common: availableCards.filter((c: CollectibleCard) => c.rarity === 'common'),
+        rare: availableCards.filter((c: CollectibleCard) => c.rarity === 'rare'),
+        epic: availableCards.filter((c: CollectibleCard) => c.rarity === 'epic'),
+        legendary: availableCards.filter((c: CollectibleCard) => c.rarity === 'legendary'),
+      };
+
+      const rollRarity = (): CardRarity => {
+        const roll = Math.random() * 100;
+        if (roll < (packType.legendary_chance || 3)) return 'legendary';
+        if (roll < (packType.legendary_chance || 3) + (packType.epic_chance || 12)) return 'epic';
+        if (roll < (packType.legendary_chance || 3) + (packType.epic_chance || 12) + (packType.rare_chance || 25)) return 'rare';
+        return 'common';
+      };
+
+      for (let i = 0; i < cardCount; i++) {
+        let targetRarity = rollRarity();
+
+        if (packType.size === 'large' && i === cardCount - 1 &&
+            !selectedCards.some(c => c.rarity === 'epic' || c.rarity === 'legendary')) {
+          targetRarity = Math.random() < 0.3 ? 'legendary' : 'epic';
+        }
+
+        let pool = cardsByRarity[targetRarity];
+        if (!pool || pool.length === 0) {
+          const fallbackOrder: CardRarity[] = ['epic', 'rare', 'common'];
+          for (const fallback of fallbackOrder) {
+            if (cardsByRarity[fallback] && cardsByRarity[fallback].length > 0) {
+              pool = cardsByRarity[fallback];
+              break;
+            }
+          }
+        }
+
+        if (pool && pool.length > 0) {
+          const randomIndex = Math.floor(Math.random() * pool.length);
+          selectedCards.push(pool[randomIndex]);
+        }
+      }
+
+      // Dodaj karty do kolekcji użytkownika
+      const userCards = selectedCards.map(card => ({
+        user_id: purchase.user_id,
+        card_id: card.id,
+        obtained_from: 'purchase' as const,
+      }));
+
+      const { error: insertError } = await supabase
+        .from('user_cards')
+        .insert(userCards);
+
+      if (insertError) throw insertError;
+
+      // Zaktualizuj status na 'opened'
+      await supabase
+        .from('mystery_pack_purchases')
+        .update({
+          status: 'opened',
+          cards_received: selectedCards.map(c => c.id),
+          opened_at: new Date().toISOString(),
+        })
+        .eq('id', purchase.id);
+
+      // XP za karty (1 XP za kartę)
+      const { data: userXpData } = await supabase
+        .from('users')
+        .select('total_xp')
+        .eq('id', purchase.user_id)
+        .single();
+
+      if (userXpData) {
+        await supabase
+          .from('users')
+          .update({ total_xp: (userXpData.total_xp || 0) + selectedCards.length })
+          .eq('id', purchase.user_id);
+      }
+
+      // Powiadomienie dla gracza
+      await supabase.from('notifications').insert({
+        user_id: purchase.user_id,
+        title: 'Pakiet otwarty!',
+        message: `Twój pakiet ${packType.name} został otwarty! Sprawdź nowe karty w kolekcji.`,
+        type: 'card_received',
+        read: false,
+      });
+
+      setMysteryPurchases(prev => prev.map(p =>
+        p.id === purchase.id
+          ? { ...p, status: 'opened' as MysteryPackStatus, opened_at: new Date().toISOString() }
+          : p
+      ));
+
+      const rarityNames: Record<CardRarity, string> = {
+        common: 'zwykłych', rare: 'rzadkich', epic: 'epickich', legendary: 'legendarnych'
+      };
+      const summary = selectedCards.reduce((acc, c) => {
+        acc[c.rarity] = (acc[c.rarity] || 0) + 1;
+        return acc;
+      }, {} as Record<CardRarity, number>);
       const summaryText = Object.entries(summary)
         .map(([rarity, count]) => `${count} ${rarityNames[rarity as CardRarity]}`)
         .join(', ');
@@ -3746,12 +3881,18 @@ export default function AdminPage() {
                   </div>
 
                   {/* Statystyki */}
-                  <div className="grid grid-cols-3 gap-3">
+                  <div className="grid grid-cols-4 gap-3">
                     <Card className="text-center">
                       <div className="text-2xl font-bold text-yellow-500">
                         {mysteryPurchases.filter(p => p.status === 'pending').length}
                       </div>
                       <div className="text-xs text-dark-400">Oczekujące</div>
+                    </Card>
+                    <Card className="text-center">
+                      <div className="text-2xl font-bold text-emerald-500">
+                        {mysteryPurchases.filter(p => p.status === 'paid').length}
+                      </div>
+                      <div className="text-xs text-dark-400">Opłacone</div>
                     </Card>
                     <Card className="text-center">
                       <div className="text-2xl font-bold text-green-500">
@@ -3761,7 +3902,7 @@ export default function AdminPage() {
                     </Card>
                     <Card className="text-center">
                       <div className="text-2xl font-bold text-turbo-400">
-                        {mysteryPurchases.filter(p => p.status === 'opened').reduce((sum, p) => sum + p.amount, 0).toFixed(0)} zł
+                        {mysteryPurchases.filter(p => p.status === 'paid' || p.status === 'opened').reduce((sum, p) => sum + p.amount, 0).toFixed(0)} zł
                       </div>
                       <div className="text-xs text-dark-400">Zebrano</div>
                     </Card>
@@ -3778,16 +3919,19 @@ export default function AdminPage() {
                   ) : (
                     <div className="space-y-3">
                       {mysteryPurchases.map(purchase => (
-                        <Card key={purchase.id} className={`p-4 ${purchase.status !== 'pending' ? 'opacity-60' : ''}`}>
+                        <Card key={purchase.id} className={`p-4 ${purchase.status === 'opened' || purchase.status === 'cancelled' ? 'opacity-60' : ''}`}>
                           <div className="flex items-center gap-4">
                             {/* Ikona statusu */}
                             <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
                               purchase.status === 'pending' ? 'bg-yellow-500/20' :
+                              purchase.status === 'paid' ? 'bg-emerald-500/20' :
                               purchase.status === 'opened' ? 'bg-green-500/20' :
                               'bg-dark-700'
                             }`}>
                               {purchase.status === 'pending' ? (
                                 <Clock className="w-6 h-6 text-yellow-500" />
+                              ) : purchase.status === 'paid' ? (
+                                <CreditCard className="w-6 h-6 text-emerald-500" />
                               ) : purchase.status === 'opened' ? (
                                 <CheckCircle className="w-6 h-6 text-green-500" />
                               ) : (
@@ -3838,6 +3982,20 @@ export default function AdminPage() {
                               </div>
                             )}
 
+                            {purchase.status === 'paid' && (
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  size="sm"
+                                  onClick={() => handleOpenPaidMysteryPack(purchase)}
+                                  loading={processingMystery === purchase.id}
+                                >
+                                  <Gift className="w-4 h-4 mr-1" />
+                                  Otwórz pakiet
+                                </Button>
+                                <Badge variant="success">Opłacone</Badge>
+                              </div>
+                            )}
+
                             {purchase.status === 'opened' && (
                               <span className="text-green-400 text-sm flex items-center gap-1">
                                 <CheckCircle className="w-4 h-4" />
@@ -3861,8 +4019,9 @@ export default function AdminPage() {
                       <div>
                         <p className="text-emerald-400 font-medium">Jak to działa?</p>
                         <p className="text-sm text-dark-300 mt-1">
-                          Gracz kupuje pakiet → otrzymuje kod zamówienia → płaci przelewem z kodem w tytule →
-                          Ty zatwierdzasz płatność → System automatycznie losuje karty i dodaje je do kolekcji gracza.
+                          Gracz kupuje pakiet → płaci przez PayU (BLIK/karta/przelew) →
+                          PayU potwierdza płatność automatycznie → Kliknij &quot;Otwórz pakiet&quot; przy opłaconych →
+                          System losuje karty i dodaje je do kolekcji gracza.
                         </p>
                       </div>
                     </div>

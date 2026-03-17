@@ -1,6 +1,7 @@
 ﻿'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { useCards, RARITY_CONFIG } from '@/hooks/useCards';
 import { useCardOrders } from '@/hooks/useCardOrders';
@@ -196,13 +197,33 @@ interface BrandGroup {
 
 export default function CardsPage() {
   const { profile } = useAuth();
+  const searchParams = useSearchParams();
   const { allCards, userCards, loading, hasCard, getUserCardCount, getCollectionStats, getCardsByType, fetchCardImages } = useCards({
     userId: profile?.id,
   });
-  const { createOrder, getUserOrderForCard } = useCardOrders({
+  const { orders, createOrder, getUserOrderForCard, refreshOrders } = useCardOrders({
     userId: profile?.id,
   });
   const [showPaymentGateway, setShowPaymentGateway] = useState(false);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Po powrocie z PayU — poll co 3s żeby sprawdzić czy webhook zaktualizował status zamówienia
+  useEffect(() => {
+    if (searchParams.get('payment') === 'success') {
+      let attempts = 0;
+      pollRef.current = setInterval(async () => {
+        attempts++;
+        await refreshOrders();
+        if (attempts >= 20 && pollRef.current) {
+          clearInterval(pollRef.current);
+        }
+      }, 3000);
+    }
+
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+    };
+  }, [searchParams]);
 
   const [activeTab, setActiveTab] = useState<ViewTab>('car');
   const [collectionFilter, setCollectionFilter] = useState<'all' | 'owned' | 'to_collect'>('all');

@@ -2,20 +2,33 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { verifyPayUSignature } from '@/lib/payu';
 
-// Service-level client — używa anon key + RLS, ale callback wymaga UPDATE access
+// Service Role client — omija RLS, wymagany bo webhook PayU nie ma sesji użytkownika
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+  process.env.SUPABASE_SERVICE_ROLE_KEY || ''
 );
+
+function log(level: 'info' | 'error' | 'warn', msg: string, data?: Record<string, unknown>) {
+  const entry = { timestamp: new Date().toISOString(), source: 'payu-notify', msg, ...data };
+  if (level === 'error') console.error(JSON.stringify(entry));
+  else if (level === 'warn') console.warn(JSON.stringify(entry));
+  else console.log(JSON.stringify(entry));
+}
 
 export async function POST(request: NextRequest) {
   try {
+    // Sprawdź czy service role key jest skonfigurowany
+    if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      log('error', 'SUPABASE_SERVICE_ROLE_KEY not configured — webhook cannot update database');
+      return NextResponse.json({ status: 'OK' });
+    }
+
     const rawBody = await request.text();
     const signatureHeader = request.headers.get('OpenPayu-Signature') || '';
 
     // Weryfikacja podpisu
     if (!verifyPayUSignature(rawBody, signatureHeader)) {
-      console.error('PayU notify: invalid signature');
+      log('error', 'Invalid PayU signature', { signatureHeader });
       return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
     }
 
@@ -23,38 +36,46 @@ export async function POST(request: NextRequest) {
     const order = payload.order;
 
     if (!order) {
+      log('error', 'Missing order data in payload');
       return NextResponse.json({ error: 'Missing order data' }, { status: 400 });
     }
 
     const { orderId, extOrderId, orderStatus } = order;
 
-    console.log(`PayU notify: orderId=${orderId}, extOrderId=${extOrderId}, status=${orderStatus}`);
+    log('info', 'Received PayU notification', { orderId, extOrderId, orderStatus });
 
-    // Szukaj zamówienia po extOrderId (nasz order_code) lub po payuOrderId w admin_notes
     if (orderStatus === 'COMPLETED') {
       // Spróbuj znaleźć w card_orders
-      const { data: cardOrder } = await supabase
+      const { data: cardOrder, error: cardQueryError } = await supabase
         .from('card_orders')
         .select('id, user_id, card_id, amount, xp_reward, status')
         .eq('order_code', extOrderId)
         .eq('status', 'pending')
         .maybeSingle();
 
+      if (cardQueryError) {
+        log('error', 'Error querying card_orders', { error: cardQueryError.message, extOrderId });
+      }
+
       if (cardOrder) {
-        await handleCardOrderCompleted(cardOrder);
+        await handleCardOrderCompleted(cardOrder, orderId);
         return NextResponse.json({ status: 'OK' });
       }
 
       // Spróbuj znaleźć w mystery_pack_purchases
-      const { data: packOrder } = await supabase
+      const { data: packOrder, error: packQueryError } = await supabase
         .from('mystery_pack_purchases')
         .select('id, user_id, pack_type_id, amount, status, order_code')
         .eq('order_code', extOrderId)
         .eq('status', 'pending')
         .maybeSingle();
 
+      if (packQueryError) {
+        log('error', 'Error querying mystery_pack_purchases', { error: packQueryError.message, extOrderId });
+      }
+
       if (packOrder) {
-        await handlePackOrderCompleted(packOrder);
+        await handlePackOrderCompleted(packOrder, orderId);
         return NextResponse.json({ status: 'OK' });
       }
 
@@ -67,7 +88,7 @@ export async function POST(request: NextRequest) {
         .maybeSingle();
 
       if (cardByPayu) {
-        await handleCardOrderCompleted(cardByPayu);
+        await handleCardOrderCompleted(cardByPayu, orderId);
         return NextResponse.json({ status: 'OK' });
       }
 
@@ -79,33 +100,45 @@ export async function POST(request: NextRequest) {
         .maybeSingle();
 
       if (packByPayu) {
-        await handlePackOrderCompleted(packByPayu);
+        await handlePackOrderCompleted(packByPayu, orderId);
         return NextResponse.json({ status: 'OK' });
       }
 
-      console.error(`PayU notify: order not found for extOrderId=${extOrderId}, payuOrderId=${orderId}`);
+      log('warn', 'Order not found for COMPLETED notification', { extOrderId, orderId });
     }
 
     if (orderStatus === 'CANCELED' || orderStatus === 'REJECTED' || orderStatus === 'EXPIRED') {
-      // Anuluj zamówienie
-      await supabase
+      log('info', 'Cancelling order', { extOrderId, orderStatus });
+
+      const { error: cancelCardError } = await supabase
         .from('card_orders')
         .update({ status: 'cancelled' })
         .eq('order_code', extOrderId)
         .eq('status', 'pending');
 
-      await supabase
+      if (cancelCardError) {
+        log('error', 'Error cancelling card_order', { error: cancelCardError.message, extOrderId });
+      }
+
+      const { error: cancelPackError } = await supabase
         .from('mystery_pack_purchases')
         .update({ status: 'cancelled' })
         .eq('order_code', extOrderId)
         .eq('status', 'pending');
+
+      if (cancelPackError) {
+        log('error', 'Error cancelling mystery_pack_purchase', { error: cancelPackError.message, extOrderId });
+      }
     }
 
-    // PayU wymaga odpowiedzi 200 OK
+    // PENDING / WAITING_FOR_CONFIRMATION — ignorujemy, czekamy na COMPLETED
     return NextResponse.json({ status: 'OK' });
   } catch (error) {
-    console.error('PayU notify error:', error);
-    // Zwracamy 200 żeby PayU nie ponawiało — logujemy błąd
+    log('error', 'Unhandled error in PayU notify', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
+    // Zwracamy 200 żeby PayU nie ponawiało — błąd jest zalogowany
     return NextResponse.json({ status: 'OK' });
   }
 }
@@ -118,9 +151,10 @@ async function handleCardOrderCompleted(cardOrder: {
   amount: number;
   xp_reward: number;
   status: string;
-}) {
-  // Idempotency: sprawdź czy już nie przetworzone
+}, payuOrderId: string) {
   if (cardOrder.status !== 'pending') return;
+
+  log('info', 'Processing card order', { orderId: cardOrder.id, userId: cardOrder.user_id });
 
   // Oznacz jako opłacone
   const { error: updateError } = await supabase
@@ -128,17 +162,18 @@ async function handleCardOrderCompleted(cardOrder: {
     .update({
       status: 'paid',
       paid_at: new Date().toISOString(),
+      admin_notes: `payu:${payuOrderId}`,
     })
     .eq('id', cardOrder.id)
-    .eq('status', 'pending'); // Dodatkowe zabezpieczenie przed race condition
+    .eq('status', 'pending');
 
   if (updateError) {
-    console.error('PayU: card order update error:', updateError);
+    log('error', 'Failed to update card_order status', { error: updateError.message, orderId: cardOrder.id });
     return;
   }
 
   // Dodaj kartę do kolekcji użytkownika
-  await supabase
+  const { error: insertCardError } = await supabase
     .from('user_cards')
     .insert({
       user_id: cardOrder.user_id,
@@ -146,19 +181,41 @@ async function handleCardOrderCompleted(cardOrder: {
       obtained_from: 'purchase',
     });
 
+  if (insertCardError) {
+    log('error', 'Failed to insert user_card', { error: insertCardError.message, orderId: cardOrder.id });
+  }
+
+  // Dodaj do donation_total
+  const { data: userData, error: userError } = await supabase
+    .from('users')
+    .select('donation_total')
+    .eq('id', cardOrder.user_id)
+    .single();
+
+  if (userError) {
+    log('error', 'Failed to fetch user for donation update', { error: userError.message, userId: cardOrder.user_id });
+  } else if (userData) {
+    const { error: donationError } = await supabase
+      .from('users')
+      .update({ donation_total: (userData.donation_total || 0) + cardOrder.amount })
+      .eq('id', cardOrder.user_id);
+
+    if (donationError) {
+      log('error', 'Failed to update donation_total', { error: donationError.message, userId: cardOrder.user_id });
+    }
+  }
+
   // Dodaj XP
   if (cardOrder.xp_reward > 0) {
-    await supabase.rpc('add_user_xp', {
+    const { error: xpError } = await supabase.rpc('add_user_xp', {
       p_user_id: cardOrder.user_id,
       p_xp_amount: cardOrder.xp_reward,
     });
-  }
 
-  // Aktualizuj donation_total
-  await supabase.rpc('add_user_xp', {
-    p_user_id: cardOrder.user_id,
-    p_xp_amount: 0, // tylko trigger na donation
-  });
+    if (xpError) {
+      log('error', 'Failed to add XP', { error: xpError.message, userId: cardOrder.user_id });
+    }
+  }
 
   // Aktualizuj sold_count na karcie
   const { data: card } = await supabase
@@ -175,15 +232,19 @@ async function handleCardOrderCompleted(cardOrder: {
   }
 
   // Wyślij powiadomienie
-  await supabase.from('notifications').insert({
+  const { error: notifError } = await supabase.from('notifications').insert({
     user_id: cardOrder.user_id,
     title: 'Płatność potwierdzona!',
-    message: `Twoja karta została dodana do kolekcji. Dziękujemy za wsparcie Turbo Pomoc!`,
+    message: 'Twoja karta została dodana do kolekcji. Dziękujemy za wsparcie Turbo Pomoc!',
     type: 'card_received',
     read: false,
   });
 
-  console.log(`PayU: card order ${cardOrder.id} completed for user ${cardOrder.user_id}`);
+  if (notifError) {
+    log('error', 'Failed to send notification', { error: notifError.message, userId: cardOrder.user_id });
+  }
+
+  log('info', 'Card order completed successfully', { orderId: cardOrder.id, userId: cardOrder.user_id });
 }
 
 // Obsługa zakończonej płatności za mystery pack
@@ -193,10 +254,12 @@ async function handlePackOrderCompleted(packOrder: {
   pack_type_id: string;
   amount: number;
   status: string;
-}) {
+}, payuOrderId: string) {
   if (packOrder.status !== 'pending') return;
 
-  // Oznacz jako opłacone (admin otworzy pakiet ręcznie lub automatycznie)
+  log('info', 'Processing pack order', { orderId: packOrder.id, userId: packOrder.user_id });
+
+  // Oznacz jako opłacone
   const { error: updateError } = await supabase
     .from('mystery_pack_purchases')
     .update({
@@ -207,12 +270,32 @@ async function handlePackOrderCompleted(packOrder: {
     .eq('status', 'pending');
 
   if (updateError) {
-    console.error('PayU: pack order update error:', updateError);
+    log('error', 'Failed to update mystery_pack_purchase status', { error: updateError.message, orderId: packOrder.id });
     return;
   }
 
+  // Dodaj do donation_total
+  const { data: userData, error: userError } = await supabase
+    .from('users')
+    .select('donation_total')
+    .eq('id', packOrder.user_id)
+    .single();
+
+  if (userError) {
+    log('error', 'Failed to fetch user for donation update', { error: userError.message, userId: packOrder.user_id });
+  } else if (userData) {
+    const { error: donationError } = await supabase
+      .from('users')
+      .update({ donation_total: (userData.donation_total || 0) + packOrder.amount })
+      .eq('id', packOrder.user_id);
+
+    if (donationError) {
+      log('error', 'Failed to update donation_total', { error: donationError.message, userId: packOrder.user_id });
+    }
+  }
+
   // Wyślij powiadomienie
-  await supabase.from('notifications').insert({
+  const { error: notifError } = await supabase.from('notifications').insert({
     user_id: packOrder.user_id,
     title: 'Płatność za pakiet potwierdzona!',
     message: 'Twój pakiet Mystery Garage został opłacony. Otwórz go w zakładce Mystery Garage!',
@@ -220,5 +303,9 @@ async function handlePackOrderCompleted(packOrder: {
     read: false,
   });
 
-  console.log(`PayU: pack order ${packOrder.id} completed for user ${packOrder.user_id}`);
+  if (notifError) {
+    log('error', 'Failed to send pack notification', { error: notifError.message, userId: packOrder.user_id });
+  }
+
+  log('info', 'Pack order completed successfully', { orderId: packOrder.id, userId: packOrder.user_id });
 }
