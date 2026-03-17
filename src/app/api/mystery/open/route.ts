@@ -132,7 +132,7 @@ export async function POST(request: NextRequest) {
     const userCards = selectedCards.map(card => ({
       user_id: purchase.user_id,
       card_id: card.id,
-      obtained_from: 'purchase',
+      obtained_from: 'admin',
     }));
 
     const { error: insertError } = await supabaseAdmin
