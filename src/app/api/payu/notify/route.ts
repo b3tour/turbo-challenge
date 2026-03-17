@@ -247,7 +247,7 @@ async function handleCardOrderCompleted(cardOrder: {
   log('info', 'Card order completed successfully', { orderId: cardOrder.id, userId: cardOrder.user_id });
 }
 
-// Obsługa zakończonej płatności za mystery pack
+// Obsługa zakończonej płatności za mystery pack — automatyczne otwarcie pakietu
 async function handlePackOrderCompleted(packOrder: {
   id: string;
   user_id: string;
@@ -257,55 +257,140 @@ async function handlePackOrderCompleted(packOrder: {
 }, payuOrderId: string) {
   if (packOrder.status !== 'pending') return;
 
-  log('info', 'Processing pack order', { orderId: packOrder.id, userId: packOrder.user_id });
+  log('info', 'Processing pack order — auto-open', { orderId: packOrder.id, userId: packOrder.user_id, packTypeId: packOrder.pack_type_id });
 
-  // Oznacz jako opłacone
+  // Pobierz typ pakietu
+  const { data: packType, error: packTypeError } = await supabase
+    .from('mystery_pack_types')
+    .select('*')
+    .eq('id', packOrder.pack_type_id)
+    .single();
+
+  if (packTypeError || !packType) {
+    log('error', 'Pack type not found', { packTypeId: packOrder.pack_type_id });
+    // Fallback: oznacz jako paid, admin otworzy ręcznie
+    await supabase.from('mystery_pack_purchases').update({ status: 'paid', paid_at: new Date().toISOString() }).eq('id', packOrder.id);
+    return;
+  }
+
+  // Pobierz dostępne karty
+  const { data: availableCards } = await supabase
+    .from('cards')
+    .select('*')
+    .eq('card_type', 'car')
+    .eq('is_active', true);
+
+  if (!availableCards || availableCards.length === 0) {
+    log('error', 'No available cards for pack opening', { orderId: packOrder.id });
+    await supabase.from('mystery_pack_purchases').update({ status: 'paid', paid_at: new Date().toISOString() }).eq('id', packOrder.id);
+    return;
+  }
+
+  // Grupuj po rzadkości
+  const cardsByRarity: Record<string, typeof availableCards> = {
+    common: availableCards.filter(c => c.rarity === 'common'),
+    rare: availableCards.filter(c => c.rarity === 'rare'),
+    epic: availableCards.filter(c => c.rarity === 'epic'),
+    legendary: availableCards.filter(c => c.rarity === 'legendary'),
+  };
+
+  const rollRarity = (): string => {
+    const roll = Math.random() * 100;
+    if (roll < (packType.legendary_chance || 3)) return 'legendary';
+    if (roll < (packType.legendary_chance || 3) + (packType.epic_chance || 12)) return 'epic';
+    if (roll < (packType.legendary_chance || 3) + (packType.epic_chance || 12) + (packType.rare_chance || 25)) return 'rare';
+    return 'common';
+  };
+
+  // Losuj karty
+  const cardCount = packType.card_count || 3;
+  const selectedCards: typeof availableCards = [];
+
+  for (let i = 0; i < cardCount; i++) {
+    let targetRarity = rollRarity();
+
+    if (packType.size === 'large' && i === cardCount - 1 &&
+        !selectedCards.some(c => c.rarity === 'epic' || c.rarity === 'legendary')) {
+      targetRarity = Math.random() < 0.3 ? 'legendary' : 'epic';
+    }
+
+    let pool = cardsByRarity[targetRarity];
+    if (!pool || pool.length === 0) {
+      for (const fallback of ['epic', 'rare', 'common']) {
+        if (cardsByRarity[fallback] && cardsByRarity[fallback].length > 0) {
+          pool = cardsByRarity[fallback];
+          break;
+        }
+      }
+    }
+
+    if (pool && pool.length > 0) {
+      selectedCards.push(pool[Math.floor(Math.random() * pool.length)]);
+    }
+  }
+
+  // Dodaj karty do kolekcji
+  const { error: insertError } = await supabase
+    .from('user_cards')
+    .insert(selectedCards.map(card => ({
+      user_id: packOrder.user_id,
+      card_id: card.id,
+      obtained_from: 'purchase',
+    })));
+
+  if (insertError) {
+    log('error', 'Failed to insert user_cards', { error: insertError.message, orderId: packOrder.id });
+    // Oznacz jako paid — admin otworzy ręcznie
+    await supabase.from('mystery_pack_purchases').update({ status: 'paid', paid_at: new Date().toISOString() }).eq('id', packOrder.id);
+    return;
+  }
+
+  // Zaktualizuj status na 'opened' od razu
   const { error: updateError } = await supabase
     .from('mystery_pack_purchases')
     .update({
-      status: 'paid',
+      status: 'opened',
       paid_at: new Date().toISOString(),
+      cards_received: selectedCards.map(c => c.id),
+      opened_at: new Date().toISOString(),
     })
     .eq('id', packOrder.id)
     .eq('status', 'pending');
 
   if (updateError) {
-    log('error', 'Failed to update mystery_pack_purchase status', { error: updateError.message, orderId: packOrder.id });
-    return;
+    log('error', 'Failed to update pack status to opened', { error: updateError.message, orderId: packOrder.id });
   }
 
-  // Dodaj do donation_total
-  const { data: userData, error: userError } = await supabase
+  // Dodaj donation_total + XP
+  const { data: userData } = await supabase
     .from('users')
-    .select('donation_total')
+    .select('donation_total, total_xp')
     .eq('id', packOrder.user_id)
     .single();
 
-  if (userError) {
-    log('error', 'Failed to fetch user for donation update', { error: userError.message, userId: packOrder.user_id });
-  } else if (userData) {
-    const { error: donationError } = await supabase
+  if (userData) {
+    await supabase
       .from('users')
-      .update({ donation_total: (userData.donation_total || 0) + packOrder.amount })
+      .update({
+        donation_total: (userData.donation_total || 0) + packOrder.amount,
+        total_xp: (userData.total_xp || 0) + selectedCards.length,
+      })
       .eq('id', packOrder.user_id);
-
-    if (donationError) {
-      log('error', 'Failed to update donation_total', { error: donationError.message, userId: packOrder.user_id });
-    }
   }
 
-  // Wyślij powiadomienie
-  const { error: notifError } = await supabase.from('notifications').insert({
+  // Podsumowanie kart
+  const rarityNames: Record<string, string> = { common: 'zwykłych', rare: 'rzadkich', epic: 'epickich', legendary: 'legendarnych' };
+  const summary = selectedCards.reduce((acc, c) => { acc[c.rarity] = (acc[c.rarity] || 0) + 1; return acc; }, {} as Record<string, number>);
+  const summaryText = Object.entries(summary).map(([r, n]) => `${n} ${rarityNames[r] || r}`).join(', ');
+
+  // Powiadomienie z wynikiem
+  await supabase.from('notifications').insert({
     user_id: packOrder.user_id,
-    title: 'Płatność za pakiet potwierdzona!',
-    message: 'Twój pakiet Mystery Garage został opłacony. Otwórz go w zakładce Mystery Garage!',
-    type: 'card_received',
+    title: 'Pakiet otwarty!',
+    message: `Twój pakiet ${packType.name} został otwarty! Otrzymałeś ${summaryText}. Sprawdź kolekcję!`,
+    type: 'system',
     read: false,
   });
 
-  if (notifError) {
-    log('error', 'Failed to send pack notification', { error: notifError.message, userId: packOrder.user_id });
-  }
-
-  log('info', 'Pack order completed successfully', { orderId: packOrder.id, userId: packOrder.user_id });
+  log('info', 'Pack auto-opened successfully', { orderId: packOrder.id, userId: packOrder.user_id, cards: selectedCards.length, summary: summaryText });
 }
