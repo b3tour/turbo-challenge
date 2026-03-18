@@ -62,6 +62,7 @@ import { LEVELS } from '@/lib/utils';
 import { Level } from '@/types';
 import AnnouncementsAdmin from '@/components/admin/AnnouncementsAdmin';
 import AppContentAdmin from '@/components/admin/AppContentAdmin';
+import { MysteryPackEditor } from '@/components/admin/MysteryPackEditor';
 import { sendUserNotification } from '@/hooks/useAnnouncements';
 import { Bell, FileText, ClipboardList } from 'lucide-react';
 
@@ -3826,7 +3827,12 @@ export default function AdminPage() {
                     </Button>
                   </div>
 
-                  {/* Statystyki */}
+                  {/* Edytor pakietów */}
+                  <Card>
+                    <MysteryPackEditor />
+                  </Card>
+
+                  {/* Statystyki zamówień */}
                   <div className="grid grid-cols-4 gap-3">
                     <Card className="text-center">
                       <div className="text-2xl font-bold text-yellow-500">
