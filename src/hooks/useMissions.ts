@@ -54,7 +54,16 @@ export function useMissions(options: UseMissionsOptions = {}) {
       setError(fetchError.message);
       setMissions([]);
     } else {
-      setMissions(data as Mission[]);
+      // Auto-harmonogram: filtruj po start_date / end_date
+      const now = new Date();
+      const filtered = (data as Mission[]).filter(m => {
+        // Ukryj misje które jeszcze się nie rozpoczęły (scheduled z przyszłą datą startu)
+        if (m.start_date && new Date(m.start_date) > now) return false;
+        // Ukryj misje które już się zakończyły (end_date w przeszłości)
+        if (m.end_date && new Date(m.end_date) < now) return false;
+        return true;
+      });
+      setMissions(filtered);
     }
 
     setLoading(false);
@@ -466,6 +475,22 @@ export function useMissions(options: UseMissionsOptions = {}) {
     };
   };
 
+  // Czy misja jest nowa (aktywna < 3 dni)
+  const isNewMission = (mission: Mission): boolean => {
+    const threeDaysAgo = Date.now() - 3 * 24 * 60 * 60 * 1000;
+    const missionDate = mission.start_date
+      ? new Date(mission.start_date).getTime()
+      : new Date(mission.created_at).getTime();
+    return missionDate > threeDaysAgo;
+  };
+
+  // Czy misja wkrótce się kończy (< 2 dni do end_date)
+  const isMissionExpiringSoon = (mission: Mission): boolean => {
+    if (!mission.end_date) return false;
+    const twoDaysFromNow = Date.now() + 2 * 24 * 60 * 60 * 1000;
+    return new Date(mission.end_date).getTime() < twoDaysFromNow;
+  };
+
   return {
     missions,
     userSubmissions,
@@ -474,6 +499,8 @@ export function useMissions(options: UseMissionsOptions = {}) {
     refetch: fetchMissions,
     canCompleteMission,
     isMissionLocked,
+    isNewMission,
+    isMissionExpiringSoon,
     completeMissionQR,
     completeMissionPhoto,
     completeMissionQuiz,

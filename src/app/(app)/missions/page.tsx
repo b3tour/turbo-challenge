@@ -34,6 +34,8 @@ export default function MissionsPage() {
     userSubmissions,
     loading,
     isMissionLocked,
+    isNewMission,
+    isMissionExpiringSoon,
     completeMissionQR,
     completeMissionPhoto,
     completeMissionQuiz,
@@ -396,6 +398,8 @@ export default function MissionsPage() {
                 onClick={() => handleMissionClick(mission)}
                 isLevelLocked={lockStatus.locked}
                 requiredLevel={lockStatus.requiredLevel}
+                isNew={isNewMission(mission)}
+                isExpiringSoon={isMissionExpiringSoon(mission)}
               />
             );
           })}

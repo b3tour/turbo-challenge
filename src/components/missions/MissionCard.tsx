@@ -3,7 +3,7 @@
 import { Mission, Submission } from '@/types';
 import { Badge } from '@/components/ui';
 import { missionTypeNames, missionTypeStyles, formatNumber } from '@/lib/utils';
-import { Zap, CheckCircle, Loader2, XCircle, Ban, Camera, QrCode, HelpCircle, MapPin, ListTodo, Lock, ChevronRight, Circle } from 'lucide-react';
+import { Zap, CheckCircle, Loader2, XCircle, Ban, Camera, QrCode, HelpCircle, MapPin, ListTodo, ClipboardList, Lock, ChevronRight, Circle, Sparkles, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const missionIconMap: Record<string, React.ElementType> = {
@@ -12,6 +12,7 @@ const missionIconMap: Record<string, React.ElementType> = {
   quiz: HelpCircle,
   gps: MapPin,
   manual: ListTodo,
+  survey: ClipboardList,
 };
 
 interface MissionCardProps {
@@ -20,6 +21,8 @@ interface MissionCardProps {
   onClick?: () => void;
   isLevelLocked?: boolean;
   requiredLevel?: number;
+  isNew?: boolean;
+  isExpiringSoon?: boolean;
 }
 
 export function MissionCard({
@@ -28,6 +31,8 @@ export function MissionCard({
   onClick,
   isLevelLocked = false,
   requiredLevel,
+  isNew = false,
+  isExpiringSoon = false,
 }: MissionCardProps) {
   const isCompleted = userSubmission?.status === 'approved';
   const isPending = userSubmission?.status === 'pending';
@@ -106,7 +111,21 @@ export function MissionCard({
 
       {/* Title + description + status */}
       <div className="flex-1 min-w-0">
-        <h4 className="font-medium text-white text-sm truncate">{mission.title}</h4>
+        <div className="flex items-center gap-1.5">
+          <h4 className="font-medium text-white text-sm truncate">{mission.title}</h4>
+          {isNew && !isCompleted && (
+            <span className="flex-shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-green-500/20 text-green-400 text-[10px] font-bold uppercase tracking-wider">
+              <Sparkles className="w-2.5 h-2.5" />
+              Nowa
+            </span>
+          )}
+          {isExpiringSoon && !isCompleted && !isNew && (
+            <span className="flex-shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-red-500/20 text-red-400 text-[10px] font-bold uppercase tracking-wider">
+              <Clock className="w-2.5 h-2.5" />
+              Kończy się
+            </span>
+          )}
+        </div>
         <p className="text-xs text-dark-400 line-clamp-1 mt-0.5">{mission.description}</p>
         <div className="mt-1">{statusBadge}</div>
       </div>
