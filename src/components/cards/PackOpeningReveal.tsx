@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CollectibleCard } from '@/types';
 import { RARITY_CONFIG } from '@/hooks/useCards';
@@ -35,56 +35,84 @@ const RARITY_PARTICLES: Record<string, string> = {
   common: '#6b7280',
 };
 
-type Phase = 'pack' | 'burst' | 'cards' | 'summary';
+type Phase = 'idle' | 'loading' | 'pack' | 'burst' | 'cards';
 
 export function PackOpeningReveal({ isOpen, onClose, cards, packName, loading }: PackOpeningRevealProps) {
-  const [phase, setPhase] = useState<Phase>('pack');
+  const [phase, setPhase] = useState<Phase>('idle');
   const [revealedCount, setRevealedCount] = useState(0);
   const [allRevealed, setAllRevealed] = useState(false);
+  const prevOpenRef = useRef(false);
 
-  // Reset state when opening
+  // Detect open → start flow
   useEffect(() => {
-    if (isOpen && cards.length > 0 && !loading) {
-      setPhase('pack');
+    if (isOpen && !prevOpenRef.current) {
+      // Just opened — start with loading or pack
+      setRevealedCount(0);
+      setAllRevealed(false);
+      if (loading || cards.length === 0) {
+        setPhase('loading');
+      } else {
+        setPhase('pack');
+      }
+    }
+    if (!isOpen && prevOpenRef.current) {
+      // Closed — reset
+      setPhase('idle');
       setRevealedCount(0);
       setAllRevealed(false);
     }
-  }, [isOpen, cards, loading]);
+    prevOpenRef.current = isOpen;
+  }, [isOpen, loading, cards.length]);
 
-  // Auto-advance from pack → burst → cards
+  // When loading finishes and we have cards → go to pack
   useEffect(() => {
-    if (phase === 'pack' && cards.length > 0 && !loading) {
+    if (phase === 'loading' && !loading && cards.length > 0) {
+      setPhase('pack');
+    }
+  }, [phase, loading, cards.length]);
+
+  // Pack → burst after shake animation
+  useEffect(() => {
+    if (phase === 'pack') {
       const timer = setTimeout(() => setPhase('burst'), 1800);
       return () => clearTimeout(timer);
     }
+  }, [phase]);
+
+  // Burst → cards after explosion
+  useEffect(() => {
     if (phase === 'burst') {
       const timer = setTimeout(() => setPhase('cards'), 800);
       return () => clearTimeout(timer);
     }
-  }, [phase, cards, loading]);
+  }, [phase]);
 
   // Sequential card reveal
   useEffect(() => {
     if (phase === 'cards' && revealedCount < cards.length) {
-      const delay = cards[revealedCount]?.rarity === 'legendary' ? 700
-        : cards[revealedCount]?.rarity === 'epic' ? 550
+      const card = cards[revealedCount];
+      const delay = card?.rarity === 'legendary' ? 700
+        : card?.rarity === 'epic' ? 550
         : 400;
       const timer = setTimeout(() => setRevealedCount(prev => prev + 1), delay);
       return () => clearTimeout(timer);
     }
-    if (phase === 'cards' && revealedCount >= cards.length && cards.length > 0) {
+    if (phase === 'cards' && revealedCount >= cards.length && cards.length > 0 && !allRevealed) {
       const timer = setTimeout(() => setAllRevealed(true), 600);
       return () => clearTimeout(timer);
     }
-  }, [phase, revealedCount, cards]);
+  }, [phase, revealedCount, cards, allRevealed]);
 
   const handleSkipToSummary = useCallback(() => {
+    if (phase !== 'cards') {
+      setPhase('cards');
+    }
     setRevealedCount(cards.length);
     setAllRevealed(true);
-  }, [cards.length]);
+  }, [cards.length, phase]);
 
   const handleClose = useCallback(() => {
-    setPhase('pack');
+    setPhase('idle');
     setRevealedCount(0);
     setAllRevealed(false);
     onClose();
@@ -122,6 +150,22 @@ export function PackOpeningReveal({ isOpen, onClose, cards, packName, loading }:
           {/* Content */}
           <div className="relative z-[65] w-full max-w-md mx-4 max-h-[90vh] flex flex-col items-center">
 
+            {/* LOADING */}
+            {phase === 'loading' && (
+              <motion.div
+                className="flex flex-col items-center py-16"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+              >
+                <motion.div
+                  className="w-12 h-12 border-[3px] border-turbo-500/30 border-t-turbo-500 rounded-full"
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                />
+                <p className="text-dark-400 text-sm mt-4">Ładowanie kart...</p>
+              </motion.div>
+            )}
+
             {/* PHASE 1: Pack shaking */}
             {phase === 'pack' && (
               <motion.div className="flex flex-col items-center">
@@ -153,13 +197,11 @@ export function PackOpeningReveal({ isOpen, onClose, cards, packName, loading }:
                   {/* Inner glow */}
                   <motion.div
                     className="absolute inset-0 bg-gradient-to-t from-turbo-500/0 via-turbo-500/10 to-turbo-500/0"
-                    animate={{
-                      opacity: [0.3, 0.8, 0.3],
-                    }}
+                    animate={{ opacity: [0.3, 0.8, 0.3] }}
                     transition={{ duration: 0.8, repeat: Infinity }}
                   />
 
-                  {/* Question marks */}
+                  {/* Question mark */}
                   <motion.div
                     className="text-6xl font-black text-turbo-500/40"
                     animate={{ scale: [1, 1.1, 1], opacity: [0.4, 0.7, 0.4] }}
@@ -176,8 +218,8 @@ export function PackOpeningReveal({ isOpen, onClose, cards, packName, loading }:
                       initial={{ opacity: 0 }}
                       animate={{
                         opacity: [0, 1, 0],
-                        x: [0, (Math.random() - 0.5) * 80],
-                        y: [0, (Math.random() - 0.5) * 80],
+                        x: [0, (i % 2 === 0 ? 1 : -1) * (30 + i * 8)],
+                        y: [0, (i % 3 === 0 ? -1 : 1) * (20 + i * 10)],
                       }}
                       transition={{
                         duration: 1,
@@ -220,7 +262,7 @@ export function PackOpeningReveal({ isOpen, onClose, cards, packName, loading }:
                 {/* Exploding particles */}
                 {[...Array(16)].map((_, i) => {
                   const angle = (i / 16) * Math.PI * 2;
-                  const distance = 120 + Math.random() * 80;
+                  const distance = 120 + (i * 7);
                   return (
                     <motion.div
                       key={i}
@@ -238,7 +280,7 @@ export function PackOpeningReveal({ isOpen, onClose, cards, packName, loading }:
                   );
                 })}
 
-                {/* Ring burst */}
+                {/* Ring bursts */}
                 <motion.div
                   className="absolute w-8 h-8 rounded-full border-2"
                   style={{ borderColor: RARITY_PARTICLES[bestRarity] || '#8b5cf6' }}
@@ -288,7 +330,6 @@ export function PackOpeningReveal({ isOpen, onClose, cards, packName, loading }:
                       <div key={`${card.id}-${index}`} className="relative">
                         <AnimatePresence mode="wait">
                           {!isRevealed ? (
-                            // Unrevealed card back
                             <motion.div
                               key="back"
                               className="aspect-[3/4] rounded-xl border-2 border-dark-600 bg-gradient-to-b from-dark-700 to-dark-800 flex items-center justify-center"
@@ -298,15 +339,10 @@ export function PackOpeningReveal({ isOpen, onClose, cards, packName, loading }:
                               <span className="text-2xl text-dark-600 font-bold">?</span>
                             </motion.div>
                           ) : (
-                            // Revealed card
                             <motion.div
                               key="front"
                               className={`relative aspect-[3/4] rounded-xl border-2 overflow-hidden bg-surface-2 ${RARITY_BORDER[card.rarity] || 'border-dark-600'}`}
-                              initial={{
-                                rotateY: 180,
-                                scale: 0.6,
-                                opacity: 0,
-                              }}
+                              initial={{ rotateY: 180, scale: 0.6, opacity: 0 }}
                               animate={{
                                 rotateY: 0,
                                 scale: isLatest ? [0.6, 1.08, 1] : 1,
@@ -319,14 +355,9 @@ export function PackOpeningReveal({ isOpen, onClose, cards, packName, loading }:
                               }}
                               style={{ transformStyle: 'preserve-3d' }}
                             >
-                              {/* Card image */}
                               {card.image_url ? (
                                 <div className="aspect-[3/2] bg-dark-700">
-                                  <img
-                                    src={card.image_url}
-                                    alt={card.name}
-                                    className="w-full h-full object-cover"
-                                  />
+                                  <img src={card.image_url} alt={card.name} className="w-full h-full object-cover" />
                                 </div>
                               ) : (
                                 <div className="aspect-[3/2] bg-dark-700 flex items-center justify-center">
@@ -334,7 +365,6 @@ export function PackOpeningReveal({ isOpen, onClose, cards, packName, loading }:
                                 </div>
                               )}
 
-                              {/* Card info */}
                               <div className="p-2">
                                 <p className="text-xs font-medium text-white truncate">{card.name}</p>
                                 <p className={`text-[10px] font-bold ${RARITY_LABEL[card.rarity]?.color || 'text-dark-400'}`}>
@@ -342,7 +372,6 @@ export function PackOpeningReveal({ isOpen, onClose, cards, packName, loading }:
                                 </p>
                               </div>
 
-                              {/* Rarity glow overlay */}
                               {isSpecial && (
                                 <div className={`absolute inset-0 pointer-events-none rounded-xl ${
                                   card.rarity === 'legendary'
@@ -351,7 +380,6 @@ export function PackOpeningReveal({ isOpen, onClose, cards, packName, loading }:
                                 }`} />
                               )}
 
-                              {/* Legendary crown badge */}
                               {card.rarity === 'legendary' && (
                                 <motion.div
                                   className="absolute top-1 right-1"
@@ -366,7 +394,7 @@ export function PackOpeningReveal({ isOpen, onClose, cards, packName, loading }:
                           )}
                         </AnimatePresence>
 
-                        {/* Flash effect on reveal for special cards */}
+                        {/* Flash on reveal for epic/legendary */}
                         {isLatest && isSpecial && (
                           <motion.div
                             className="absolute inset-0 rounded-xl pointer-events-none"
@@ -384,23 +412,16 @@ export function PackOpeningReveal({ isOpen, onClose, cards, packName, loading }:
                         {/* Floating particles for legendary */}
                         {isRevealed && card.rarity === 'legendary' && (
                           <>
-                            {[...Array(4)].map((_, pi) => (
+                            {[0, 1, 2, 3].map((pi) => (
                               <motion.div
                                 key={pi}
                                 className="absolute w-1 h-1 rounded-full bg-yellow-400"
                                 style={{
-                                  left: `${20 + Math.random() * 60}%`,
-                                  top: `${20 + Math.random() * 60}%`,
+                                  left: `${25 + pi * 15}%`,
+                                  top: `${30 + pi * 10}%`,
                                 }}
-                                animate={{
-                                  y: [0, -15, 0],
-                                  opacity: [0, 1, 0],
-                                }}
-                                transition={{
-                                  duration: 1.5,
-                                  repeat: Infinity,
-                                  delay: pi * 0.4,
-                                }}
+                                animate={{ y: [0, -15, 0], opacity: [0, 1, 0] }}
+                                transition={{ duration: 1.5, repeat: Infinity, delay: pi * 0.4 }}
                               />
                             ))}
                           </>
@@ -410,7 +431,7 @@ export function PackOpeningReveal({ isOpen, onClose, cards, packName, loading }:
                   })}
                 </div>
 
-                {/* Skip / Close buttons */}
+                {/* Skip / Close */}
                 <div className="mt-4 flex gap-3">
                   {!allRevealed ? (
                     <motion.button
@@ -418,7 +439,7 @@ export function PackOpeningReveal({ isOpen, onClose, cards, packName, loading }:
                       onClick={handleSkipToSummary}
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
-                      transition={{ delay: 1 }}
+                      transition={{ delay: 0.5 }}
                     >
                       Pokaż wszystkie
                     </motion.button>
@@ -434,7 +455,7 @@ export function PackOpeningReveal({ isOpen, onClose, cards, packName, loading }:
                   )}
                 </div>
 
-                {/* Summary stats when all revealed */}
+                {/* Summary stats */}
                 {allRevealed && (
                   <motion.div
                     className="flex items-center justify-center gap-4 mt-4"
@@ -456,22 +477,6 @@ export function PackOpeningReveal({ isOpen, onClose, cards, packName, loading }:
                   </motion.div>
                 )}
               </div>
-            )}
-
-            {/* Loading state */}
-            {loading && (
-              <motion.div
-                className="flex flex-col items-center py-16"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-              >
-                <motion.div
-                  className="w-12 h-12 border-3 border-turbo-500/30 border-t-turbo-500 rounded-full"
-                  animate={{ rotate: 360 }}
-                  transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-                />
-                <p className="text-dark-400 text-sm mt-4">Ładowanie kart...</p>
-              </motion.div>
             )}
           </div>
         </motion.div>
