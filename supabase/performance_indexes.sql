@@ -35,5 +35,23 @@ CREATE INDEX IF NOT EXISTS idx_users_donation_total ON public.users(donation_tot
 -- announcements: aktywne ogłoszenia
 CREATE INDEX IF NOT EXISTS idx_announcements_active ON public.announcements(is_active) WHERE is_active = true;
 
+-- tuning_challenges: ranking + open challenges
+CREATE INDEX IF NOT EXISTS idx_tuning_challenges_status ON public.tuning_challenges(status);
+CREATE INDEX IF NOT EXISTS idx_tuning_challenges_challenger ON public.tuning_challenges(challenger_id);
+
+-- mystery_pack_purchases: order lookup
+CREATE INDEX IF NOT EXISTS idx_mystery_purchases_user ON public.mystery_pack_purchases(user_id);
+CREATE INDEX IF NOT EXISTS idx_mystery_purchases_status ON public.mystery_pack_purchases(status);
+CREATE INDEX IF NOT EXISTS idx_mystery_purchases_order_code ON public.mystery_pack_purchases(order_code);
+
+-- card_orders: order code lookup (PayU webhook)
+CREATE INDEX IF NOT EXISTS idx_card_orders_order_code ON public.card_orders(order_code);
+
+-- missions: active missions query
+CREATE INDEX IF NOT EXISTS idx_missions_status ON public.missions(status);
+
+-- notifications: user feed
+CREATE INDEX IF NOT EXISTS idx_notifications_user ON public.notifications(user_id, created_at DESC);
+
 -- Potwierdzenie
 SELECT 'Performance indexes created successfully' AS result;

@@ -121,6 +121,7 @@ export function CollectibleCardDisplay({
               <img
                 src={card.image_url}
                 alt={card.name}
+                loading="lazy"
                 className={`w-full h-full object-cover transition-all duration-500 ${
                   !owned && !isDemoMode ? 'grayscale brightness-50' : ''
                 } ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
@@ -197,6 +198,7 @@ export function CollectibleCardDisplay({
               <img
                 src={card.image_url}
                 alt={card.name}
+                loading="lazy"
                 className={`w-full h-full object-cover transition-all duration-500 ${
                   !owned && !isDemoMode ? 'grayscale brightness-50' : ''
                 } ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}

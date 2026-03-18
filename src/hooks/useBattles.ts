@@ -631,7 +631,7 @@ export function useBattles(options: UseBattlesOptions = {}) {
       .select('user_id, card:cards!inner(card_type)')
       .eq('card.card_type', 'car')
       .neq('user_id', userId)
-      .limit(5000);
+      .limit(500);
 
     if (cardsError) {
       console.error('Error fetching challengable players:', cardsError);

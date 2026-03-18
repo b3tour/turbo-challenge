@@ -157,12 +157,18 @@ export function useTuning({ userId }: UseTuningProps) {
       .channel(`tuning_challenges_${userId}`)
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'tuning_challenges' },
-        () => {
-          fetchOpenChallenges();
-          fetchMyChallenges();
-          fetchMyBattles();
-        }
+        { event: '*', schema: 'public', table: 'tuning_challenges', filter: `challenger_id=eq.${userId}` },
+        () => { fetchMyChallenges(); fetchMyBattles(); }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'tuning_challenges', filter: `opponent_id=eq.${userId}` },
+        () => { fetchMyChallenges(); fetchMyBattles(); }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'tuning_challenges' },
+        () => { fetchOpenChallenges(); }
       )
       .subscribe();
 
