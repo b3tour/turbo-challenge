@@ -341,70 +341,26 @@ export function useMysteryPacks(options: UseMysteryPacksOptions = {}) {
     return result;
   }, [openPack]);
 
-  // Recykling karty za XP
+  // Recykling karty za XP — ATOMOWA TRANSAKCJA
   const recycleCard = useCallback(async (
     userCardId: string
   ): Promise<{ success: boolean; error?: string; xpGained?: number }> => {
     if (!userId) return { success: false, error: 'Nie jesteś zalogowany' };
 
-    // Pobierz kartę użytkownika
-    const { data: userCard, error: fetchError } = await supabase
-      .from('user_cards')
-      .select('*, card:cards(*)')
-      .eq('id', userCardId)
-      .eq('user_id', userId)
-      .single();
-
-    if (fetchError || !userCard) {
-      return { success: false, error: 'Nie znaleziono karty' };
-    }
-
-    // Sprawdź czy użytkownik ma więcej niż 1 sztukę tej karty
-    const { count } = await supabase
-      .from('user_cards')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', userId)
-      .eq('card_id', userCard.card_id);
-
-    if (!count || count < 2) {
-      return { success: false, error: 'Nie możesz oddać ostatniej karty tego typu' };
-    }
-
-    // Określ XP za recykling według rzadkości
-    const card = userCard.card as CollectibleCard;
-    let xpGained = 1; // domyślnie 1 XP
-    switch (card.rarity) {
-      case 'rare': xpGained = 2; break;
-      case 'epic': xpGained = 5; break;
-      case 'legendary': xpGained = 10; break;
-    }
-
-    // Usuń kartę z kolekcji
-    const { error: deleteError } = await supabase
-      .from('user_cards')
-      .delete()
-      .eq('id', userCardId);
-
-    if (deleteError) {
-      return { success: false, error: deleteError.message };
-    }
-
-    // Zwróć kartę do puli (zmniejsz sold_count)
-    if (card.total_supply) {
-      const newSoldCount = Math.max(0, (card.sold_count || 1) - 1);
-      await supabase
-        .from('cards')
-        .update({ sold_count: newSoldCount })
-        .eq('id', card.id);
-    }
-
-    // Dodaj XP
-    await supabase.rpc('add_xp', {
-      user_id: userId,
-      xp_amount: xpGained,
+    const { data, error: rpcError } = await supabase.rpc('recycle_card', {
+      p_user_id: userId,
+      p_user_card_id: userCardId,
     });
 
-    return { success: true, xpGained };
+    if (rpcError) {
+      return { success: false, error: rpcError.message };
+    }
+
+    if (data && !data.success) {
+      return { success: false, error: data.error };
+    }
+
+    return { success: true, xpGained: data?.xp_gained || 1 };
   }, [userId]);
 
   // Pobierz duplikaty użytkownika

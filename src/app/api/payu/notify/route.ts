@@ -143,7 +143,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// Obsługa zakończonej płatności za kartę
+// Obsługa zakończonej płatności za kartę — ATOMOWA TRANSAKCJA
 async function handleCardOrderCompleted(cardOrder: {
   id: string;
   user_id: string;
@@ -154,97 +154,24 @@ async function handleCardOrderCompleted(cardOrder: {
 }, payuOrderId: string) {
   if (cardOrder.status !== 'pending') return;
 
-  log('info', 'Processing card order', { orderId: cardOrder.id, userId: cardOrder.user_id });
+  log('info', 'Processing card order (atomic)', { orderId: cardOrder.id, userId: cardOrder.user_id });
 
-  // Oznacz jako opłacone
-  const { error: updateError } = await supabase
-    .from('card_orders')
-    .update({
-      status: 'paid',
-      paid_at: new Date().toISOString(),
-      admin_notes: `payu:${payuOrderId}`,
-    })
-    .eq('id', cardOrder.id)
-    .eq('status', 'pending');
+  const { data, error } = await supabase.rpc('complete_card_order', {
+    p_order_id: cardOrder.id,
+    p_payu_order_id: payuOrderId,
+  });
 
-  if (updateError) {
-    log('error', 'Failed to update card_order status', { error: updateError.message, orderId: cardOrder.id });
+  if (error) {
+    log('error', 'Atomic complete_card_order failed', { error: error.message, orderId: cardOrder.id });
     return;
   }
 
-  // Dodaj kartę do kolekcji użytkownika
-  const { error: insertCardError } = await supabase
-    .from('user_cards')
-    .insert({
-      user_id: cardOrder.user_id,
-      card_id: cardOrder.card_id,
-      obtained_from: 'purchase',
-    });
-
-  if (insertCardError) {
-    log('error', 'Failed to insert user_card', { error: insertCardError.message, orderId: cardOrder.id });
+  if (data && !data.success) {
+    log('error', 'complete_card_order returned error', { error: data.error, orderId: cardOrder.id });
+    return;
   }
 
-  // Dodaj do donation_total
-  const { data: userData, error: userError } = await supabase
-    .from('users')
-    .select('donation_total')
-    .eq('id', cardOrder.user_id)
-    .single();
-
-  if (userError) {
-    log('error', 'Failed to fetch user for donation update', { error: userError.message, userId: cardOrder.user_id });
-  } else if (userData) {
-    const { error: donationError } = await supabase
-      .from('users')
-      .update({ donation_total: (userData.donation_total || 0) + cardOrder.amount })
-      .eq('id', cardOrder.user_id);
-
-    if (donationError) {
-      log('error', 'Failed to update donation_total', { error: donationError.message, userId: cardOrder.user_id });
-    }
-  }
-
-  // Dodaj XP
-  if (cardOrder.xp_reward > 0) {
-    const { error: xpError } = await supabase.rpc('add_user_xp', {
-      p_user_id: cardOrder.user_id,
-      p_xp_amount: cardOrder.xp_reward,
-    });
-
-    if (xpError) {
-      log('error', 'Failed to add XP', { error: xpError.message, userId: cardOrder.user_id });
-    }
-  }
-
-  // Aktualizuj sold_count na karcie
-  const { data: card } = await supabase
-    .from('cards')
-    .select('sold_count')
-    .eq('id', cardOrder.card_id)
-    .single();
-
-  if (card) {
-    await supabase
-      .from('cards')
-      .update({ sold_count: (card.sold_count || 0) + 1 })
-      .eq('id', cardOrder.card_id);
-  }
-
-  // Wyślij powiadomienie
-  const { error: notifError } = await supabase.from('notifications').insert({
-    user_id: cardOrder.user_id,
-    title: 'Płatność potwierdzona!',
-    message: 'Twoja karta została dodana do kolekcji. Dziękujemy za wsparcie Turbo Pomoc!',
-    type: 'card_received',
-    read: false,
-  });
-
-  if (notifError) {
-    log('error', 'Failed to send notification', { error: notifError.message, userId: cardOrder.user_id });
-  }
-
-  log('info', 'Card order completed successfully', { orderId: cardOrder.id, userId: cardOrder.user_id });
+  log('info', 'Card order completed successfully (atomic)', { orderId: cardOrder.id, userId: cardOrder.user_id });
 }
 
 // Obsługa zakończonej płatności za mystery pack — automatyczne otwarcie pakietu
@@ -329,68 +256,28 @@ async function handlePackOrderCompleted(packOrder: {
     }
   }
 
-  // Dodaj karty do kolekcji
-  const { error: insertError } = await supabase
-    .from('user_cards')
-    .insert(selectedCards.map(card => ({
-      user_id: packOrder.user_id,
-      card_id: card.id,
-      obtained_from: 'purchase',
-    })));
+  // ATOMOWA TRANSAKCJA: karty + status + donation + XP + powiadomienie
+  const cardIds = selectedCards.map(c => c.id);
 
-  if (insertError) {
-    log('error', 'Failed to insert user_cards', { error: insertError.message, orderId: packOrder.id });
-    // Oznacz jako paid — admin otworzy ręcznie
+  const { data: rpcResult, error: rpcError } = await supabase.rpc('complete_pack_order', {
+    p_purchase_id: packOrder.id,
+    p_card_ids: cardIds,
+    p_amount: packOrder.amount,
+    p_pack_name: packType.name,
+  });
+
+  if (rpcError) {
+    log('error', 'Atomic complete_pack_order failed', { error: rpcError.message, orderId: packOrder.id });
+    // Fallback: oznacz jako paid, admin otworzy ręcznie
     await supabase.from('mystery_pack_purchases').update({ status: 'paid', paid_at: new Date().toISOString() }).eq('id', packOrder.id);
     return;
   }
 
-  // Zaktualizuj status na 'opened' od razu
-  const { error: updateError } = await supabase
-    .from('mystery_pack_purchases')
-    .update({
-      status: 'opened',
-      paid_at: new Date().toISOString(),
-      cards_received: selectedCards.map(c => c.id),
-      opened_at: new Date().toISOString(),
-    })
-    .eq('id', packOrder.id)
-    .eq('status', 'pending');
-
-  if (updateError) {
-    log('error', 'Failed to update pack status to opened', { error: updateError.message, orderId: packOrder.id });
+  if (rpcResult && !rpcResult.success) {
+    log('error', 'complete_pack_order returned error', { error: rpcResult.error, orderId: packOrder.id });
+    await supabase.from('mystery_pack_purchases').update({ status: 'paid', paid_at: new Date().toISOString() }).eq('id', packOrder.id);
+    return;
   }
 
-  // Dodaj donation_total + XP
-  const { data: userData } = await supabase
-    .from('users')
-    .select('donation_total, total_xp')
-    .eq('id', packOrder.user_id)
-    .single();
-
-  if (userData) {
-    await supabase
-      .from('users')
-      .update({
-        donation_total: (userData.donation_total || 0) + packOrder.amount,
-        total_xp: (userData.total_xp || 0) + selectedCards.length,
-      })
-      .eq('id', packOrder.user_id);
-  }
-
-  // Podsumowanie kart
-  const rarityNames: Record<string, string> = { common: 'zwykłych', rare: 'rzadkich', epic: 'epickich', legendary: 'legendarnych' };
-  const summary = selectedCards.reduce((acc, c) => { acc[c.rarity] = (acc[c.rarity] || 0) + 1; return acc; }, {} as Record<string, number>);
-  const summaryText = Object.entries(summary).map(([r, n]) => `${n} ${rarityNames[r] || r}`).join(', ');
-
-  // Powiadomienie z wynikiem
-  await supabase.from('notifications').insert({
-    user_id: packOrder.user_id,
-    title: 'Pakiet otwarty!',
-    message: `Twój pakiet ${packType.name} został otwarty! Otrzymałeś ${summaryText}. Sprawdź kolekcję!`,
-    type: 'system',
-    read: false,
-  });
-
-  log('info', 'Pack auto-opened successfully', { orderId: packOrder.id, userId: packOrder.user_id, cards: selectedCards.length, summary: summaryText });
+  log('info', 'Pack auto-opened successfully (atomic)', { orderId: packOrder.id, userId: packOrder.user_id, cards: selectedCards.length });
 }

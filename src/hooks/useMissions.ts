@@ -185,26 +185,17 @@ export function useMissions(options: UseMissionsOptions = {}) {
       return { success: false, error: reason };
     }
 
-    const { data, error: submitError } = await supabase
-      .from('submissions')
-      .insert({
-        user_id: userId,
-        mission_id: missionId,
-        status: 'approved', // QR automatycznie zatwierdzane
-        xp_awarded: mission.xp_reward,
-      })
-      .select()
-      .single();
-
-    if (submitError) {
-      return { success: false, error: submitError.message };
-    }
-
-    // Aktualizuj XP użytkownika
-    await supabase.rpc('add_user_xp', {
+    // Atomowa transakcja: submission + XP
+    const { data, error: rpcError } = await supabase.rpc('complete_mission_with_xp', {
       p_user_id: userId,
-      p_xp_amount: mission.xp_reward
+      p_mission_id: missionId,
+      p_xp_reward: mission.xp_reward,
+      p_status: 'approved',
     });
+
+    if (rpcError) {
+      return { success: false, error: rpcError.message };
+    }
 
     await fetchUserSubmissions();
     return { success: true, xp: mission.xp_reward };
@@ -291,27 +282,18 @@ export function useMissions(options: UseMissionsOptions = {}) {
     const allCorrect = correctAnswers === totalQuestions;
     const saveTime = isSpeedrun && allCorrect && timeMs ? timeMs : null;
 
-    const { error: submitError } = await supabase
-      .from('submissions')
-      .insert({
-        user_id: userId,
-        mission_id: missionId,
-        status: passed ? 'approved' : 'rejected',
-        quiz_score: score,
-        quiz_time_ms: saveTime,
-        xp_awarded: xpAwarded,
-      });
+    // Atomowa transakcja: submission + XP (jeśli zdał)
+    const { data, error: rpcError } = await supabase.rpc('complete_mission_with_xp', {
+      p_user_id: userId,
+      p_mission_id: missionId,
+      p_xp_reward: xpAwarded,
+      p_status: passed ? 'approved' : 'rejected',
+      p_quiz_score: score,
+      p_quiz_time_ms: saveTime,
+    });
 
-    if (submitError) {
-      return { success: false, error: submitError.message };
-    }
-
-    // Dodaj XP jeśli zdał
-    if (passed) {
-      await supabase.rpc('add_user_xp', {
-        p_user_id: userId,
-        p_xp_amount: xpAwarded
-      });
+    if (rpcError) {
+      return { success: false, error: rpcError.message };
     }
 
     await fetchUserSubmissions();
@@ -353,26 +335,19 @@ export function useMissions(options: UseMissionsOptions = {}) {
       return { success: false, error: 'Nie jesteś wystarczająco blisko lokalizacji' };
     }
 
-    const { error: submitError } = await supabase
-      .from('submissions')
-      .insert({
-        user_id: userId,
-        mission_id: missionId,
-        status: 'approved',
-        gps_lat: lat,
-        gps_lng: lng,
-        xp_awarded: mission.xp_reward,
-      });
-
-    if (submitError) {
-      return { success: false, error: submitError.message };
-    }
-
-    // Dodaj XP
-    await supabase.rpc('add_user_xp', {
+    // Atomowa transakcja: submission + XP
+    const { data, error: rpcError } = await supabase.rpc('complete_mission_with_xp', {
       p_user_id: userId,
-      p_xp_amount: mission.xp_reward
+      p_mission_id: missionId,
+      p_xp_reward: mission.xp_reward,
+      p_status: 'approved',
+      p_gps_lat: lat,
+      p_gps_lng: lng,
     });
+
+    if (rpcError) {
+      return { success: false, error: rpcError.message };
+    }
 
     await fetchUserSubmissions();
     return { success: true, xp: mission.xp_reward };
@@ -398,24 +373,18 @@ export function useMissions(options: UseMissionsOptions = {}) {
       return { success: false, error: reason };
     }
 
-    const { error: submitError } = await supabase
-      .from('submissions')
-      .insert({
-        user_id: userId,
-        mission_id: missionId,
-        status: 'approved',
-        survey_answers: answer,
-        xp_awarded: mission.xp_reward,
-      });
-
-    if (submitError) {
-      return { success: false, error: submitError.message };
-    }
-
-    await supabase.rpc('add_user_xp', {
+    // Atomowa transakcja: submission + XP
+    const { data, error: rpcError } = await supabase.rpc('complete_mission_with_xp', {
       p_user_id: userId,
-      p_xp_amount: mission.xp_reward,
+      p_mission_id: missionId,
+      p_xp_reward: mission.xp_reward,
+      p_status: 'approved',
+      p_survey_answers: JSON.stringify(answer),
     });
+
+    if (rpcError) {
+      return { success: false, error: rpcError.message };
+    }
 
     await fetchUserSubmissions();
     return { success: true, xp: mission.xp_reward };
