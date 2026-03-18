@@ -7,7 +7,7 @@ import { useMysteryPacks } from '@/hooks/useMysteryPacks';
 import { Card, Button, Modal, Badge } from '@/components/ui';
 import { SkeletonCard } from '@/components/ui/Skeleton';
 import { useToast } from '@/components/ui/Toast';
-import { CollectibleCardDisplay } from '@/components/cards';
+import { CollectibleCardDisplay, PackOpeningReveal } from '@/components/cards';
 import { RARITY_CONFIG } from '@/hooks/useCards';
 import PaymentGateway from '@/components/ui/PaymentGateway';
 import {
@@ -31,20 +31,6 @@ import {
 } from 'lucide-react';
 import { MysteryPackType, MysteryPackPurchase, CollectibleCard } from '@/types';
 import { supabase } from '@/lib/supabase';
-
-const RARITY_BORDER: Record<string, string> = {
-  legendary: 'border-yellow-500 shadow-yellow-500/30 shadow-lg',
-  epic: 'border-purple-500 shadow-purple-500/30 shadow-lg',
-  rare: 'border-blue-500 shadow-blue-500/20',
-  common: 'border-dark-500',
-};
-
-const RARITY_LABEL: Record<string, { text: string; color: string }> = {
-  legendary: { text: 'LEGENDARY', color: 'text-yellow-400' },
-  epic: { text: 'EPIC', color: 'text-purple-400' },
-  rare: { text: 'RARE', color: 'text-blue-400' },
-  common: { text: 'COMMON', color: 'text-dark-400' },
-};
 
 export default function MysteryGaragePage() {
   const { profile } = useAuth();
@@ -719,93 +705,17 @@ export default function MysteryGaragePage() {
         </div>
       </Modal>
 
-      {/* Modal Reveal kart */}
-      <Modal
+      {/* Pack Opening Reveal */}
+      <PackOpeningReveal
         isOpen={showRevealModal}
         onClose={() => {
           setShowRevealModal(false);
           setRevealCards([]);
         }}
-        title={`${revealPackName} — Twoje karty!`}
-      >
-        <div className="space-y-4">
-          {loadingReveal ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-8 h-8 text-turbo-500 animate-spin" />
-            </div>
-          ) : (
-            <>
-              {/* Podsumowanie */}
-              <div className="flex items-center justify-center gap-4 py-2">
-                {(['legendary', 'epic', 'rare', 'common'] as const).map(rarity => {
-                  const count = revealCards.filter(c => c.rarity === rarity).length;
-                  if (count === 0) return null;
-                  const config = RARITY_CONFIG[rarity];
-                  return (
-                    <div key={rarity} className="flex items-center gap-1">
-                      <config.icon className={`w-4 h-4 ${config.color}`} />
-                      <span className={`text-sm font-bold ${config.color}`}>{count}</span>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Grid kart */}
-              <div className="grid grid-cols-2 gap-3 max-h-[60vh] overflow-y-auto">
-                {revealCards.map((card, index) => (
-                  <div
-                    key={`${card.id}-${index}`}
-                    className={`relative rounded-xl border-2 overflow-hidden bg-surface-2 ${RARITY_BORDER[card.rarity] || 'border-dark-600'}`}
-                  >
-                    {/* Obrazek karty */}
-                    {card.image_url ? (
-                      <div className="aspect-[3/2] bg-dark-700">
-                        <img
-                          src={card.image_url}
-                          alt={card.name}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                    ) : (
-                      <div className="aspect-[3/2] bg-dark-700 flex items-center justify-center">
-                        <Sparkles className={`w-8 h-8 ${RARITY_LABEL[card.rarity]?.color || 'text-dark-400'}`} />
-                      </div>
-                    )}
-
-                    {/* Info */}
-                    <div className="p-2">
-                      <p className="text-xs font-medium text-white truncate">{card.name}</p>
-                      <p className={`text-[10px] font-bold ${RARITY_LABEL[card.rarity]?.color || 'text-dark-400'}`}>
-                        {RARITY_LABEL[card.rarity]?.text || card.rarity}
-                      </p>
-                    </div>
-
-                    {/* Glow effect for epic+ */}
-                    {(card.rarity === 'legendary' || card.rarity === 'epic') && (
-                      <div className={`absolute inset-0 pointer-events-none rounded-xl ${
-                        card.rarity === 'legendary'
-                          ? 'bg-gradient-to-t from-yellow-500/20 to-transparent'
-                          : 'bg-gradient-to-t from-purple-500/15 to-transparent'
-                      }`} />
-                    )}
-                  </div>
-                ))}
-              </div>
-
-              <Button
-                variant="secondary"
-                fullWidth
-                onClick={() => {
-                  setShowRevealModal(false);
-                  setRevealCards([]);
-                }}
-              >
-                Zamknij
-              </Button>
-            </>
-          )}
-        </div>
-      </Modal>
+        cards={revealCards}
+        packName={revealPackName}
+        loading={loadingReveal}
+      />
     </div>
   );
 }
